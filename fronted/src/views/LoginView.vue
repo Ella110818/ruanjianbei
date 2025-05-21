@@ -224,7 +224,7 @@ export default {
 .title {
   font-size: 28px;
   color: #1a1f36;
-  margin-top: 40px;
+  margin-top: 80px;
   font-weight: 600;
 }
 
@@ -392,12 +392,12 @@ input {
 
 .role-selector-block {
   width: 400px;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 .role-tip {
   color: #999;
   font-size: 16px;
-  margin-bottom: 50px;
+  margin-bottom: 10px;
 }
 .role-selector-btns {
   display: flex;
@@ -408,7 +408,7 @@ input {
 }
 .role-btn {
   flex: 1;
-  padding: 14px 0;
+  padding: 9px 0;
   font-size: 18px;
   border: none;
   background: #eaf1fa;
