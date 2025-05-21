@@ -31,7 +31,7 @@
                 v-model="formData.loginAccount" 
                 :class="{'error': errors.loginAccount}"
                 @blur="validateField('loginAccount')"
-                placeholder="请输入用户名"
+                placeholder="请输入用户名111"
                 required
               >
             </div>
