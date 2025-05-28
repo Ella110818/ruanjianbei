@@ -15,7 +15,23 @@
         "types": [
             "element-plus/global"
         ],
-        "isolatedModules": true
+        "isolatedModules": true,
+        "target": "ES2020",
+        "module": "ESNext",
+        "lib": [
+            "ES2020",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "skipLibCheck": true,
+        "moduleResolution": "node",
+        "allowJs": true,
+        "strict": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "jsx": "preserve"
     },
     "references": [
         {

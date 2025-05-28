@@ -63,10 +63,10 @@ export async function login(username, password) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Origin': getFrontUrl() // 添加源站点信息
+                    'Accept': 'application/json'
                 },
-                credentials: 'include', // 支持跨域携带cookie
+                mode: 'cors', // 明确指定跨域模式
+                credentials: 'omit', // 改为omit，不发送cookies
                 body: JSON.stringify({ username, password })
             });
 
@@ -123,10 +123,10 @@ export async function getUserInfo() {
             const response = await fetch(`${BASE_URL}/api/user/info`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Origin': getFrontUrl()
+                    'Content-Type': 'application/json'
                 },
-                credentials: 'include'
+                mode: 'cors',
+                credentials: 'omit'
             });
             return await response.json();
         } catch (error) {
@@ -147,10 +147,10 @@ export async function refreshToken() {
         const response = await fetch(`${BASE_URL}/api/token/refresh/`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Origin': getFrontUrl()
+                'Content-Type': 'application/json'
             },
-            credentials: 'include',
+            mode: 'cors',
+            credentials: 'omit',
             body: JSON.stringify({
                 refresh: refreshToken
             })
