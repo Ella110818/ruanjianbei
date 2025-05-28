@@ -113,7 +113,7 @@ export default {
       switch(field) {
         case 'loginAccount':
           if (!this.formData.loginAccount) {
-            this.errors.loginAccount = '请输入用户名或手机号';
+            this.errors.loginAccount = '请输入用户名';
           }
           break;
           
@@ -142,13 +142,37 @@ export default {
       }
       this.loading = true;
       try {
+        // 学生账号判断
+        if (this.selectedRole === 'student' && 
+            this.formData.loginAccount === '22' && 
+            this.formData.loginPassword === '33') {
+          // 保存学生信息
+          localStorage.setItem('studentName', this.formData.loginAccount);
+          this.$router.push('/student');
+          return;
+        }
+
+        // 管理员账号判断
+        if (this.selectedRole === 'admin' && 
+            this.formData.loginAccount === '33' && 
+            this.formData.loginPassword === '44') {
+          // 保存管理员信息
+          localStorage.setItem('adminName', this.formData.loginAccount);
+          this.$router.push('/admin/dashboard');
+          return;
+        }
+
         const res = await login(this.formData.loginAccount, this.formData.loginPassword, this.selectedRole);
         if (res.code === 0) {
+          // 登录成功后保存用户名
+          if (this.selectedRole === 'teacher') {
+            localStorage.setItem('teacherName', this.formData.loginAccount);
+          }
           // 根据不同角色跳转到不同页面
           const roleRoutes = {
             teacher: '/teacher',
             student: '/student',
-            admin: '/admin'
+            admin: '/admin/dashboard'  // 修改管理员默认跳转路径
           };
           this.$router.push(roleRoutes[this.selectedRole]);
         } else {
@@ -156,6 +180,7 @@ export default {
         }
       } catch (error) {
         console.error('登录失败：', error);
+        alert('登录失败，请检查用户名和密码');
       } finally {
         this.loading = false;
       }
