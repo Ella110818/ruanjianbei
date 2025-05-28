@@ -1,5 +1,34 @@
+// 环境配置
+const ENV = {
+    development: {
+        API_URL: 'https://dariajane.pythonanywhere.com',
+        FRONT_URL: 'http://localhost:8080'
+    },
+    production: {
+        API_URL: 'https://dariajane.pythonanywhere.com',
+        FRONT_URL: 'https://glowing-sunburst-d86f36.netlify.app'
+    }
+};
+
+// 获取当前环境
+function getEnvironment() {
+    return process.env.NODE_ENV || 'development';
+}
+
+// 获取基础URL
+function getBaseUrl() {
+    const env = getEnvironment();
+    return ENV[env].API_URL;
+}
+
+// 获取前端URL
+function getFrontUrl() {
+    const env = getEnvironment();
+    return ENV[env].FRONT_URL;
+}
+
 // 基础URL配置
-const BASE_URL = 'https://dariajane.pythonanywhere.com';
+const BASE_URL = getBaseUrl();
 
 // 只用localStorage控制环境
 function getMockFlag() {
@@ -34,8 +63,10 @@ export async function login(username, password) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Origin': getFrontUrl() // 添加源站点信息
                 },
+                credentials: 'include', // 支持跨域携带cookie
                 body: JSON.stringify({ username, password })
             });
 
@@ -92,8 +123,10 @@ export async function getUserInfo() {
             const response = await fetch(`${BASE_URL}/api/user/info`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                    'Content-Type': 'application/json',
+                    'Origin': getFrontUrl()
+                },
+                credentials: 'include'
             });
             return await response.json();
         } catch (error) {
@@ -114,8 +147,10 @@ export async function refreshToken() {
         const response = await fetch(`${BASE_URL}/api/token/refresh/`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Origin': getFrontUrl()
             },
+            credentials: 'include',
             body: JSON.stringify({
                 refresh: refreshToken
             })
