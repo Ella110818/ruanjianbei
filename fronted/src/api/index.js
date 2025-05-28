@@ -55,15 +55,27 @@ export async function login(username, password) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'X-CSRFTOKEN': 'Y9HEDXG1PQOCJA6VU5pPDGXQEL7ZIHFXG'  // 添加CSRF Token
                 },
-                mode: 'cors', // 明确指定跨域模式
-                credentials: 'omit', // 不发送cookies
-                body: JSON.stringify({ username, password })
+                mode: 'cors',
+                credentials: 'omit',
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json();
+                if (response.status === 401) {
+                    return {
+                        code: 1,
+                        msg: errorData.message || '用户名或密码错误',
+                        data: null
+                    };
+                }
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
@@ -110,14 +122,16 @@ export async function getUserInfo() {
             const response = await fetch(`${BASE_URL}/api/user/info`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 mode: 'cors',
                 credentials: 'omit'
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
 
             return await response.json();
@@ -139,7 +153,8 @@ export async function refreshToken() {
         const response = await fetch(`${BASE_URL}/api/token/refresh/`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             mode: 'cors',
             credentials: 'omit',
@@ -149,7 +164,8 @@ export async function refreshToken() {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
