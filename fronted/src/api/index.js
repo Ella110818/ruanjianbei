@@ -1,12 +1,10 @@
 // 环境配置
 const ENV = {
     development: {
-        API_URL: 'https://dariajane.pythonanywhere.com',
-        FRONT_URL: 'http://localhost:8080'
+        API_URL: 'https://dariajane.pythonanywhere.com'
     },
     production: {
-        API_URL: 'https://dariajane.pythonanywhere.com',
-        FRONT_URL: 'https://glowing-sunburst-d86f36.netlify.app'
+        API_URL: 'https://dariajane.pythonanywhere.com'
     }
 };
 
@@ -19,12 +17,6 @@ function getEnvironment() {
 function getBaseUrl() {
     const env = getEnvironment();
     return ENV[env].API_URL;
-}
-
-// 获取前端URL
-function getFrontUrl() {
-    const env = getEnvironment();
-    return ENV[env].FRONT_URL;
 }
 
 // 基础URL配置
@@ -66,43 +58,38 @@ export async function login(username, password) {
                     'Accept': 'application/json'
                 },
                 mode: 'cors', // 明确指定跨域模式
-                credentials: 'omit', // 改为omit，不发送cookies
+                credentials: 'omit', // 不发送cookies
                 body: JSON.stringify({ username, password })
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data = await response.json();
 
-            // 根据后端返回的数据结构处理响应
-            if (response.ok) {
-                // 保存token到localStorage
-                if (data.access) {
-                    localStorage.setItem('token', data.access);
-                }
-                if (data.refresh) {
-                    localStorage.setItem('refreshToken', data.refresh);
-                }
-
-                return {
-                    code: 0,
-                    msg: '登录成功',
-                    data: {
-                        token: data.access,
-                        refreshToken: data.refresh,
-                        user: data.user
-                    }
-                };
-            } else {
-                return {
-                    code: 1,
-                    msg: data.message || '登录失败',
-                    data: null
-                };
+            // 保存token到localStorage
+            if (data.access) {
+                localStorage.setItem('token', data.access);
             }
+            if (data.refresh) {
+                localStorage.setItem('refreshToken', data.refresh);
+            }
+
+            return {
+                code: 0,
+                msg: '登录成功',
+                data: {
+                    token: data.access,
+                    refreshToken: data.refresh,
+                    user: data.user
+                }
+            };
         } catch (error) {
             console.error('登录请求失败:', error);
             return {
                 code: 1,
-                msg: '网络错误，请稍后重试',
+                msg: error.message || '网络错误，请稍后重试',
                 data: null
             };
         }
@@ -128,6 +115,11 @@ export async function getUserInfo() {
                 mode: 'cors',
                 credentials: 'omit'
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             return await response.json();
         } catch (error) {
             console.error('获取用户信息失败:', error);
@@ -156,12 +148,16 @@ export async function refreshToken() {
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
-        if (response.ok && data.access) {
+        if (data.access) {
             localStorage.setItem('token', data.access);
             return data.access;
         } else {
-            throw new Error('Failed to refresh token');
+            throw new Error('No access token in response');
         }
     } catch (error) {
         console.error('Token刷新失败:', error);
