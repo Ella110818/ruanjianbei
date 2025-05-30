@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from 'vue'
+import { ref, defineProps, defineEmits, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -58,15 +58,37 @@ const emit = defineEmits(['update:sideTab', 'update:courseMenuOpen'])
 const currentTab = ref(props.sideTab)
 const isMenuOpen = ref(props.courseMenuOpen)
 
+// 监听路由变化
+watch(() => router.currentRoute.value.path, (newPath) => {
+  // 如果回到课程页面，检查是否需要恢复状态
+  if (newPath === '/teacher/course') {
+    const savedState = localStorage.getItem('teacherNavState')
+    if (savedState) {
+      const state = JSON.parse(savedState)
+      currentTab.value = state.tab
+      isMenuOpen.value = state.menuOpen
+      emit('update:sideTab', state.tab)
+      emit('update:courseMenuOpen', state.menuOpen)
+    }
+  }
+}, { immediate: true })
+
 const toggleCourseMenu = () => {
   isMenuOpen.value = !isMenuOpen.value
   emit('update:courseMenuOpen', isMenuOpen.value)
+  // 保存当前菜单状态
+  saveNavigationState()
 }
 
 const selectSide = (tab, route) => {
   currentTab.value = tab
   emit('update:sideTab', tab)
-  localStorage.setItem('sideTab', tab)
+  
+  // 如果切换到备课助手，保存当前状态
+  if (tab === 'lesson-prep') {
+    saveNavigationState()
+  }
+  
   router.push(route)
 }
 
@@ -74,15 +96,53 @@ const selectCourse = (course, index) => {
   const tab = `course-${index}`
   currentTab.value = tab
   emit('update:sideTab', tab)
-  localStorage.setItem('sideTab', tab)
   
-  // 存储课程信息到localStorage
+  // 存储课程信息
   localStorage.setItem('currentCourseName', course.name)
   localStorage.setItem('currentCourseId', course.id)
   localStorage.setItem('currentCourseLocation', course.location || '理科楼301')
   
+  // 保存导航状态
+  saveNavigationState()
+  
   router.push(`/teacher/course?id=${course.id}`)
 }
+
+// 保存导航状态的统一方法
+const saveNavigationState = () => {
+  const state = {
+    tab: currentTab.value,
+    menuOpen: isMenuOpen.value,
+    currentCourse: localStorage.getItem('currentCourseName'),
+    currentCourseId: localStorage.getItem('currentCourseId'),
+    currentCourseLocation: localStorage.getItem('currentCourseLocation')
+  }
+  localStorage.setItem('teacherNavState', JSON.stringify(state))
+}
+
+// 组件挂载时初始化状态
+onMounted(() => {
+  const savedState = localStorage.getItem('teacherNavState')
+  if (savedState) {
+    const state = JSON.parse(savedState)
+    currentTab.value = state.tab
+    isMenuOpen.value = state.menuOpen
+    emit('update:sideTab', state.tab)
+    emit('update:courseMenuOpen', state.menuOpen)
+    
+    // 恢复课程信息
+    if (state.currentCourse) {
+      localStorage.setItem('currentCourseName', state.currentCourse)
+      localStorage.setItem('currentCourseId', state.currentCourseId)
+      localStorage.setItem('currentCourseLocation', state.currentCourseLocation)
+    }
+  }
+})
+
+// 组件卸载前保存状态
+onUnmounted(() => {
+  saveNavigationState()
+})
 </script>
 
 <style scoped>
