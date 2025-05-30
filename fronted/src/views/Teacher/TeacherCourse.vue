@@ -64,18 +64,21 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import CourseDetail from '@/components/CourseDetail.vue'
+import { getCourses } from '@/api' // 导入 getCourses API
+import { ElMessage } from 'element-plus'
 
 const sideTab = ref('dashboard')
 const courseMenuOpen = ref(false)
-const teacherName = ref('张三')
-const courseCount = ref(4)
-const classCount = ref(6)
-const studentCount = ref(180)
+const teacherName = ref('') // 将从用户信息中获取
+const courseCount = ref(0)
+const classCount = ref(0)
+const studentCount = ref(0)
 const selectedCourseId = ref(null)
+const courses = ref([])
 
 // 从localStorage获取之前的状态
 const previousState = localStorage.getItem('previousState')
@@ -89,22 +92,54 @@ if (previousState) {
   }
 }
 
-const courses = ref([
-  { id: 1, name: '计算机网络原理', img: require('@/assets/course1.jpg') },
-  { id: 2, name: '计算机组成原理', img: require('@/assets/course2.jpg') },
-  { id: 3, name: '操作系统', img: require('@/assets/course3.jpg') },
-  { id: 4, name: '数据结构', img: require('@/assets/course4.jpg') }
-])
-
-const handleSideTabChange = (tab) => {
-  sideTab.value = tab;
-  if (tab.startsWith('course-')) {
-    const courseIndex = parseInt(tab.split('-')[1]);
-    selectedCourseId.value = courses.value[courseIndex].id;
-  } else {
-    selectedCourseId.value = null;
+// 加载课程数据
+const loadCourses = async () => {
+  try {
+    const response = await getCourses()
+    if (response.code === 0) {
+      courses.value = response.data.map(course => ({
+        id: course.id,
+        name: course.title,
+        img: require('@/assets/course1.jpg'), // 默认图片，后续可以从API获取
+        description: course.description,
+        subject: course.subject,
+        grade_level: course.grade_level,
+        teacher_name: course.teacher_name
+      }))
+      
+      // 更新统计数据
+      courseCount.value = courses.value.length
+      // 这些数据可能需要从其他API获取
+      classCount.value = courses.value.reduce((acc, curr) => acc + (curr.class_count || 1), 0)
+      studentCount.value = courses.value.reduce((acc, curr) => acc + (curr.student_count || 30), 0)
+      
+      // 获取教师名称
+      if (courses.value.length > 0) {
+        teacherName.value = courses.value[0].teacher_name || localStorage.getItem('teacherName') || '老师'
+      }
+    } else {
+      ElMessage.error(response.msg || '获取课程列表失败')
+    }
+  } catch (error) {
+    console.error('加载课程失败:', error)
+    ElMessage.error('加载课程数据失败，请稍后重试')
   }
 }
+
+const handleSideTabChange = (tab) => {
+  sideTab.value = tab
+  if (tab.startsWith('course-')) {
+    const courseIndex = parseInt(tab.split('-')[1])
+    selectedCourseId.value = courses.value[courseIndex]?.id
+  } else {
+    selectedCourseId.value = null
+  }
+}
+
+// 组件挂载时加载数据
+onMounted(() => {
+  loadCourses()
+})
 </script>
 
 <style scoped>
