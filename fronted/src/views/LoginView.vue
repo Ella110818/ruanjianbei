@@ -142,39 +142,27 @@ export default {
       }
       this.loading = true;
       try {
-        // 学生账号判断
-        if (this.selectedRole === 'student' && 
-            this.formData.loginAccount === '22' && 
-            this.formData.loginPassword === '33') {
-          // 保存学生信息
-          localStorage.setItem('studentName', this.formData.loginAccount);
-          this.$router.push('/student');
-          return;
-        }
-
-        // 管理员账号判断
-        if (this.selectedRole === 'admin' && 
-            this.formData.loginAccount === '33' && 
-            this.formData.loginPassword === '44') {
-          // 保存管理员信息
-          localStorage.setItem('adminName', this.formData.loginAccount);
-          this.$router.push('/admin/dashboard');
-          return;
-        }
-
         const res = await login(this.formData.loginAccount, this.formData.loginPassword, this.selectedRole);
         if (res.code === 0) {
-          // 登录成功后保存用户名
-          if (this.selectedRole === 'teacher') {
-            localStorage.setItem('teacherName', this.formData.loginAccount);
-          }
+          // 根据角色保存用户信息
+          const roleKey = {
+            teacher: 'teacherName',
+            student: 'studentName',
+            admin: 'adminName'
+          }[this.selectedRole];
+          
+          // 保存用户名
+          localStorage.setItem(roleKey, this.formData.loginAccount);
+          
           // 根据不同角色跳转到不同页面
           const roleRoutes = {
             teacher: '/teacher',
             student: '/student',
-            admin: '/admin/dashboard'  // 修改管理员默认跳转路径
+            admin: '/admin/dashboard'
           };
-          this.$router.push(roleRoutes[this.selectedRole]);
+          
+          // 跳转到对应页面
+          await this.$router.push(roleRoutes[this.selectedRole]);
         } else {
           alert(res.msg || '登录失败');
         }
