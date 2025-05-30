@@ -148,26 +148,43 @@ export async function login(username, password, role) {
                 return handleHttpError(response, responseData);
             }
 
-            // 验证并保存token
-            if (TokenManager.isValidToken(responseData.access) &&
-                TokenManager.isValidToken(responseData.refresh)) {
-                TokenManager.setTokens(responseData.access, responseData.refresh);
-            } else {
-                throw new Error('Invalid token format received');
-            }
+            // 检查响应是否成功
+            if (responseData.success && responseData.status_code === 200) {
+                // 假设token信息在responseData.data中
+                const { token, refresh_token, user } = responseData.data;
 
-            return {
-                code: 0,
-                msg: '登录成功',
-                data: {
-                    token: responseData.access,
-                    refreshToken: responseData.refresh,
-                    user: {
-                        ...responseData.user,
-                        role: role // 确保角色信息包含在返回数据中
-                    }
+                // 验证并保存token
+                if (TokenManager.isValidToken(token) &&
+                    TokenManager.isValidToken(refresh_token)) {
+                    TokenManager.setTokens(token, refresh_token);
+                } else {
+                    console.error('Token格式无效:', responseData.data);
+                    return {
+                        code: 1,
+                        msg: 'Token格式无效',
+                        data: null
+                    };
                 }
-            };
+
+                return {
+                    code: 0,
+                    msg: '登录成功',
+                    data: {
+                        token,
+                        refreshToken: refresh_token,
+                        user: {
+                            ...user,
+                            role
+                        }
+                    }
+                };
+            } else {
+                return {
+                    code: 1,
+                    msg: responseData.message || '登录失败',
+                    data: null
+                };
+            }
         } catch (error) {
             console.error('登录请求失败:', error);
             return {
