@@ -1,10 +1,12 @@
 // 环境配置
 const ENV = {
     development: {
-        API_URL: 'https://dariajane.pythonanywhere.com'
+        API_URL: 'https://dariajane.pythonanywhere.com',
+        API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://dariajane.pythonanywhere.com'
+        API_URL: 'https://dariajane.pythonanywhere.com',
+        API_VERSION: 'api'
     }
 };
 
@@ -16,28 +18,89 @@ function getEnvironment() {
 // 获取基础URL
 function getBaseUrl() {
     const env = getEnvironment();
-    return ENV[env].API_URL;
+    return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
 }
 
 // 基础URL配置
 const BASE_URL = getBaseUrl();
+
+// Token管理
+const TokenManager = {
+    setTokens(accessToken, refreshToken) {
+        if (accessToken) localStorage.setItem('token', accessToken);
+        if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+    },
+
+    getAccessToken() {
+        return localStorage.getItem('token');
+    },
+
+    getRefreshToken() {
+        return localStorage.getItem('refreshToken');
+    },
+
+    clearTokens() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+    },
+
+    isValidToken(token) {
+        return token && typeof token === 'string' && token.length > 0;
+    }
+};
 
 // 只用localStorage控制环境
 function getMockFlag() {
     return localStorage.getItem('USE_MOCK') === 'true';
 }
 
+// HTTP错误处理
+const handleHttpError = (response, errorData) => {
+    switch (response.status) {
+        case 401:
+            return {
+                code: 1,
+                msg: errorData.message || '用户名或密码错误',
+                data: null
+            };
+        case 403:
+            return {
+                code: 1,
+                msg: '没有访问权限',
+                data: null
+            };
+        case 404:
+            return {
+                code: 1,
+                msg: '请求的资源不存在',
+                data: null
+            };
+        case 500:
+            return {
+                code: 1,
+                msg: '服务器内部错误',
+                data: null
+            };
+        default:
+            return {
+                code: 1,
+                msg: errorData.message || `请求失败，状态码: ${response.status}`,
+                data: null
+            };
+    }
+};
+
 // 登录接口
-export async function login(username, password) {
+export async function login(username, password, role) {
     if (getMockFlag()) {
         // 本地测试模式
-        if ((username === '11' || username === '11') && password === '22') {
+        if (username === '11' && password === '22') {
             return Promise.resolve({
                 code: 0,
                 msg: '登录成功',
                 data: {
-                    name: '教师',
-                    role: 'teacher',
+                    name: '测试用户',
+                    role: role || 'teacher',
                     id: 1
                 }
             });
@@ -51,50 +114,58 @@ export async function login(username, password) {
     } else {
         // 真实API请求
         try {
-            const response = await fetch(`${BASE_URL}/api/login/`, {
+            console.log('尝试登录:', { username, role });
+
+            const response = await fetch(`${BASE_URL}/login/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRFTOKEN': 'Y9HEDXG1PQOCJA6VU5pPDGXQEL7ZIHFXG'  // 添加CSRF Token
+                    'Accept': 'application/json'
                 },
-                mode: 'cors',
-                credentials: 'omit',
                 body: JSON.stringify({
-                    username: username,
-                    password: password
+                    username,
+                    password,
+                    role
                 })
             });
 
+            console.log('登录响应状态:', response.status);
+
+            let responseData;
+            try {
+                responseData = await response.json();
+                console.log('登录响应数据:', responseData);
+            } catch (e) {
+                console.error('解析响应数据失败:', e);
+                return {
+                    code: 1,
+                    msg: '服务器响应格式错误',
+                    data: null
+                };
+            }
+
             if (!response.ok) {
-                const errorData = await response.json();
-                if (response.status === 401) {
-                    return {
-                        code: 1,
-                        msg: errorData.message || '用户名或密码错误',
-                        data: null
-                    };
-                }
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                return handleHttpError(response, responseData);
             }
 
-            const data = await response.json();
-
-            // 保存token到localStorage
-            if (data.access) {
-                localStorage.setItem('token', data.access);
-            }
-            if (data.refresh) {
-                localStorage.setItem('refreshToken', data.refresh);
+            // 验证并保存token
+            if (TokenManager.isValidToken(responseData.access) &&
+                TokenManager.isValidToken(responseData.refresh)) {
+                TokenManager.setTokens(responseData.access, responseData.refresh);
+            } else {
+                throw new Error('Invalid token format received');
             }
 
             return {
                 code: 0,
                 msg: '登录成功',
                 data: {
-                    token: data.access,
-                    refreshToken: data.refresh,
-                    user: data.user
+                    token: responseData.access,
+                    refreshToken: responseData.refresh,
+                    user: {
+                        ...responseData.user,
+                        role: role // 确保角色信息包含在返回数据中
+                    }
                 }
             };
         } catch (error) {
@@ -122,16 +193,13 @@ export async function getUserInfo() {
             const response = await fetch(`${BASE_URL}/api/user/info`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                mode: 'cors',
-                credentials: 'omit'
+                    'Content-Type': 'application/json'
+                }
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                throw new Error(errorData.message || `获取用户信息失败，状态码: ${response.status}`);
             }
 
             return await response.json();
@@ -153,11 +221,8 @@ export async function refreshToken() {
         const response = await fetch(`${BASE_URL}/api/token/refresh/`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
-            mode: 'cors',
-            credentials: 'omit',
             body: JSON.stringify({
                 refresh: refreshToken
             })
@@ -165,7 +230,7 @@ export async function refreshToken() {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            throw new Error(errorData.message || `刷新token失败，状态码: ${response.status}`);
         }
 
         const data = await response.json();
@@ -173,7 +238,7 @@ export async function refreshToken() {
             localStorage.setItem('token', data.access);
             return data.access;
         } else {
-            throw new Error('No access token in response');
+            throw new Error('响应中没有access token');
         }
     } catch (error) {
         console.error('Token刷新失败:', error);
