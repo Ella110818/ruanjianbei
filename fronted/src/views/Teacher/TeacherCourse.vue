@@ -49,7 +49,7 @@
                 <img :src="course.img" class="course-img2" :alt="course.name" />
                 <div class="course-info">
                   <div class="course-name2">{{ course.name }}</div>
-                  <div class="course-desc2">这里是课程简介...</div>
+                  <div class="course-desc2">{{ course.description || '暂无课程简介' }}</div>
                 </div>
               </div>
             </div>
