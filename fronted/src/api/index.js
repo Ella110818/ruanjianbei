@@ -264,4 +264,240 @@ export async function refreshToken() {
     }
 }
 
+// 获取课程列表
+export async function getCourses() {
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${BASE_URL}/courses/`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('课程列表响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '获取课程列表成功',
+                data: responseData.data.results || []
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取课程列表失败',
+                data: []
+            };
+        }
+    } catch (error) {
+        console.error('获取课程列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: []
+        };
+    }
+}
+
+// 获取单个课程详情
+export async function getCourseDetail(courseId) {
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${BASE_URL}/courses/${courseId}/`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('课程详情响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '获取课程详情成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取课程详情失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取课程详情失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 创建新课程
+export async function createCourse(courseData) {
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${BASE_URL}/courses/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(courseData)
+        });
+
+        const responseData = await response.json();
+        console.log('创建课程响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '创建课程成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '创建课程失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('创建课程失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 更新课程信息
+export async function updateCourse(courseId, courseData) {
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${BASE_URL}/courses/${courseId}/`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(courseData)
+        });
+
+        const responseData = await response.json();
+        console.log('更新课程响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '更新课程成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '更新课程失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('更新课程失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 删除课程
+export async function deleteCourse(courseId) {
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${BASE_URL}/courses/${courseId}/`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (response.status === 204) {
+            return {
+                code: 0,
+                msg: '删除课程成功',
+                data: null
+            };
+        }
+
+        const responseData = await response.json();
+        console.log('删除课程响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 1,
+            msg: responseData.message || '删除课程失败',
+            data: null
+        };
+    } catch (error) {
+        console.error('删除课程失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
 // 你可以继续添加其他接口方法，按需mock或真实请求

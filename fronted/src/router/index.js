@@ -63,7 +63,22 @@ const routes = [
     path: '/teacher/course',
     name: 'teacherCourse',
     component: () => import('../views/Teacher/TeacherCourse.vue'),
-    meta: { requiresAuth: true }
+    meta: {
+      requiresAuth: true,
+      keepAlive: true
+    },
+    beforeEnter: (to, from, next) => {
+      // 如果是从备课助手返回，恢复之前的导航状态
+      if (from.path === '/teacher/ai') {
+        const navigationState = localStorage.getItem('navigationState')
+        if (navigationState) {
+          const state = JSON.parse(navigationState)
+          localStorage.removeItem('navigationState')
+          return next({ ...state })
+        }
+      }
+      next()
+    }
   },
   {
     path: '/teacher/manage',
@@ -79,9 +94,17 @@ const routes = [
       requiresAuth: true,
       keepAlive: true  // 添加缓存以保持状态
     },
-    props: () => ({
-      courses: JSON.parse(localStorage.getItem('teacherCourses') || '[]')
-    })
+    beforeEnter: (to, from, next) => {
+      // 如果是从课程页面来的，保存当前的导航状态
+      if (from.path === '/teacher/course') {
+        const navigationState = {
+          path: from.path,
+          query: from.query
+        }
+        localStorage.setItem('navigationState', JSON.stringify(navigationState))
+      }
+      next()
+    }
   },
   {
     path: '/teacher/profile',

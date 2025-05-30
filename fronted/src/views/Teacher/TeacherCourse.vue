@@ -77,6 +77,18 @@ const classCount = ref(6)
 const studentCount = ref(180)
 const selectedCourseId = ref(null)
 
+// 从localStorage获取之前的状态
+const previousState = localStorage.getItem('previousState')
+if (previousState) {
+  const state = JSON.parse(previousState)
+  sideTab.value = state.tab
+  courseMenuOpen.value = state.menuOpen
+  if (state.tab.startsWith('course-')) {
+    const courseId = state.currentCourseId
+    selectedCourseId.value = courseId ? parseInt(courseId) : null
+  }
+}
+
 const courses = ref([
   { id: 1, name: '计算机网络原理', img: require('@/assets/course1.jpg') },
   { id: 2, name: '计算机组成原理', img: require('@/assets/course2.jpg') },
