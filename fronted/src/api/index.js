@@ -148,40 +148,28 @@ export async function login(username, password, role) {
                 return handleHttpError(response, responseData);
             }
 
-            // 检查响应是否成功
-            if (responseData.success && responseData.status_code === 200) {
-                // 假设token信息在responseData.data中
-                const { token, refresh_token, user } = responseData.data;
-
-                // 验证并保存token
-                if (TokenManager.isValidToken(token) &&
-                    TokenManager.isValidToken(refresh_token)) {
-                    TokenManager.setTokens(token, refresh_token);
-                } else {
-                    console.error('Token格式无效:', responseData.data);
-                    return {
-                        code: 1,
-                        msg: 'Token格式无效',
-                        data: null
-                    };
-                }
+            // 验证并保存token
+            if (TokenManager.isValidToken(responseData.access) &&
+                TokenManager.isValidToken(responseData.refresh)) {
+                TokenManager.setTokens(responseData.access, responseData.refresh);
 
                 return {
                     code: 0,
                     msg: '登录成功',
                     data: {
-                        token,
-                        refreshToken: refresh_token,
+                        token: responseData.access,
+                        refreshToken: responseData.refresh,
                         user: {
-                            ...user,
+                            ...responseData.user,
                             role
                         }
                     }
                 };
             } else {
+                console.error('Token格式无效:', responseData);
                 return {
                     code: 1,
-                    msg: responseData.message || '登录失败',
+                    msg: 'Token格式无效',
                     data: null
                 };
             }
@@ -229,16 +217,17 @@ export async function getUserInfo() {
 
 // 刷新token的函数
 export async function refreshToken() {
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = TokenManager.getRefreshToken();
     if (!refreshToken) {
         throw new Error('No refresh token available');
     }
 
     try {
-        const response = await fetch(`${BASE_URL}/api/token/refresh/`, {
+        const response = await fetch(`${BASE_URL}/token/refresh/`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 refresh: refreshToken
@@ -252,13 +241,14 @@ export async function refreshToken() {
 
         const data = await response.json();
         if (data.access) {
-            localStorage.setItem('token', data.access);
+            TokenManager.setTokens(data.access, null); // 只更新access token
             return data.access;
         } else {
             throw new Error('响应中没有access token');
         }
     } catch (error) {
         console.error('Token刷新失败:', error);
+        TokenManager.clearTokens(); // 刷新失败时清除所有token
         throw error;
     }
 }
