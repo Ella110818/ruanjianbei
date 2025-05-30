@@ -148,28 +148,39 @@ export async function login(username, password, role) {
                 return handleHttpError(response, responseData);
             }
 
-            // 验证并保存token
-            if (TokenManager.isValidToken(responseData.access) &&
-                TokenManager.isValidToken(responseData.refresh)) {
-                TokenManager.setTokens(responseData.access, responseData.refresh);
+            // 检查响应是否成功
+            if (responseData.success && responseData.status_code === 200 && responseData.data) {
+                const { access, refresh, user } = responseData.data;
 
-                return {
-                    code: 0,
-                    msg: '登录成功',
-                    data: {
-                        token: responseData.access,
-                        refreshToken: responseData.refresh,
-                        user: {
-                            ...responseData.user,
-                            role
+                // 验证并保存token
+                if (TokenManager.isValidToken(access) &&
+                    TokenManager.isValidToken(refresh)) {
+                    TokenManager.setTokens(access, refresh);
+
+                    return {
+                        code: 0,
+                        msg: '登录成功',
+                        data: {
+                            token: access,
+                            refreshToken: refresh,
+                            user: {
+                                ...user,
+                                role
+                            }
                         }
-                    }
-                };
+                    };
+                } else {
+                    console.error('Token格式无效:', responseData);
+                    return {
+                        code: 1,
+                        msg: 'Token格式无效',
+                        data: null
+                    };
+                }
             } else {
-                console.error('Token格式无效:', responseData);
                 return {
                     code: 1,
-                    msg: 'Token格式无效',
+                    msg: responseData.message || '登录失败',
                     data: null
                 };
             }
@@ -234,17 +245,17 @@ export async function refreshToken() {
             })
         });
 
+        const responseData = await response.json();
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `刷新token失败，状态码: ${response.status}`);
+            throw new Error(responseData.message || `刷新token失败，状态码: ${response.status}`);
         }
 
-        const data = await response.json();
-        if (data.access) {
-            TokenManager.setTokens(data.access, null); // 只更新access token
-            return data.access;
+        if (responseData.success && responseData.status_code === 200 && responseData.data?.access) {
+            TokenManager.setTokens(responseData.data.access, null); // 只更新access token
+            return responseData.data.access;
         } else {
-            throw new Error('响应中没有access token');
+            throw new Error('响应中没有有效的access token');
         }
     } catch (error) {
         console.error('Token刷新失败:', error);
