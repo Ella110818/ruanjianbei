@@ -68,7 +68,7 @@ import { ref, onMounted } from 'vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import CourseDetail from '@/components/CourseDetail.vue'
-import { getCourses } from '@/api' // 导入 getCourses API
+import { getCourses, checkAndSetMockEnvironment } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const sideTab = ref('dashboard')
@@ -95,21 +95,23 @@ if (previousState) {
 // 加载课程数据
 const loadCourses = async () => {
   try {
+    // 检查并设置Mock环境
+    checkAndSetMockEnvironment();
+    
     const response = await getCourses()
     if (response.code === 0) {
       courses.value = response.data.map(course => ({
         id: course.id,
-        name: course.title,
-        img: require('@/assets/course1.jpg'), // 默认图片，后续可以从API获取
+        name: course.title || course.name,
+        img: require('@/assets/course1.jpg'),
         description: course.description,
         subject: course.subject,
         grade_level: course.grade_level,
-        teacher_name: course.teacher_name
+        teacher_name: course.teacher_name || course.teacher
       }))
       
       // 更新统计数据
       courseCount.value = courses.value.length
-      // 这些数据可能需要从其他API获取
       classCount.value = courses.value.reduce((acc, curr) => acc + (curr.class_count || 1), 0)
       studentCount.value = courses.value.reduce((acc, curr) => acc + (curr.student_count || 30), 0)
       
