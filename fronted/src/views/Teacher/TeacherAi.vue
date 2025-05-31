@@ -50,34 +50,34 @@ const loadCourses = async () => {
   }
 }
 
-// 恢复之前的课程上下文
+    // 恢复之前的课程上下文
 const restorePreviousState = () => {
   const previousTab = localStorage.getItem('previousTab')
-  if (previousTab) {
+    if (previousTab) {
     sideTab.value = previousTab
-    if (previousTab.startsWith('course-')) {
+      if (previousTab.startsWith('course-')) {
       courseMenuOpen.value = true
+      }
     }
-  }
 }
 
 const updateSideTab = (tab) => {
   sideTab.value = tab
   localStorage.setItem('sideTab', tab)
-  
-  if (tab.startsWith('course-')) {
+      
+      if (tab.startsWith('course-')) {
     const courseIndex = parseInt(tab.split('-')[1])
     const selectedCourse = courses.value[courseIndex]
-    if (selectedCourse) {
+        if (selectedCourse) {
       localStorage.setItem('currentCourseName', selectedCourse.name)
       localStorage.setItem('currentCourseId', selectedCourse.id)
-    }
-  }
+        }
+      }
 }
 
 const updateCourseMenuOpen = (open) => {
   courseMenuOpen.value = open
-}
+    }
 
 // 组件挂载时初始化数据
 onMounted(() => {

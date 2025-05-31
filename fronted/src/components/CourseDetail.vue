@@ -67,7 +67,7 @@
               <el-button type="primary" @click="openAddAssignmentDialog">
                 <el-icon><Plus /></el-icon>添加作业/考试
               </el-button>
-            </div>
+              </div>
 
             <div class="assignment-list">
               <el-empty v-if="filteredAssignments.length === 0" description="暂无作业或考试" />
@@ -80,12 +80,12 @@
                 <div class="assignment-header">
                   <div class="assignment-title-group">
                     <span class="assignment-type-tag" :class="item.type">
-                      {{ item.type === 'exam' ? '考试' : '作业' }}
-                    </span>
+                          {{ item.type === 'exam' ? '考试' : '作业' }}
+                      </span>
                     <h3>{{ item.title }}</h3>
-                  </div>
+                    </div>
                   <el-tag :type="getStatusTagType(item.status)">{{ item.status }}</el-tag>
-                </div>
+                  </div>
                 <div class="assignment-info">
                   <p>{{ item.description }}</p>
                   <div class="assignment-meta">
@@ -107,9 +107,9 @@
                       <el-icon><Delete /></el-icon>删除
                     </el-button>
                   </div>
-                </div>
-              </el-card>
-            </div>
+                  </div>
+                </el-card>
+              </div>
 
             <div class="pagination-container">
               <el-pagination
@@ -156,7 +156,7 @@
                   </div>
                   <el-progress :percentage="50" :show-text="false" />
                 </div>
-              </div>
+                </div>
             </el-card>
 
             <!-- 班级平均分 -->
@@ -164,7 +164,7 @@
               <template #header>
                 <div class="card-header">
                   <span>成绩概览</span>
-                </div>
+              </div>
               </template>
               <div class="statistics">
                 <div class="statistics-left">
@@ -178,28 +178,28 @@
                         :show-text="false"
                       />
                       <div class="central-score">85</div>
-                    </div>
+            </div>
                     <div class="chart-label">班级平均分</div>
-                  </div>
+                </div>
                   <div class="score-details">
                     <div class="score-item">
                       <span class="score-label">满分：</span>
                       <span class="score-value">100</span>
-                    </div>
+                  </div>
                     <div class="score-item">
                       <span class="score-label">最高分：</span>
                       <span class="score-value">98</span>
-                    </div>
+                  </div>
                     <div class="score-item">
                       <span class="score-label">最低分：</span>
                       <span class="score-value">60</span>
-                    </div>
                   </div>
+                </div>
                 </div>
                 <div class="statistics-right">
                   <div id="gradeDistChart" style="width: 100%; height: 300px;"></div>
-                </div>
               </div>
+            </div>
             </el-card>
 
             <!-- 成绩列表 -->
@@ -304,7 +304,7 @@
         <el-tab-pane label="课程资源" name="resources">
           <div class="resource-container">
             <!-- 顶部操作栏 -->
-            <div class="resource-header">
+                    <div class="resource-header">
               <div class="left-actions">
                 <el-button type="primary" @click="handleUpload">
                   <el-icon><Upload /></el-icon>上传文件
@@ -312,7 +312,7 @@
                 <el-button @click="handleCreateFolder">
                   <el-icon><Folder /></el-icon>新建文件夹
                 </el-button>
-              </div>
+                    </div>
               <div class="right-actions">
                 <el-input
                   v-model="resourceSearchText"
@@ -324,7 +324,7 @@
             </div>
 
             <!-- 主要内容区 -->
-            <div class="resource-content">
+                  <div class="resource-content">
               <!-- 左侧分类导航 -->
               <div class="resource-nav">
                 <el-menu
@@ -352,7 +352,7 @@
                     <span>其他</span>
                   </el-menu-item>
                 </el-menu>
-              </div>
+                    </div>
 
               <!-- 右侧文件列表 -->
               <div class="resource-list">
@@ -401,7 +401,7 @@
                     </template>
                   </el-table-column>
                 </el-table>
-              </div>
+                  </div>
             </div>
 
             <!-- 上传文件对话框 -->
@@ -473,7 +473,7 @@ import * as echarts from 'echarts'
 import { useRoute } from 'vue-router'
 import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { mockCourseDetail } from '@/mock/courseData'
-import { checkAndSetMockEnvironment } from '@/api'
+import { checkAndSetMockEnvironment, getCourseDetail } from '@/api'
 
 // 声明 gradeChart 变量
 let gradeChart = null;
@@ -500,7 +500,7 @@ const selectedStatus = ref('all') // 'all', 'ongoing', 'ended', etc.
 // 成绩相关数据
 const searchGradeText = ref('')
 const gradeList = ref([
-  {
+    {
     index: 1,
     name: '张三',
     studentId: '2021001',
@@ -621,15 +621,29 @@ const loadClassInfo = async () => {
     // 检查并设置Mock环境
     const isMock = checkAndSetMockEnvironment();
     console.log('当前Mock状态:', isMock);
-    
-    // 从localStorage获取课程信息
+
+    // 先从接口获取课程详情
+    if (courseId.value) {
+      const res = await getCourseDetail(courseId.value)
+      if (res.code === 0 && res.data) {
+        courseInfo.value = res.data
+        courseName.value = res.data.name || '未知课程'
+        // 如果是mock环境，加载测试数据
+        if (isMock) {
+          loadTestData();
+        }
+        return
+      }
+    }
+
+    // 兜底：从localStorage获取
     courseInfo.value = {
       grade_level: localStorage.getItem('currentCourseGradeLevel') || '未设置',
       subject: localStorage.getItem('currentCourseSubject') || '',
       description: localStorage.getItem('currentCourseDescription') || ''
     }
     courseName.value = localStorage.getItem('currentCourseName') || '未知课程'
-    
+
     // 如果是mock环境，加载测试数据
     if (isMock) {
       loadTestData();
