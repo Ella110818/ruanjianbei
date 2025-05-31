@@ -627,7 +627,7 @@ const loadClassInfo = async () => {
       const res = await getCourseDetail(courseId.value)
       if (res.code === 0 && res.data) {
         courseInfo.value = res.data
-        courseName.value = res.data.name || '未知课程'
+        courseName.value = res.data.title || res.data.name || '未知课程'
         // 如果是mock环境，加载测试数据
         if (isMock) {
           loadTestData();
