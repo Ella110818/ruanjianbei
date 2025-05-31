@@ -1,7 +1,7 @@
 // 环境配置
 const ENV = {
     development: {
-        API_URL: 'https://dariajane.pythonanywhere.com',
+        API_URL: 'http://localhost:8000',  // 本地开发服务器地址
         API_VERSION: 'api'
     },
     production: {
@@ -10,9 +10,43 @@ const ENV = {
     }
 };
 
+// 根据当前环境选择配置
+const currentEnv = process.env.NODE_ENV || 'development';
+const config = ENV[currentEnv];
+
+// 导出API配置
+export const API_CONFIG = {
+    BASE_URL: `${config.API_URL}/${config.API_VERSION}`,
+    TIMEOUT: 10000,  // 请求超时时间：10秒
+    withCredentials: true  // 允许跨域请求携带凭证
+};
+
 // 获取当前环境
 function getEnvironment() {
     return process.env.NODE_ENV || 'development';
+}
+
+// 检查并设置Mock环境
+export function checkAndSetMockEnvironment() {
+    const env = getEnvironment();
+    console.log('当前环境:', env);
+    console.log('Mock状态:', getMockFlag());
+
+    // 如果是开发环境且没有设置过mock标志，默认设置为true
+    if (env === 'development' && localStorage.getItem('USE_MOCK') === null) {
+        localStorage.setItem('USE_MOCK', 'true');
+        console.log('已自动设置为Mock环境');
+        return true;
+    }
+    return getMockFlag();
+}
+
+// 切换Mock环境
+export function toggleMockEnvironment() {
+    const currentState = getMockFlag();
+    localStorage.setItem('USE_MOCK', (!currentState).toString());
+    console.log('Mock环境已切换为:', !currentState);
+    return !currentState;
 }
 
 // 获取基础URL
@@ -48,6 +82,9 @@ const TokenManager = {
         return token && typeof token === 'string' && token.length > 0;
     }
 };
+
+// 导入mock数据
+import { mockCourses, mockCourseDetail, mockApiResponse } from '@/mock/courseData';
 
 // 只用localStorage控制环境
 function getMockFlag() {
@@ -266,6 +303,11 @@ export async function refreshToken() {
 
 // 获取课程列表
 export async function getCourses() {
+    if (getMockFlag()) {
+        // 返回mock数据
+        return mockApiResponse(mockCourses);
+    }
+
     try {
         const token = TokenManager.getAccessToken();
         if (!token) {
@@ -313,6 +355,22 @@ export async function getCourses() {
 
 // 获取单个课程详情
 export async function getCourseDetail(courseId) {
+    if (getMockFlag()) {
+        // 返回mock数据
+        const courseBasicInfo = mockCourses.find(course => course.id === courseId);
+        if (!courseBasicInfo) {
+            return {
+                code: 1,
+                msg: '课程不存在',
+                data: null
+            };
+        }
+        return mockApiResponse({
+            ...courseBasicInfo,
+            ...mockCourseDetail
+        });
+    }
+
     try {
         const token = TokenManager.getAccessToken();
         if (!token) {
@@ -360,6 +418,22 @@ export async function getCourseDetail(courseId) {
 
 // 创建新课程
 export async function createCourse(courseData) {
+    if (getMockFlag()) {
+        // 返回mock数据
+        const newCourse = {
+            ...courseData,
+            id: mockCourses.length + 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        mockCourses.push(newCourse);
+        return Promise.resolve({
+            code: 0,
+            msg: '创建课程成功',
+            data: newCourse
+        });
+    }
+
     try {
         const token = TokenManager.getAccessToken();
         if (!token) {
@@ -408,6 +482,28 @@ export async function createCourse(courseData) {
 
 // 更新课程信息
 export async function updateCourse(courseId, courseData) {
+    if (getMockFlag()) {
+        // 返回mock数据
+        const index = mockCourses.findIndex(course => course.id === courseId);
+        if (index !== -1) {
+            mockCourses[index] = {
+                ...mockCourses[index],
+                ...courseData,
+                updated_at: new Date().toISOString()
+            };
+            return Promise.resolve({
+                code: 0,
+                msg: '更新课程成功',
+                data: mockCourses[index]
+            });
+        }
+        return Promise.resolve({
+            code: 1,
+            msg: '课程不存在',
+            data: null
+        });
+    }
+
     try {
         const token = TokenManager.getAccessToken();
         if (!token) {
@@ -456,6 +552,24 @@ export async function updateCourse(courseId, courseData) {
 
 // 删除课程
 export async function deleteCourse(courseId) {
+    if (getMockFlag()) {
+        // 返回mock数据
+        const index = mockCourses.findIndex(course => course.id === courseId);
+        if (index !== -1) {
+            mockCourses.splice(index, 1);
+            return Promise.resolve({
+                code: 0,
+                msg: '删除课程成功',
+                data: null
+            });
+        }
+        return Promise.resolve({
+            code: 1,
+            msg: '课程不存在',
+            data: null
+        });
+    }
+
     try {
         const token = TokenManager.getAccessToken();
         if (!token) {

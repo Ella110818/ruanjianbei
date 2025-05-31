@@ -32,8 +32,8 @@
             <el-icon><Location /></el-icon>
           </div>
           <div class="stat-info">
-            <div class="stat-value">{{ classInfo.building }}</div>
-            <div class="stat-label">教学地点</div>
+            <div class="stat-value">{{ courseInfo.grade_level || '未设置' }}</div>
+            <div class="stat-label">年级水平</div>
           </div>
         </div>
       </div>
@@ -43,143 +43,420 @@
       <el-tabs v-model="activeName">
         <el-tab-pane label="作业/考试" name="homework">
           <div class="homework-content">
-              <div class="assignment-filters" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                <el-input placeholder="搜索作业或考试" v-model="searchText" style="width: 250px;" clearable />
-                <el-select v-model="selectedType" placeholder="类型" style="width: 130px;">
-                  <el-option label="全部类型" value="all"></el-option>
-                  <el-option label="作业" value="homework"></el-option>
-                  <el-option label="考试" value="exam"></el-option>
+            <div class="assignment-header">
+              <div class="search-filter">
+                <el-input
+                  v-model="searchText"
+                  placeholder="搜索作业或考试"
+                  prefix-icon="Search"
+                  clearable
+                  style="width: 250px; margin-right: 16px;"
+                />
+                <el-select v-model="selectedType" placeholder="类型" clearable style="width: 120px; margin-right: 16px;">
+                  <el-option label="全部" value="all" />
+                  <el-option label="作业" value="homework" />
+                  <el-option label="考试" value="exam" />
                 </el-select>
-                <el-select v-model="selectedStatus" placeholder="状态" style="width: 130px;">
-                  <el-option label="全部状态" value="all"></el-option>
-                  <el-option label="进行中" value="进行中"></el-option>
-                  <el-option label="已截止" value="已截止"></el-option>
-                  <el-option label="已批改" value="已批改"></el-option>
+                <el-select v-model="selectedStatus" placeholder="状态" clearable style="width: 120px;">
+                  <el-option label="全部" value="all" />
+                  <el-option label="未开始" value="未开始" />
+                  <el-option label="进行中" value="进行中" />
+                  <el-option label="已截止" value="已截止" />
                 </el-select>
-                <el-button type="primary" @click="openAddAssignmentDialog" icon="el-icon-plus" style="margin-left: auto;">添加作业/考试</el-button>
               </div>
+              <el-button type="primary" @click="openAddAssignmentDialog">
+                <el-icon><Plus /></el-icon>添加作业/考试
+              </el-button>
+            </div>
 
-              <div v-if="filteredAssignments.length > 0" class="assignments-list">
-                <el-card v-for="item in filteredAssignments" :key="item.id" class="assignment-card" style="margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);">
-                  <template #header>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <span style="display: flex; align-items: center;">
-                        <el-tag :type="item.type === 'exam' ? 'warning' : 'success'" effect="dark" style="margin-right: 10px; min-width: 40px; text-align: center;">
-                          {{ item.type === 'exam' ? '考试' : '作业' }}
-                        </el-tag>
-                        <strong style="font-size: 16px;">{{ item.title }}</strong>
-                      </span>
-                      <el-tag :type="item.status === '已截止' ? 'info' : (item.status === '进行中' ? 'primary' : 'success')" size="small" effect="light">
-                        {{ item.status }}
-                      </el-tag>
-                    </div>
-                    </template>
-                  <p style="color: #606266; font-size: 14px; line-height: 1.6; margin-bottom: 15px;">{{ item.description }}</p>
-                  <div class="assignment-details" style="font-size: 13px; color: #909399; display: flex; flex-wrap: wrap; gap: 15px; border-top: 1px solid #EBEEF5; padding-top: 15px;">
-                    <span><i class="el-icon-time"></i> 开始时间: {{ item.startTime }}</span>
-                    <span><i class="el-icon-time"></i> 截止时间: {{ item.endTime }}</span>
-                    <span><i class="el-icon-notebook-2"></i> 满分: {{ item.fullScore }}</span>
-                    <span><i class="el-icon-user"></i> 已提交: {{ item.submittedCount }}/{{ item.totalStudents }}</span>
-                    <span v-if="item.type === 'exam' && item.location"><i class="el-icon-location-outline"></i> 地点: {{ item.location }}</span>
-                    <span v-if="item.type === 'exam' && item.duration"><i class="el-icon-timer"></i> 时长: {{ item.duration }}</span>
+            <div class="assignment-list">
+              <el-empty v-if="filteredAssignments.length === 0" description="暂无作业或考试" />
+              <el-card 
+                v-for="item in filteredAssignments" 
+                :key="item.id" 
+                class="assignment-item"
+                :class="item.type"
+              >
+                <div class="assignment-header">
+                  <div class="assignment-title-group">
+                    <span class="assignment-type-tag" :class="item.type">
+                      {{ item.type === 'exam' ? '考试' : '作业' }}
+                    </span>
+                    <h3>{{ item.title }}</h3>
                   </div>
-                  <div class="assignment-actions" style="margin-top: 20px; text-align: right; border-top: 1px solid #EBEEF5; padding-top: 15px;">
-                    <el-button type="primary" link @click="editAssignment(item)"><i class="el-icon-edit"></i> 编辑</el-button>
-                    <el-button type="primary" link @click="viewSubmissions(item)"><i class="el-icon-view"></i> 查看提交</el-button>
-                    <el-button type="danger" link @click="deleteAssignment(item)" class="delete-btn"><i class="el-icon-delete"></i> 删除</el-button>
+                  <el-tag :type="getStatusTagType(item.status)">{{ item.status }}</el-tag>
+                </div>
+                <div class="assignment-info">
+                  <p>{{ item.description }}</p>
+                  <div class="assignment-meta">
+                    <span><el-icon><Calendar /></el-icon> 开始时间：{{ item.startTime }}</span>
+                    <span><el-icon><Timer /></el-icon> 截止时间：{{ item.endTime }}</span>
+                    <span><el-icon><ScaleToOriginal /></el-icon> 满分：{{ item.fullScore }}分</span>
+                    <span><el-icon><User /></el-icon> 已提交：{{ item.submittedCount }}/{{ item.totalStudents }}</span>
                   </div>
-                </el-card>
-              </div>
-              <el-empty v-else description="暂无相关作业或考试" style="margin-top: 50px;"></el-empty>
+                </div>
+                <div class="assignment-actions">
+                  <div class="action-buttons">
+                    <el-button class="btn-custom" type="info" @click="editAssignment(item)">
+                      <el-icon><EditPen /></el-icon>编辑
+                    </el-button>
+                    <el-button class="btn-custom" type="primary" @click="viewSubmissions(item)">
+                      <el-icon><View /></el-icon>查看提交
+                    </el-button>
+                    <el-button class="btn-custom" type="danger" @click="deleteAssignment(item)">
+                      <el-icon><Delete /></el-icon>删除
+                    </el-button>
+                  </div>
+                </div>
+              </el-card>
+            </div>
+
+            <div class="pagination-container">
+              <el-pagination
+                v-model:current-page="currentPage"
+                v-model:page-size="pageSize"
+                :page-sizes="[10, 20, 50, 100]"
+                :total="total"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                layout="total, sizes, prev, pager, next, jumper"
+              />
+            </div>
           </div>
         </el-tab-pane>
         <el-tab-pane label="成绩单" name="grades">
-          <div class="grades-content">
-            <div class="left-panel">
-              <div class="score-scheme">
-                <h3>课程考核方案</h3>
+          <div class="grade-container">
+            <!-- 考核方案 -->
+            <el-card class="grade-card left-card">
+              <template #header>
+                <div class="card-header">
+                  <span>课程考核方案</span>
+                  <span class="total-score">满分：100分</span>
+                </div>
+              </template>
+              <div class="scheme-content">
                 <div class="scheme-item">
-                  <div class="item-header">
-                    <span>课堂</span>
-                    <span>30分</span>
+                  <div class="scheme-info">
+                    <span class="scheme-name">课堂</span>
+                    <span class="scheme-score">30分</span>
                   </div>
-                  <el-progress :percentage="30" :show-text="false" color="#409EFF"></el-progress>
+                  <el-progress :percentage="30" :show-text="false" />
                 </div>
                 <div class="scheme-item">
-                  <div class="item-header">
-                    <span>作业</span>
-                    <span>20分</span>
+                  <div class="scheme-info">
+                    <span class="scheme-name">作业</span>
+                    <span class="scheme-score">20分</span>
                   </div>
-                  <el-progress :percentage="20" :show-text="false" color="#67C23A"></el-progress>
+                  <el-progress :percentage="20" :show-text="false" />
                 </div>
                 <div class="scheme-item">
-                  <div class="item-header">
-                    <span>考试</span>
-                    <span>50分</span>
+                  <div class="scheme-info">
+                    <span class="scheme-name">考试</span>
+                    <span class="scheme-score">50分</span>
                   </div>
-                  <el-progress :percentage="50" :show-text="false" color="#E6A23C"></el-progress>
-                </div>
-                <div class="total-score">
-                  <span>满分：</span>
-                  <span>100分</span>
+                  <el-progress :percentage="50" :show-text="false" />
                 </div>
               </div>
-            </div>
-            <div class="right-panel">
-              <div class="score-overview">
-                <div class="circle-progress">
-                  <el-progress type="circle" :percentage="85" :width="150"></el-progress>
-                  <div class="circle-label">班级平均分</div>
+            </el-card>
+
+            <!-- 班级平均分 -->
+            <el-card class="grade-card right-card">
+              <template #header>
+                <div class="card-header">
+                  <span>成绩概览</span>
                 </div>
-                <div class="score-stats">
-                  <div class="stat-item">
-                    <span class="label">满分：</span>
-                    <span class="value">100</span>
+              </template>
+              <div class="statistics">
+                <div class="statistics-left">
+                  <div class="chart-container">
+                    <div class="dashboard-wrapper">
+                      <el-progress 
+                        type="dashboard" 
+                        :percentage="85" 
+                        :width="150" 
+                        :stroke-width="10"
+                        :show-text="false"
+                      />
+                      <div class="central-score">85</div>
+                    </div>
+                    <div class="chart-label">班级平均分</div>
                   </div>
-                  <div class="stat-item">
-                    <span class="label">最高分：</span>
-                    <span class="value">98</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="label">最低分：</span>
-                    <span class="value">60</span>
+                  <div class="score-details">
+                    <div class="score-item">
+                      <span class="score-label">满分：</span>
+                      <span class="score-value">100</span>
+                    </div>
+                    <div class="score-item">
+                      <span class="score-label">最高分：</span>
+                      <span class="score-value">98</span>
+                    </div>
+                    <div class="score-item">
+                      <span class="score-label">最低分：</span>
+                      <span class="score-value">60</span>
+                    </div>
                   </div>
                 </div>
-                <div class="score-distribution">
-                  <h4>学生人数</h4>
-                  <el-progress :percentage="20" :format="() => '0-60: 7人'" color="#F56C6C"></el-progress>
-                  <el-progress :percentage="15" :format="() => '60-70: 5人'" color="#E6A23C"></el-progress>
-                  <el-progress :percentage="45" :format="() => '70-85: 15人'" color="#67C23A"></el-progress>
-                  <el-progress :percentage="20" :format="() => '85-100: 8人'" color="#409EFF"></el-progress>
+                <div class="statistics-right">
+                  <div id="gradeDistChart" style="width: 100%; height: 300px;"></div>
                 </div>
               </div>
-            </div>
+            </el-card>
+
+            <!-- 成绩列表 -->
+            <el-card class="grade-card full-width">
+              <template #header>
+                <div class="card-header">
+                  <span>成绩列表</span>
+                  <div class="header-right">
+                    <el-input
+                      v-model="searchGradeText"
+                      placeholder="搜索学生姓名或学号"
+                      prefix-icon="Search"
+                      clearable
+                      style="width: 220px; margin-right: 16px;"
+                    />
+                    <el-button type="primary" @click="exportGrades">
+                      <el-icon><Download /></el-icon>导出成绩单
+                    </el-button>
+                  </div>
+                </div>
+              </template>
+              <el-table 
+                :data="filteredGradeList" 
+                style="width: 100%"
+                :default-sort="{ prop: 'totalScore', order: 'descending' }"
+                border
+                stripe
+                row-key="index"
+                highlight-current-row
+                :header-cell-style="{
+                  backgroundColor: '#f5f7fa',
+                  color: '#606266',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  padding: '12px 0'
+                }"
+                :cell-style="{
+                  textAlign: 'center',
+                  padding: '8px 0'
+                }"
+              >
+                <el-table-column prop="index" label="序号" width="70" sortable align="center" />
+                <el-table-column prop="name" label="姓名" width="120" sortable align="center" />
+                <el-table-column prop="studentId" label="学号" width="120" sortable align="center" />
+                <el-table-column prop="classScore" label="课堂(30%)" width="140" sortable align="center">
+                  <template #default="scope">
+                    <el-progress 
+                      :percentage="Math.round(scope.row.classScore / 30 * 100)" 
+                      :format="() => scope.row.classScore"
+                      :status="getScoreStatus(scope.row.classScore, 30)"
+                      :text-inside="true"
+                      :stroke-width="14"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column prop="homeworkScore" label="作业(20%)" width="140" sortable align="center">
+                  <template #default="scope">
+                    <el-progress 
+                      :percentage="Math.round(scope.row.homeworkScore / 20 * 100)" 
+                      :format="() => scope.row.homeworkScore"
+                      :status="getScoreStatus(scope.row.homeworkScore, 20)"
+                      :text-inside="true"
+                      :stroke-width="14"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column prop="examScore" label="考试(50%)" width="140" sortable align="center">
+                  <template #default="scope">
+                    <el-progress 
+                      :percentage="Math.round(scope.row.examScore / 50 * 100)" 
+                      :format="() => scope.row.examScore"
+                      :status="getScoreStatus(scope.row.examScore, 50)"
+                      :text-inside="true"
+                      :stroke-width="14"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column prop="totalScore" label="总成绩" width="100" sortable align="center">
+                  <template #default="scope">
+                    <span :class="getTotalScoreClass(scope.row.totalScore)">{{ scope.row.totalScore }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="130" fixed="right" align="center">
+                  <template #default="scope">
+                    <el-button link type="primary" @click="editGrade(scope.row)">编辑</el-button>
+                    <el-button link type="primary" @click="viewGradeDetail(scope.row)">查看详情</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="table-pagination">
+                <el-pagination
+                  v-model:current-page="currentPage"
+                  v-model:page-size="pageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  :total="total"
+                />
+              </div>
+            </el-card>
           </div>
         </el-tab-pane>
         <el-tab-pane label="课程资源" name="resources">
-          <div class="resources-content">
-            <el-button type="primary" @click="showResourceDialog">上传资源</el-button>
-            <el-row :gutter="20" style="margin-top: 20px;">
-              <el-col :span="8" v-for="(resource, index) in resources" :key="index">
-                <el-card class="resource-card" shadow="hover">
-                  <template #header>
-                    <div class="resource-header">
-                      <span>{{ resource.title }}</span>
-                      <el-tag size="small" :type="resource.type === 'PDF' ? 'danger' : 'primary'">
-                        {{ resource.type }}
-                      </el-tag>
-                    </div>
-                  </template>
-                  <div class="resource-content">
-                    <p>{{ resource.description }}</p>
-                    <div class="resource-footer">
-                      <span>上传时间：{{ resource.uploadTime }}</span>
-                      <el-button type="primary" link @click="downloadResource(resource)">下载</el-button>
-                    </div>
+          <div class="resource-container">
+            <!-- 顶部操作栏 -->
+            <div class="resource-header">
+              <div class="left-actions">
+                <el-button type="primary" @click="handleUpload">
+                  <el-icon><Upload /></el-icon>上传文件
+                </el-button>
+                <el-button @click="handleCreateFolder">
+                  <el-icon><Folder /></el-icon>新建文件夹
+                </el-button>
+              </div>
+              <div class="right-actions">
+                <el-input
+                  v-model="resourceSearchText"
+                  placeholder="搜索文件"
+                  prefix-icon="Search"
+                  style="width: 250px"
+                />
+              </div>
+            </div>
+
+            <!-- 主要内容区 -->
+            <div class="resource-content">
+              <!-- 左侧分类导航 -->
+              <div class="resource-nav">
+                <el-menu
+                  :default-active="activeCategory"
+                  @select="handleCategorySelect"
+                >
+                  <el-menu-item index="all">
+                    <el-icon><Document /></el-icon>
+                    <span>全部文件</span>
+                  </el-menu-item>
+                  <el-menu-item index="courseware">
+                    <el-icon><Collection /></el-icon>
+                    <span>课件</span>
+                  </el-menu-item>
+                  <el-menu-item index="video">
+                    <el-icon><VideoPlay /></el-icon>
+                    <span>视频</span>
+                  </el-menu-item>
+                  <el-menu-item index="document">
+                    <el-icon><Files /></el-icon>
+                    <span>文档</span>
+                  </el-menu-item>
+                  <el-menu-item index="other">
+                    <el-icon><More /></el-icon>
+                    <span>其他</span>
+                  </el-menu-item>
+                </el-menu>
+              </div>
+
+              <!-- 右侧文件列表 -->
+              <div class="resource-list">
+                <!-- 面包屑导航 -->
+                <el-breadcrumb separator="/">
+                  <el-breadcrumb-item :to="{ path: '/' }">课程资源</el-breadcrumb-item>
+                  <el-breadcrumb-item v-if="currentFolder">{{ currentFolder }}</el-breadcrumb-item>
+                </el-breadcrumb>
+
+                <!-- 文件列表 -->
+                <el-table
+                  :data="filteredResources"
+                  style="width: 100%; margin-top: 20px;"
+                  @row-click="handleRowClick"
+                >
+                  <el-table-column width="50">
+                    <template #default="scope">
+                      <el-icon :size="20">
+                        <component :is="getFileIcon(scope.row.type)" />
+                      </el-icon>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="name" label="文件名" min-width="200">
+                    <template #default="scope">
+                      <span class="file-name">{{ scope.row.name }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="size" label="大小" width="120">
+                    <template #default="scope">
+                      {{ formatFileSize(scope.row.size) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="uploadTime" label="上传时间" width="180" />
+                  <el-table-column prop="uploader" label="上传者" width="120" />
+                  <el-table-column label="操作" width="150" fixed="right">
+                    <template #default="scope">
+                      <el-button link type="primary" @click.stop="handleDownload(scope.row)">
+                        下载
+                      </el-button>
+                      <el-button link type="primary" @click.stop="handlePreview(scope.row)">
+                        预览
+                      </el-button>
+                      <el-button link type="danger" @click.stop="handleDelete(scope.row)">
+                        删除
+                      </el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+            </div>
+
+            <!-- 上传文件对话框 -->
+            <el-dialog
+              v-model="uploadDialogVisible"
+              title="上传文件"
+              width="500px"
+            >
+              <el-upload
+                class="upload-demo"
+                drag
+                :action="null"
+                :http-request="customUpload"
+                :before-upload="beforeUpload"
+                :on-remove="handleRemove"
+                :before-remove="beforeRemove"
+                multiple
+                :show-file-list="false"
+              >
+                <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+                <div class="el-upload__text">
+                  将文件拖到此处，或<em>点击上传</em>
+                </div>
+                <template #tip>
+                  <div class="el-upload__tip">
+                    支持任意格式文件，单个文件不超过100MB
                   </div>
-                </el-card>
-              </el-col>
-            </el-row>
+                </template>
+              </el-upload>
+              <template #footer>
+                <span class="dialog-footer">
+                  <el-button @click="uploadDialogVisible = false">取消</el-button>
+                  <el-button type="primary" @click="confirmUpload">确定</el-button>
+                </span>
+              </template>
+            </el-dialog>
+
+            <!-- 新建文件夹对话框 -->
+            <el-dialog
+              v-model="folderDialogVisible"
+              title="新建文件夹"
+              width="400px"
+            >
+              <el-form :model="folderForm">
+                <el-form-item label="文件夹名称">
+                  <el-input v-model="folderForm.name" placeholder="请输入文件夹名称" />
+                </el-form-item>
+              </el-form>
+              <template #footer>
+                <span class="dialog-footer">
+                  <el-button @click="folderDialogVisible = false">取消</el-button>
+                  <el-button type="primary" @click="confirmCreateFolder">确定</el-button>
+                </span>
+              </template>
+            </el-dialog>
           </div>
         </el-tab-pane>
         </el-tabs>
@@ -190,11 +467,13 @@
 
 <script setup>
 import { ref, onMounted, computed, nextTick, onUnmounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Document, User, Location } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Document, User, Location, Calendar, Timer, ScaleToOriginal, EditPen, View, Delete, Plus, Download, Upload, Folder, Collection, VideoPlay, Files, More, UploadFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useRoute } from 'vue-router'
-import AnimatedBackground from '@/components/AnimatedBackground.vue';
+import AnimatedBackground from '@/components/AnimatedBackground.vue'
+import { mockCourseDetail } from '@/mock/courseData'
+import { checkAndSetMockEnvironment } from '@/api'
 
 // 声明 gradeChart 变量
 let gradeChart = null;
@@ -202,6 +481,11 @@ let gradeChart = null;
 const activeName = ref('homework')
 const courseId = ref(0)
 const courseName = ref('')
+const courseInfo = ref({
+  grade_level: '',
+  subject: '',
+  description: ''
+})
 
 // 初始化数据
 const announcements = ref([])
@@ -213,74 +497,27 @@ const searchText = ref('')
 const selectedType = ref('all') // 'all', 'homework', 'exam'
 const selectedStatus = ref('all') // 'all', 'ongoing', 'ended', etc.
 
+// 成绩相关数据
+const searchGradeText = ref('')
+const gradeList = ref([
+  {
+    index: 1,
+    name: '张三',
+    studentId: '2021001',
+    classScore: 25,
+    homeworkScore: 18,
+    examScore: 45,
+    totalScore: 88
+  },
+  // ... 更多测试数据
+])
+
 const loadTestData = () => {
-  announcements.value = [
-    {
-      id: 'ann1',
-      title: '关于期中考试的通知',
-      content: '期中考试将于下周三进行，请同学们做好准备。',
-      date: '2024-03-15'
-    }
-  ]
-
-  // REVISED: Populate unified assignments list
-  assignments.value = [
-    {
-      id: 'hw1',
-      type: 'homework',
-      title: '第一次作业',
-      description: '完成第一章课后习题，并提交详细解答步骤。',
-      startTime: '2024-03-10 08:00',
-      endTime: '2024-03-20 23:59',
-      fullScore: 100,
-      submittedCount: 25,
-      totalStudents: 35,
-      status: '进行中' // Possible values: '进行中', '已截止', '已批改'
-    },
-    {
-      id: 'hw2',
-      type: 'homework',
-      title: '第二次作业',
-      description: '设计一个简单的CPU模型并提交设计报告。',
-      startTime: '2024-03-05 08:00',
-      endTime: '2024-03-15 23:59',
-      fullScore: 100,
-      submittedCount: 30,
-      totalStudents: 35,
-      status: '已截止'
-    },
-    {
-      id: 'exam1',
-      type: 'exam',
-      title: '期中考试',
-      description: '闭卷考试，内容覆盖前五章。请携带学生证。',
-      startTime: '2024-03-20 14:00',
-      endTime: '2024-03-20 16:00',
-      fullScore: 100,
-      submittedCount: 32, // Example
-      totalStudents: 35, // Example
-      status: '已截止', // Or '待批改'
-      duration: '120分钟', // Retain specific fields if needed
-      location: '理科楼301'  // Retain specific fields if needed
-    }
-  ]
-
-  resources.value = [
-    {
-      id: 'res1',
-      title: '课程教材',
-      type: 'PDF',
-      description: '主要教材电子版',
-      uploadTime: '2024-03-01'
-    },
-    {
-      id: 'res2',
-      title: '课程PPT',
-      type: 'PPT',
-      description: '课程讲义和演示文稿',
-      uploadTime: '2024-03-05'
-    }
-  ]
+  // 使用集中管理的mock数据
+  announcements.value = mockCourseDetail.announcements;
+  assignments.value = mockCourseDetail.assignments;
+  resources.value = mockCourseDetail.resources;
+  gradeList.value = mockCourseDetail.grades;
 }
 
 // NEW: Computed property for filtered assignments
@@ -294,12 +531,48 @@ const filteredAssignments = computed(() => {
   });
 });
 
-const classInfo = ref({
-  studentCount: 0,
-  location: '',
-  building: '',
-  roomNumber: ''
+// 计算属性：过滤后的成绩列表
+const filteredGradeList = computed(() => {
+  if (!searchGradeText.value) return gradeList.value
+  const search = searchGradeText.value.toLowerCase()
+  return gradeList.value.filter(item => 
+    item.name.toLowerCase().includes(search) || 
+    item.studentId.toLowerCase().includes(search)
+  )
 })
+
+// 获取成绩状态
+const getScoreStatus = (score, total) => {
+  const percentage = (score / total) * 100
+  if (percentage >= 85) return 'success'
+  if (percentage >= 60) return 'warning'
+  return 'exception'
+}
+
+// 获取总分样式类
+const getTotalScoreClass = (score) => {
+  if (score >= 85) return 'score-excellent'
+  if (score >= 60) return 'score-pass'
+  return 'score-fail'
+}
+
+// 导出成绩单
+const exportGrades = () => {
+  ElMessage.success('开始导出成绩单')
+  // 实现导出逻辑
+}
+
+// 编辑成绩
+const editGrade = (row) => {
+  ElMessage.info(`编辑学生 ${row.name} 的成绩`)
+  // 实现编辑逻辑
+}
+
+// 查看成绩详情
+const viewGradeDetail = (row) => {
+  ElMessage.info(`查看学生 ${row.name} 的成绩详情`)
+  // 实现查看详情逻辑
+}
 
 // 功能方法
 /* const showAnnouncementDialog = () => {
@@ -343,31 +616,23 @@ const deleteAssignment = (item) => {
   }
 }
 
-const showResourceDialog = () => {
-  ElMessage.info('打开上传资源对话框')
-}
-
-const downloadResource = (resource) => {
-  if (resource) {
-    ElMessage.success(`开始下载: ${resource.title}`)
-  }
-}
-
 const loadClassInfo = async () => {
   try {
-    classInfo.value = {
-      studentCount: localStorage.getItem('currentCourseStudentCount') || 0,
-      location: localStorage.getItem('currentCourseLocation') || '未知位置',
-      building: localStorage.getItem('currentCourseLocation')?.split(' ')[0] || '理科楼301',
-      roomNumber: localStorage.getItem('currentCourseLocation')?.split(' ')[1] || '教学地点'
+    // 检查并设置Mock环境
+    const isMock = checkAndSetMockEnvironment();
+    console.log('当前Mock状态:', isMock);
+    
+    // 从localStorage获取课程信息
+    courseInfo.value = {
+      grade_level: localStorage.getItem('currentCourseGradeLevel') || '未设置',
+      subject: localStorage.getItem('currentCourseSubject') || '',
+      description: localStorage.getItem('currentCourseDescription') || ''
     }
-    // 从localStorage获取课程名称
-    const storedCourseName = localStorage.getItem('currentCourseName')
-    if (storedCourseName) {
-      courseName.value = storedCourseName
-    } else {
-      console.warn('未找到课程名称')
-      courseName.value = '未知课程'
+    courseName.value = localStorage.getItem('currentCourseName') || '未知课程'
+    
+    // 如果是mock环境，加载测试数据
+    if (isMock) {
+      loadTestData();
     }
   } catch (error) {
     console.error('获取课程信息失败:', error)
@@ -384,7 +649,6 @@ watch(
     if (newId) {
       courseId.value = Number(newId)
       loadClassInfo()
-      loadTestData()
     }
   },
   { immediate: true }
@@ -446,7 +710,6 @@ const initGradeDistChart = () => {
 onMounted(() => {
   console.log('Course ID:', courseId.value)
   loadClassInfo()
-  loadTestData() // 加载测试数据
   
   // 如果初始标签页是 grade，初始化图表
   if (activeName.value === 'grade') {
@@ -464,6 +727,242 @@ watch(activeName, (newVal) => {
     });
   }
 });
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+
+// 获取状态标签类型
+const getStatusTagType = (status) => {
+  const types = {
+    '未开始': 'info',
+    '进行中': 'warning',
+    '已截止': 'danger'
+  }
+  return types[status] || 'info'
+}
+
+// 处理分页大小变化
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  // 重新加载数据
+}
+
+// 处理当前页变化
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+  // 重新加载数据
+}
+
+// Resource management state
+const resourceSearchText = ref('')
+const activeCategory = ref('all')
+const currentFolder = ref('')
+const uploadDialogVisible = ref(false)
+const folderDialogVisible = ref(false)
+const folderForm = ref({ name: '' })
+
+// Computed: filtered resources
+const filteredResources = computed(() => {
+  let filtered = resources.value
+  
+  // Filter by category
+  if (activeCategory.value !== 'all') {
+    filtered = filtered.filter(item => item.type === activeCategory.value)
+  }
+  
+  // Filter by search text
+  if (resourceSearchText.value) {
+    const keyword = resourceSearchText.value.toLowerCase()
+    filtered = filtered.filter(item => 
+      item.name.toLowerCase().includes(keyword) ||
+      item.uploader?.toLowerCase().includes(keyword)
+    )
+  }
+  
+  return filtered
+})
+
+// Resource management methods
+const handleCategorySelect = (index) => {
+  activeCategory.value = index
+  fetchResources()
+}
+
+const handleUpload = () => {
+  uploadDialogVisible.value = true
+}
+
+const handleCreateFolder = () => {
+  folderDialogVisible.value = true
+}
+
+const confirmCreateFolder = () => {
+  if (!folderForm.value.name) {
+    ElMessage.warning('请输入文件夹名称')
+    return
+  }
+  // TODO: Add folder creation logic
+  ElMessage.success('文件夹创建成功')
+  folderDialogVisible.value = false
+  folderForm.value.name = ''
+}
+
+const handleRowClick = (row) => {
+  if (row.type === 'folder') {
+    currentFolder.value = row.name
+    // TODO: Add folder navigation logic
+  }
+}
+
+const handleDownload = async (file) => {
+  try {
+    ElMessage.info(`正在准备下载文件：${file.name}...`)
+    // TODO: Add download logic
+    console.log('Downloading file:', {
+      id: file.id,
+      name: file.name,
+      type: file.type
+    })
+    ElMessage.success('下载成功')
+  } catch (error) {
+    console.error('下载失败:', error)
+    ElMessage.error(`下载失败: ${error.message || '未知错误'}`)
+  }
+}
+
+const handlePreview = async (file) => {
+  try {
+    console.log('Previewing file:', {
+      id: file.id,
+      name: file.name,
+      type: file.type
+    })
+    // TODO: Add preview logic based on file type
+    switch (file.type) {
+      case 'document':
+        ElMessage.info('文档预览功能开发中')
+        break
+      case 'video':
+        ElMessage.info('视频预览功能开发中')
+        break
+      case 'courseware':
+        ElMessage.info('课件预览功能开发中')
+        break
+      default:
+        ElMessage.warning('该文件类型暂不支持预览')
+    }
+  } catch (error) {
+    console.error('预览失败:', error)
+    ElMessage.error('预览失败')
+  }
+}
+
+const handleDelete = (file) => {
+  ElMessageBox.confirm(
+    `确定要删除 ${file.name} 吗？`,
+    '警告',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    try {
+      // TODO: Add delete logic
+      ElMessage.success('删除成功')
+      fetchResources()
+    } catch (error) {
+      console.error('删除资源失败:', error)
+      ElMessage.error(error.message || '删除失败')
+    }
+  }).catch(() => {
+    // User cancelled deletion
+  })
+}
+
+const handleRemove = (file) => {
+  if (file) {
+    console.log('Removing file:', file.name)
+    // Add actual file removal logic here
+  }
+}
+
+const beforeRemove = (uploadFile) => {
+  if (uploadFile) {
+    return ElMessageBox.confirm(
+      `确定移除 ${uploadFile.name} ？`
+    ).then(
+      () => true,
+      () => false
+    )
+  }
+  return Promise.resolve(false)
+}
+
+const customUpload = async ({ file }) => {
+  if (!file) {
+    ElMessage.error('无效的文件')
+    return
+  }
+
+  try {
+    console.log('Uploading file:', file.name)
+    // TODO: Add upload logic
+    ElMessage.success('上传成功')
+    fetchResources()
+    uploadDialogVisible.value = false
+  } catch (error) {
+    console.error('上传失败:', error)
+    ElMessage.error('上传失败')
+  }
+}
+
+const confirmUpload = () => {
+  uploadDialogVisible.value = false
+  fetchResources()
+}
+
+// Utility methods
+const getFileIcon = (type) => {
+  const iconMap = {
+    folder: Folder,
+    courseware: Collection,
+    video: VideoPlay,
+    document: Files,
+    other: Document
+  }
+  return iconMap[type] || Document
+}
+
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+const fetchResources = async () => {
+  try {
+    // TODO: Add API call to fetch resources
+    resources.value = [
+      {
+        id: 1,
+        name: '示例文档.pdf',
+        type: 'document',
+        size: 1024 * 1024, // 1MB
+        uploadTime: '2024-03-15 14:30',
+        uploader: '张老师'
+      },
+      // Add more mock data as needed
+    ]
+  } catch (error) {
+    console.error('获取资源列表失败:', error)
+    ElMessage.error('获取资源列表失败')
+  }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -888,5 +1387,373 @@ watch(activeName, (newVal) => {
 }
 .group-footer .el-button {
   font-size: 14px;
+}
+
+.homework-content {
+  padding: 20px 0;
+}
+
+.assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.search-filter {
+  display: flex;
+  align-items: center;
+}
+
+.assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.assignment-item {
+  transition: transform 0.3s, box-shadow 0.3s;
+  border-radius: 8px;
+  border-left: 4px solid #409EFF;
+  margin-bottom: 16px;
+
+  &.exam {
+    border-left-color: #F56C6C;
+  }
+
+  &.homework {
+    border-left-color: #67C23A;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.assignment-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #303133;
+  }
+}
+
+.assignment-type-tag {
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  color: white;
+
+  &.exam {
+    background-color: #F56C6C;
+  }
+
+  &.homework {
+    background-color: #67C23A;
+  }
+}
+
+.assignment-info {
+  margin-bottom: 16px;
+
+  p {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #606266;
+    line-height: 1.6;
+  }
+}
+
+.assignment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  font-size: 14px;
+  color: #909399;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.assignment-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #EBEEF5;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-custom {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 14px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  width: 100px;
+
+  :deep(.el-icon) {
+    margin-right: 4px;
+    font-size: 16px;
+  }
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.grade-container {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.grade-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+
+  &.left-card {
+    height: fit-content;
+  }
+
+  &.right-card {
+    height: fit-content;
+  }
+
+  &.full-width {
+    grid-column: 1 / -1;
+  }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid #ebeef5;
+
+  .header-right {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.scheme-content {
+  padding: 20px;
+}
+
+.scheme-item {
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.scheme-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #606266;
+}
+
+.statistics {
+  display: flex;
+  padding: 20px;
+  gap: 40px;
+}
+
+.statistics-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.statistics-right {
+  flex: 2;
+}
+
+.chart-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.dashboard-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.central-score {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.chart-label {
+  margin-top: 10px;
+  color: #606266;
+}
+
+.score-details {
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.score-item {
+  text-align: center;
+
+  .score-label {
+    color: #909399;
+    font-size: 14px;
+  }
+
+  .score-value {
+    display: block;
+    color: #303133;
+    font-size: 20px;
+    font-weight: 500;
+    margin-top: 5px;
+  }
+}
+
+.table-pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+// 成绩颜色样式
+.score-excellent {
+  color: #67c23a;
+  font-weight: bold;
+}
+
+.score-pass {
+  color: #e6a23c;
+  font-weight: bold;
+}
+
+.score-fail {
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+:deep(.el-progress-bar__inner) {
+  transition: width 0.6s ease;
+}
+
+:deep(.el-progress--line) {
+  margin-bottom: 0;
+}
+
+:deep(.el-table) {
+  margin-top: 10px;
+}
+
+:deep(.el-pagination) {
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.resource-container {
+  padding: 20px;
+  height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+}
+
+.resource-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.left-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.resource-content {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  height: 100%;
+}
+
+.resource-nav {
+  width: 200px;
+  border-right: 1px solid #e4e7ed;
+}
+
+.resource-list {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-name {
+  cursor: pointer;
+  color: #606266;
+
+  &:hover {
+    color: #409EFF;
+  }
+}
+
+:deep(.el-upload-dragger) {
+  width: 100%;
+}
+
+:deep(.el-menu) {
+  border-right: none;
+}
+
+:deep(.el-menu-item) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.el-icon {
+  vertical-align: middle;
 }
 </style>
