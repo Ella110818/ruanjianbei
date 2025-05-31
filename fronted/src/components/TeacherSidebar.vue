@@ -58,9 +58,8 @@ const emit = defineEmits(['update:sideTab', 'update:courseMenuOpen'])
 const currentTab = ref(props.sideTab)
 const isMenuOpen = ref(props.courseMenuOpen)
 
-// 监听路由变化
+// 监听路由变化，切回课程管理时自动恢复菜单状态
 watch(() => router.currentRoute.value.path, (newPath) => {
-  // 如果回到课程页面，检查是否需要恢复状态
   if (newPath === '/teacher/course') {
     const savedState = localStorage.getItem('teacherNavState')
     if (savedState) {
@@ -81,14 +80,13 @@ const toggleCourseMenu = () => {
 }
 
 const selectSide = (tab, route) => {
+  // 切换tab
   currentTab.value = tab
   emit('update:sideTab', tab)
-  
-  // 如果切换到备课助手，保存当前状态
+  // 切到备课助手时，保存当前菜单状态
   if (tab === 'lesson-prep') {
     saveNavigationState()
   }
-  
   router.push(route)
 }
 
