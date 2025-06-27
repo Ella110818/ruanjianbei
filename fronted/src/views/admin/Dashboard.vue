@@ -109,6 +109,9 @@ export default {
 .dashboard-container {
   min-height: 100vh;
   background-color: #f5f7fa;
+  background-image: url('@/assets/bg002.png');
+  background-size: cover;
+  background-position: center;
 }
 
 .dashboard-content {
