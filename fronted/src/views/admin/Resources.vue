@@ -323,11 +323,11 @@ export default {
 <style scoped>
 .resources-container {
   min-height: 100vh;
-  background-color: #f5f7fa;
+  background: linear-gradient(180deg, #F0F2F5 0%, #FFFFFF 100%);
 }
 
 .resources-content {
-  padding: 84px 20px 20px;
+  padding: 84px 24px 24px;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -336,62 +336,122 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
+  background: #FFFFFF;
+  padding: 20px 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
 .page-header h2 {
   margin: 0;
   font-size: 24px;
-  color: #2C3E50;
+  color: #1A1F36;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-header h2::before {
+  content: '';
+  width: 4px;
+  height: 24px;
+  background: #409EFF;
+  border-radius: 2px;
+  display: inline-block;
 }
 
 .filter-section {
+  background: #FFFFFF;
+  padding: 20px 24px;
+  border-radius: 12px;
   margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
 .search-bar {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .search-bar .el-input {
-  width: 300px;
+  width: 360px;
 }
 
 .filter-options {
   display: flex;
-  gap: 16px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-options .el-select {
+  width: 180px;
 }
 
 .resource-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .resource-name i {
-  font-size: 18px;
-  color: #606266;
+  font-size: 20px;
+  color: #409EFF;
+}
+
+.resource-name span {
+  color: #1A1F36;
+  font-weight: 500;
 }
 
 .table-footer {
-  margin-top: 20px;
+  margin-top: 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: #FFFFFF;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
 .batch-actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
+}
+
+.batch-actions .el-button {
+  padding: 8px 20px;
+  border-radius: 8px;
 }
 
 .danger {
   color: #F56C6C;
 }
 
+.danger:hover {
+  color: #ff4d4f;
+}
+
 :deep(.el-table) {
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-table th) {
+  background-color: #F5F7FA !important;
+  color: #1A1F36;
+  font-weight: 600;
+  padding: 12px 0;
+}
+
+:deep(.el-table td) {
+  padding: 16px 0;
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td) {
+  background-color: #F5F7FA;
 }
 
 :deep(.el-upload) {
@@ -400,9 +460,53 @@ export default {
 
 :deep(.el-upload-dragger) {
   width: 100%;
+  border-radius: 8px;
+  border: 2px dashed #E4E7ED;
+  background: #F5F7FA;
+  transition: all 0.3s;
+}
+
+:deep(.el-upload-dragger:hover) {
+  border-color: #409EFF;
+  background: #F0F7FF;
+}
+
+:deep(.el-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:deep(.el-dialog__header) {
+  margin: 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E4E7ED;
 }
 
 :deep(.el-dialog__body) {
-  padding-top: 10px;
+  padding: 24px;
+}
+
+:deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  border-top: 1px solid #E4E7ED;
+}
+
+:deep(.el-button--primary) {
+  background: #409EFF;
+  border-color: #409EFF;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+:deep(.el-button--primary:hover) {
+  background: #66B1FF;
+  border-color: #66B1FF;
+}
+
+:deep(.el-tag) {
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: 500;
 }
 </style> 

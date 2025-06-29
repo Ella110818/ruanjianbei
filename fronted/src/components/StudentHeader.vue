@@ -33,9 +33,9 @@
             <i class="menu-icon user-icon"></i>
             个人信息
           </a>
-          <a href="#" @click.prevent="handleCommand('settings')">
+          <a href="#" @click.prevent="handleCommand('changePassword')">
             <i class="menu-icon password-icon"></i>
-            设置
+            修改密码
           </a>
           <div class="menu-divider"></div>
           <a href="#" @click.prevent="handleCommand('logout')" class="logout-option">
@@ -93,8 +93,8 @@ const handleCommand = (command) => {
       localStorage.removeItem('studentName')
       router.push('/login')
       ElMessage.success('已退出登录')
-  } else if (command === 'settings') {
-    ElMessage.info('设置功能开发中')
+  } else if (command === 'changePassword') {
+    ElMessage.info('修改密码功能开发中')
   }
 }
 

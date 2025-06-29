@@ -180,7 +180,7 @@ export default {
 
 <style scoped>
 .stat-card {
-  background: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)), url('@/assets/image 8.png') no-repeat;
+  background: linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.2)), url('@/assets/image 8.png') no-repeat;
   background-size: 100% 100%;
   padding: 10px 25px 25px 25px;
   border-radius: 10px;
@@ -188,6 +188,7 @@ export default {
   color: #fff;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
@@ -205,8 +206,9 @@ export default {
 .card-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #3f6487 !important;
+  color: #1a4a7c !important;
   margin-left: 20px;
+  font-weight: 600;
 }
 
 .chart-container {

@@ -19,9 +19,9 @@
             <i class="menu-icon user-icon"></i>
             个人信息
           </a>
-          <a href="#" @click.prevent="handleSystemSettings">
+          <a href="#" @click.prevent="handleChangePassword">
             <i class="menu-icon settings-icon"></i>
-            系统设置
+            修改密码
           </a>
           <div class="menu-divider"></div>
           <a href="#" @click.prevent="handleLogout" class="logout-option">
@@ -57,10 +57,10 @@ export default {
       // 跳转到个人信息页面
       this.$router.push('/admin/profile');
     },
-    handleSystemSettings() {
+    handleChangePassword() {
       this.userMenuOpen = false;
-      // 跳转到系统设置页面
-      this.$router.push('/admin/settings');
+      // 跳转到修改密码页面
+      this.$router.push('/admin/change-password');
     },
     handleLogout() {
       this.userMenuOpen = false;

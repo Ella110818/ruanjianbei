@@ -190,8 +190,8 @@ onMounted(() => {
 
 .dashboard-card {
   width: 100%;
-  max-width: 1200px;
-  padding: 32px;
+  max-width: min(1200px, 90%);
+  padding: clamp(16px, 3vw, 32px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -217,7 +217,7 @@ onMounted(() => {
 }
 
 .welcome-title {
-  font-size: 20px;
+  font-size: clamp(18px, 2vw, 20px);
   font-weight: 700;
   color: #222;
   margin-bottom: 2px;
@@ -247,14 +247,12 @@ onMounted(() => {
   background-color: #878889;
 }
 
-.welcome-desc1 {
-  font-size: 15px;
+.welcome-desc1, .welcome-desc2 {
+  font-size: clamp(14px, 1.5vw, 16px);
   color: #888;
 }
 
 .welcome-desc2 {
-  font-size: 15px;
-  color: #888;
   margin-left: 20px;
 }
 
@@ -311,38 +309,25 @@ onMounted(() => {
 }
 
 .course-cards-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
   width: 100%;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  padding: 20px 32px;
+  padding: 16px;
 }
 
 .course-card2 {
-  background: #fff;
+  background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  border: 1px solid #eee;
-  width: calc(25% - 18px);  /* 四列布局，考虑间距 */
-  min-width: 240px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s ease;
-}
-
-.course-card2:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  height: 100%;
 }
 
 .course-img2 {
   width: 100%;
-  height: 140px;
+  height: 160px;
   object-fit: cover;
-  border-radius: 12px 12px 0 0;
-  background: #f5f7fa;
 }
 
 .course-info {
@@ -372,6 +357,7 @@ onMounted(() => {
   box-shadow: 0 2px 16px rgba(24,119,255,0.10);
   transition: transform 0.3s ease;
   cursor: pointer;
+  margin: 24px 0;
 }
 
 .banner-card:hover {
@@ -391,5 +377,36 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   background: transparent;
+}
+
+/* 添加响应式媒体查询 */
+@media screen and (max-width: 1366px) {
+  .main-area {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+  }
+  
+  .dashboard-card {
+    padding: 16px;
+  }
+  
+  .welcome-block {
+    padding-left: 16px;
+  }
+  
+  .course-cards-row {
+    gap: 16px;
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .main-area {
+    margin-left: 200px;
+    width: calc(100% - 200px);
+  }
+  
+  .course-cards-row {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
 }
 </style> 
