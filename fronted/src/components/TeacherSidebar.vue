@@ -168,7 +168,54 @@ onUnmounted(() => {
   top: 64px;
   z-index: 100;
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.05);
+  transition: width 0.3s ease;
 }
+
+/* 添加响应式设计 */
+@media screen and (max-width: 1366px) {
+  .side-nav {
+    width: 250px;
+  }
+  
+  .side-title {
+    font-size: 18px;
+    padding: 20px 0 14px 24px;
+  }
+  
+  .side-menu a,
+  .dropdown-title {
+    padding: 10px 24px;
+    font-size: 14px;
+  }
+  
+  .dropdown-list a {
+    padding-left: 40px;
+    font-size: 13px;
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .side-nav {
+    width: 200px;
+  }
+  
+  .side-title {
+    font-size: 16px;
+    padding: 16px 0 12px 20px;
+  }
+  
+  .side-menu a,
+  .dropdown-title {
+    padding: 8px 20px;
+    font-size: 13px;
+  }
+  
+  .dropdown-list a {
+    padding-left: 32px;
+    font-size: 12px;
+  }
+}
+
 .side-title {
   font-size: 20px;
   font-weight: bold;
@@ -183,6 +230,8 @@ onUnmounted(() => {
   flex-direction: column;
   padding: 16px 0;
   gap: 8px;
+  align-items: center;
+  width: 100%;
 }
 .side-menu a {
   color: #666;
@@ -191,10 +240,11 @@ onUnmounted(() => {
   font-size: 15px;
   transition: all 0.3s ease;
   cursor: pointer;
-  border-radius: 0 100px 100px 0;
-  margin: 0 24px 0 0;
+  border-radius: 100px;
+  margin: 0 12px;
   position: relative;
-  width: calc(100% - 40px);
+  width: calc(100% - 24px);
+  text-align: center;
 }
 .side-menu a.active,
 .side-menu a:hover {
@@ -205,20 +255,22 @@ onUnmounted(() => {
 .side-dropdown {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  align-items: center;
 }
 .dropdown-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 12px 32px;
   font-size: 15px;
   cursor: pointer;
   color: #666;
   user-select: none;
   transition: all 0.3s ease;
-  border-radius: 0 100px 100px 0;
-  margin: 0 24px 0 0;
-  width: calc(100% - 40px);
+  border-radius: 100px;
+  margin: 0 12px;
+  width: calc(100% - 24px);
 }
 .dropdown-title:hover,
 .dropdown-title span.active {
@@ -239,17 +291,24 @@ onUnmounted(() => {
 .dropdown-title .arrow.open {
   transform: rotate(-135deg);
 }
+.dropdown-title span {
+  margin-right: 8px;
+}
 .dropdown-list {
   display: flex;
   flex-direction: column;
   background: transparent;
   gap: 4px;
   padding: 4px 0;
+  width: 100%;
+  align-items: center;
 }
 .dropdown-list a {
-  padding-left: 48px;
+  text-align: center;
+  padding: 10px 24px;
   font-size: 14px;
-  width: calc(100% - 48px);
+  width: calc(100% - 32px);
+  margin: 0 16px;
 }
 .dropdown-list a.active,
 .dropdown-list a:hover {
@@ -257,10 +316,12 @@ onUnmounted(() => {
   color: #fff !important;
 }
 .course-item {
-  padding-left: 64px !important;
+  text-align: center !important;
+  padding: 10px 24px !important;
   font-size: 14px !important;
   color: #666 !important;
-  width: calc(100% - 64px) !important;
+  width: calc(100% - 32px) !important;
+  margin: 0 16px !important;
 }
 .course-item:hover,
 .course-item.active {
