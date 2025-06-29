@@ -1,77 +1,94 @@
 <template>
-  <div class="users-container">
+  <div class="page-content">
     <AdminHeader />
-    
-    <div class="users-content">
-      <div class="page-header">
-        <h2>用户管理</h2>
+    <animated-background />
+    <div class="gray-space"></div>
+    <div class="content-wrapper">
+      <div class="search-section">
         <el-button type="primary" @click="handleAddUser">添加用户</el-button>
-      </div>
-
-      <div class="search-bar">
         <el-input
           v-model="searchQuery"
           placeholder="搜索用户名/姓名/角色"
-          prefix-icon="el-icon-search"
+          :prefix-icon="Search"
           clearable
           @clear="handleSearch"
           @input="handleSearch"
+          class="search-input"
         >
         </el-input>
-        <el-select v-model="roleFilter" placeholder="角色筛选" @change="handleSearch">
+        <el-select v-model="roleFilter" placeholder="角色筛选" @change="handleSearch" class="filter-select">
           <el-option label="全部" value=""></el-option>
           <el-option label="教师" value="teacher"></el-option>
           <el-option label="学生" value="student"></el-option>
-          <el-option label="管理员" value="admin"></el-option>
         </el-select>
-        <el-select v-model="statusFilter" placeholder="状态筛选" @change="handleSearch">
+        <el-select v-model="statusFilter" placeholder="状态筛选" @change="handleSearch" class="filter-select">
           <el-option label="全部" value=""></el-option>
           <el-option label="正常" value="active"></el-option>
           <el-option label="禁用" value="disabled"></el-option>
         </el-select>
       </div>
 
-      <el-table :data="userList" style="width: 100%" v-loading="loading">
-        <el-table-column prop="username" label="用户名" width="150"></el-table-column>
-        <el-table-column prop="name" label="姓名" width="120"></el-table-column>
-        <el-table-column prop="role" label="角色" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getRoleTagType(row.role)">{{ getRoleLabel(row.role) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="email" label="邮箱"></el-table-column>
-        <el-table-column prop="lastLogin" label="最后登录时间" width="180"></el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'danger'">
-              {{ row.status === 'active' ? '正常' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button type="text" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="text" @click="handleResetPassword(row)">重置密码</el-button>
-            <el-button 
-              type="text" 
-              :class="row.status === 'active' ? 'danger' : ''"
-              @click="handleToggleStatus(row)"
-            >
-              {{ row.status === 'active' ? '禁用' : '启用' }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table">
+        <el-table :data="userList" stripe border class="user-table" v-loading="loading">
+          <el-table-column type="selection" width="55" align="center" />
+          <el-table-column prop="username" label="用户名" min-width="120" align="center" />
+          <el-table-column prop="name" label="姓名" min-width="120" align="center" />
+          <el-table-column prop="role" label="角色" min-width="100" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.role === 'teacher' ? 'success' : 'warning'" class="role-tag">
+                {{ row.role === 'teacher' ? '教师' : '学生' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="email" label="邮箱" min-width="200" align="center" show-overflow-tooltip />
+          <el-table-column prop="lastLogin" label="最后登录时间" min-width="180" align="center" />
+          <el-table-column prop="status" label="状态" min-width="100" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'active' ? 'success' : 'danger'" class="status-tag">
+                {{ row.status === 'active' ? '正常' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="220" fixed="right" align="center">
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <el-button
+                  type="primary"
+                  size="small"
+                  class="blue-button"
+                  @click="handleEdit(row)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  type="primary"
+                  size="small"
+                  class="blue-button"
+                  @click="handleResetPassword(row)"
+                >
+                  重置密码
+                </el-button>
+                <el-button 
+                  type="primary" 
+                  size="small"
+                  :class="['blue-button', row.status === 'active' ? 'danger' : '']"
+                  @click="handleToggleStatus(row)"
+                >
+                  {{ row.status === 'active' ? '禁用' : '启用' }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <div class="pagination-container">
         <el-pagination
           background
-          layout="total, sizes, prev, pager, next"
+          layout="prev, pager, next"
           :total="total"
           :page-size="pageSize"
           :current-page="currentPage"
-          :page-sizes="[10, 20, 50, 100]"
-          @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         >
         </el-pagination>
@@ -95,7 +112,6 @@
           <el-select v-model="userForm.role" placeholder="请选择角色">
             <el-option label="教师" value="teacher"></el-option>
             <el-option label="学生" value="student"></el-option>
-            <el-option label="管理员" value="admin"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
@@ -116,13 +132,21 @@
 </template>
 
 <script>
+import { Search } from '@element-plus/icons-vue'
 import AdminHeader from '@/components/AdminHeader.vue'
+import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 export default {
   name: 'AdminUsers',
   components: {
-    AdminHeader
+    AdminHeader,
+    AnimatedBackground
+  },
+  setup() {
+    return {
+      Search
+    }
   },
   data() {
     return {
@@ -134,7 +158,7 @@ export default {
       pageSize: 10,
       total: 0,
       dialogVisible: false,
-      dialogType: 'add', // 'add' 或 'edit'
+      dialogType: 'add',
       userList: [
         {
           username: 'teacher1',
@@ -281,57 +305,280 @@ export default {
 }
 </script>
 
-<style scoped>
-.users-container {
-  min-height: 100vh;
-  background-color: #f5f7fa;
-}
-
-.users-content {
-  padding: 84px 20px 20px;
-  max-width: 1400px;
+<style lang="scss" scoped>
+.page-content {
+  width: 100%;
+  max-width: 1480px;
+  min-height: calc(100vh - 24px);
   margin: 0 auto;
+  padding: 0 20px;
+  position: relative;
+  background-color: transparent;
+  z-index: 1;
+  isolation: isolate;
+  margin-top: 34px;
 }
 
-.page-header {
+.gray-space {
+  height: 12px;
+  background-color: transparent;
+}
+
+.content-wrapper {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 
+    rgba(99, 147, 244, 0.2) 0px 0px 0px 2px,
+    rgba(99, 147, 244, 0.15) 0px 4px 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
+  margin-top: 40px;
+}
+
+.search-section {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-}
-
-.page-header h2 {
-  margin: 0;
-  font-size: 24px;
-  color: #2C3E50;
-}
-
-.search-bar {
-  display: flex;
+  margin-bottom: 20px;
+  padding: 10px 20px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  border: 1px solid rgba(99, 147, 244, 0.2);
+  box-shadow: 0 2px 8px rgba(99, 147, 244, 0.1);
   gap: 16px;
-  margin-bottom: 24px;
 }
 
-.search-bar .el-input {
-  width: 300px;
+.search-input {
+  width: 400px !important;
+  margin: 0 20px 0 30px !important;
+  :deep(.el-input__wrapper) {
+    border: 1px solid rgba(99, 147, 244, 0.2);
+    box-shadow: 0 2px 6px rgba(99, 147, 244, 0.08);
+    &:hover {
+      border-color: rgba(99, 147, 244, 0.4);
+    }
+    &.is-focus {
+      border-color: rgba(99, 147, 244, 0.6);
+      box-shadow: 0 0 0 2px rgba(99, 147, 244, 0.1);
+    }
+  }
 }
 
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
+.filter-select {
+  width: 240px;
+  :deep(.el-input__wrapper) {
+    border: 1px solid rgba(99, 147, 244, 0.2);
+    box-shadow: 0 2px 6px rgba(99, 147, 244, 0.08);
+    &:hover {
+      border-color: rgba(99, 147, 244, 0.4);
+    }
+    &.is-focus {
+      border-color: rgba(99, 147, 244, 0.6);
+      box-shadow: 0 0 0 2px rgba(99, 147, 244, 0.1);
+    }
+  }
 }
 
-.danger {
-  color: #F56C6C;
+.table {
+  background-color: white;
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(99, 147, 244, 0.15);
+  box-shadow: 0 2px 12px rgba(99, 147, 244, 0.08);
 }
 
 :deep(.el-table) {
-  border-radius: 8px;
-  overflow: hidden;
+  border: none;
+  
+  &::before {
+    display: none;
+  }
+  
+  .el-table__header-wrapper {
+    background-color: #f0f7ff;
+    
+    th.el-table__cell {
+      background-color: #f0f7ff !important;
+      color: #333;
+      font-weight: 600;
+      border-bottom: none;
+      height: 50px;
+    }
+  }
+
+  .el-table__body-wrapper {
+    .el-table__row {
+      td {
+        border-bottom: 1px solid rgba(99, 147, 244, 0.1);
+        height: 60px;
+      }
+      
+      &:hover {
+        td {
+          background-color: rgba(99, 147, 244, 0.05);
+        }
+      }
+    }
+  }
 }
 
-:deep(.el-dialog__body) {
-  padding-top: 10px;
+.user {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 2px solid #ebeef5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.blue-button {
+  padding: 6px 12px;
+  font-size: 13px;
+  height: 32px;
+  min-width: 68px;
+  background-color: #409eff;
+  border-color: #409eff;
+  color: white;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: all 0.3s;
+  border: none;
+  
+  &:hover {
+    background-color: #66b1ff;
+    border-color: #66b1ff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  &.danger {
+    background-color: #F56C6C;
+    border-color: #F56C6C;
+    
+    &:hover {
+      background-color: #f78989;
+      border-color: #f78989;
+    }
+  }
+}
+
+:deep(.el-dialog) {
+  border-radius: 12px;
+  overflow: hidden;
+  
+  .el-dialog__header {
+    margin: 0;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e6f0;
+  }
+  
+  .el-dialog__body {
+    padding: 24px;
+  }
+  
+  .el-dialog__footer {
+    border-top: 1px solid #e0e6f0;
+    padding: 16px 24px;
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+:deep(.el-tag) {
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-weight: 500;
+}
+
+:deep(.el-pagination) {
+  margin-top: 20px;
+  justify-content: flex-end;
+  padding: 16px;
+  background: transparent;
+  
+  .btn-prev,
+  .btn-next {
+    background: transparent;
+    border: 1px solid rgba(99, 147, 244, 0.2);
+    &:hover {
+      color: #409eff;
+    }
+  }
+  
+  .el-pager li {
+    background: transparent;
+    border: 1px solid rgba(99, 147, 244, 0.2);
+    &.active {
+      background-color: #409eff;
+      color: white;
+      border-color: #409eff;
+    }
+    &:hover {
+      color: #409eff;
+    }
+  }
+}
+
+.user-table {
+  :deep(.el-table__header) {
+    th {
+      background-color: #f5f7fa !important;
+      color: #606266;
+      font-weight: 600;
+      height: 50px;
+      padding: 8px 0;
+    }
+  }
+
+  :deep(.el-table__body) {
+    td {
+      padding: 8px 0;
+      height: 50px;
+    }
+  }
+
+  .role-tag, .status-tag {
+    padding: 4px 12px;
+    border-radius: 4px;
+  }
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  
+  .el-button {
+    padding: 6px 12px;
+    min-width: 68px;
+    height: 32px;
+    margin: 0;
+  }
 }
 </style> 

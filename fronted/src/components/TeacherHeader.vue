@@ -44,26 +44,25 @@ export default {
   },
   methods: {
     isActivePath(path) {
-      // 检查当前路由是否匹配
+      // 检查当前路由是否匹配，对于备课助手页面特殊处理
+      if (path === '/teacher/course') {
+        return this.$route.path === path || this.$route.path === '/teacher/ai';
+      }
       return this.$route.path === path;
     },
     navigateTo(path) {
-      // 保存当前路由状态
-      const currentPath = this.$route.path;
-      const currentTab = localStorage.getItem('sideTab');
-      
-      // 如果在备课助手页面，保存状态
-      if (currentPath === '/teacher/ai') {
-        localStorage.setItem('previousTab', currentTab);
+      // 如果当前在备课助手页面并且要导航到课程管理
+      if (this.$route.path === '/teacher/ai' && path === '/teacher/course') {
+        // 恢复之前保存的状态
+        const savedState = localStorage.getItem('teacherNavState');
+        if (savedState) {
+          const state = JSON.parse(savedState);
+          localStorage.setItem('currentTab', state.tab);
+          localStorage.setItem('courseMenuOpen', state.menuOpen);
+        }
       }
       
-      // 导航到新页面
       this.$router.push(path);
-      
-      // 如果是导航到课程管理或学生管理，清除之前的备课助手状态
-      if (path === '/teacher/course' || path === '/teacher/manage') {
-        localStorage.removeItem('previousTab');
-      }
     },
     toggleUserMenu() {
       this.userMenuOpen = !this.userMenuOpen;

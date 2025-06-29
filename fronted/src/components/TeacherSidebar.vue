@@ -80,30 +80,40 @@ const toggleCourseMenu = () => {
 }
 
 const selectSide = (tab, route) => {
-  // 切换tab
-  currentTab.value = tab
-  emit('update:sideTab', tab)
-  // 切到备课助手时，保存当前菜单状态
   if (tab === 'lesson-prep') {
-    saveNavigationState()
+    // 切换到备课助手时，保存当前状态并更新currentTab
+    saveNavigationState();
+    currentTab.value = tab;
+    emit('update:sideTab', tab);
+    router.push(route);
+    return;
   }
-  router.push(route)
+  
+  // 其他情况正常切换tab
+  currentTab.value = tab;
+  emit('update:sideTab', tab);
+  router.push(route);
 }
 
 const selectCourse = (course, index) => {
-  const tab = `course-${index}`
-  currentTab.value = tab
-  emit('update:sideTab', tab)
+  const tab = `course-${index}`;
+  currentTab.value = tab;
+  emit('update:sideTab', tab);
   
   // 存储课程信息
-  localStorage.setItem('currentCourseName', course.name)
-  localStorage.setItem('currentCourseId', course.id)
-  localStorage.setItem('currentCourseLocation', course.location || '理科楼301')
+  localStorage.setItem('currentCourseName', course.name);
+  localStorage.setItem('currentCourseId', course.id);
+  localStorage.setItem('currentCourseLocation', course.location || '理科楼301');
   
   // 保存导航状态
-  saveNavigationState()
+  saveNavigationState();
   
-  router.push(`/teacher/course?id=${course.id}`)
+  // 如果当前在备课助手页面，不改变路由
+  if (router.currentRoute.value.path === '/teacher/ai') {
+    return;
+  }
+  
+  router.push(`/teacher/course?id=${course.id}`);
 }
 
 // 保存导航状态的统一方法

@@ -64,12 +64,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import CourseDetail from '@/components/CourseDetail.vue'
 import { getCourses, checkAndSetMockEnvironment } from '@/api'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 
 const sideTab = ref('dashboard')
 const courseMenuOpen = ref(false)
@@ -79,18 +80,28 @@ const classCount = ref(0)
 const studentCount = ref(0)
 const selectedCourseId = ref(null)
 const courses = ref([])
+const router = useRouter()
 
-// 从localStorage获取之前的状态
-const previousState = localStorage.getItem('previousState')
-if (previousState) {
-  const state = JSON.parse(previousState)
-  sideTab.value = state.tab
-  courseMenuOpen.value = state.menuOpen
-  if (state.tab.startsWith('course-')) {
-    const courseId = state.currentCourseId
-    selectedCourseId.value = courseId ? parseInt(courseId) : null
+// 初始化状态
+const initializeState = () => {
+  const savedState = localStorage.getItem('teacherNavState')
+  if (savedState) {
+    const state = JSON.parse(savedState)
+    sideTab.value = state.tab
+    courseMenuOpen.value = state.menuOpen
+    if (state.tab.startsWith('course-')) {
+      const courseId = state.currentCourseId
+      selectedCourseId.value = courseId ? parseInt(courseId) : null
+    }
   }
 }
+
+// 监听路由变化
+watch(() => router.currentRoute.value.path, (newPath) => {
+  if (newPath === '/teacher/course') {
+    initializeState()
+  }
+})
 
 // 加载课程数据
 const loadCourses = async () => {
@@ -138,8 +149,9 @@ const handleSideTabChange = (tab) => {
   }
 }
 
-// 组件挂载时加载数据
+// 组件挂载时初始化状态
 onMounted(() => {
+  initializeState()
   loadCourses()
 })
 </script>

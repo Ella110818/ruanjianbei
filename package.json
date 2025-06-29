@@ -2,7 +2,8 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
     "echarts": "^5.6.0",
-    "element-plus": "^2.9.10"
+    "element-plus": "^2.9.10",
+    "vue-echarts": "^7.0.3"
   },
   "devDependencies": {
     "@vue/tsconfig": "^0.7.0",
