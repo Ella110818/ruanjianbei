@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://dariajane.pythonanywhere.com',
+        API_URL: 'https://d6e2-218-26-34-121.ngrok-free.app',
         API_VERSION: 'api'
     }
 };
