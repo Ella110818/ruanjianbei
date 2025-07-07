@@ -3,7 +3,7 @@
     <!-- 顶部图片区域 -->
     <div class="image-row">
       <img src="@/assets/timu.png" alt="题目生成" />
-      <img src="@/assets/study.png" alt="教学助手" />
+      <img src="@/assets/study.png" alt="教学助手" @click="handleCourseGeneration"/>
       <img src="@/assets/ppt.png" alt="PPT创作" />
     </div>
     <!-- 底部输入和历史记录区域 -->
@@ -13,19 +13,20 @@
           <textarea
             v-model="bottomInput"
             class="plain-input"
-            :placeholder="'你想咨询什么...'"
+            :placeholder="currentMode === 'course' ? '请输入课程要求，包含：\n1. 课程名称\n2. 课程描述\n3. 学科\n4. 年级\n5. 其他要求' : '你想咨询什么...'"
             rows="3"
             @keyup.enter="handleSend"
           />
-          <button class="send-btn-rect" @click="handleSend">
-            <svg viewBox="0 0 1024 1024" width="18" height="18" style="vertical-align:middle;margin-right:4px;"><path d="M928 112L96 464c-15.2 6.4-15.2 28.8 0 35.2l160 67.2c8 3.2 16 3.2 24 0l160-67.2c15.2-6.4 15.2-28.8 0-35.2l-160-67.2c-8-3.2-16-3.2-24 0L96 464c-15.2 6.4-15.2 28.8 0 35.2l832 352c15.2 6.4 32-4.8 32-21.6V133.6c0-16.8-16.8-28-32-21.6z" fill="#fff"/></svg>
-            发送
+          <button class="send-btn-rect" @click="handleSend" :disabled="loading">
+            <svg v-if="!loading" viewBox="0 0 1024 1024" width="18" height="18" style="vertical-align:middle;margin-right:4px;"><path d="M928 112L96 464c-15.2 6.4-15.2 28.8 0 35.2l160 67.2c8 3.2 16 3.2 24 0l160-67.2c15.2-6.4 15.2-28.8 0-35.2l-160-67.2c-8-3.2-16-3.2-24 0L96 464c-15.2 6.4-15.2 28.8 0 35.2l832 352c15.2 6.4 32-4.8 32-21.6V133.6c0-16.8-16.8-28-32-21.6z" fill="#fff"/></svg>
+            <span v-else class="loading-spinner"></span>
+            {{ loading ? '生成中...' : '发送' }}
           </button>
         </div>
       </div>
       <div class="history-panel">
         <div class="history-header">
-          <el-button class="new-chat-btn" type="primary" color="#6366f1">
+          <el-button class="new-chat-btn" type="primary" color="#6366f1" @click="newChat">
             + 新建对话
           </el-button>
           <el-input
@@ -45,12 +46,23 @@
         </div>
       </div>
     </div>
+
+    <!-- 对话内容展示区域 -->
+    <div v-if="messages.length > 0" class="chat-messages">
+      <div v-for="(message, index) in messages" :key="index" 
+           :class="['message', message.type]">
+        <div class="message-content" v-html="message.content"></div>
+        <div class="message-time">{{ message.time }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { Search } from '@element-plus/icons-vue'
+import { generateCourseContent } from '@/api/index.js'
+import { ElMessage } from 'element-plus'
 
 const searchQuery = ref('')
 const historyList = ref([
@@ -59,13 +71,106 @@ const historyList = ref([
   { content: '你提长篇博论：1.简短' }
 ])
 
+const currentMode = ref('normal') // 'normal' 或 'course'
+const loading = ref(false)
+const messages = ref([])
+
 // 新增底部输入框相关
 const bottomInput = ref('')
-const handleSend = () => {
-  if (bottomInput.value.trim()) {
-    // 这里可以添加发送逻辑
-    bottomInput.value = ''
+
+// 处理课程生成模式
+const handleCourseGeneration = () => {
+  currentMode.value = 'course'
+  messages.value = [{
+    type: 'ai',
+    content: '请输入课程相关信息，包含：<br>1. 课程名称<br>2. 课程描述<br>3. 学科<br>4. 年级<br>5. 其他要求',
+    time: new Date().toLocaleTimeString()
+  }]
+}
+
+// 解析用户输入的课程信息
+const parseCourseInput = (input) => {
+  const lines = input.split('\n')
+  const courseInfo = {
+    course_name: '',
+    course_description: '',
+    subject: '',
+    grade_level: '',
+    additional_requirements: '',
+    chapter_count: 20,
+    chatInput: input,
+    sessionId: 'session-' + Date.now()
   }
+
+  lines.forEach(line => {
+    if (line.includes('课程名称')) {
+      courseInfo.course_name = line.split('：')[1]?.trim() || ''
+    } else if (line.includes('课程描述')) {
+      courseInfo.course_description = line.split('：')[1]?.trim() || ''
+    } else if (line.includes('学科')) {
+      courseInfo.subject = line.split('：')[1]?.trim() || ''
+    } else if (line.includes('年级')) {
+      courseInfo.grade_level = line.split('：')[1]?.trim() || ''
+    } else if (line.includes('其他要求')) {
+      courseInfo.additional_requirements = line.split('：')[1]?.trim() || ''
+    }
+  })
+
+  return courseInfo
+}
+
+const handleSend = async () => {
+  if (!bottomInput.value.trim()) return
+  
+  const userInput = bottomInput.value
+  bottomInput.value = ''
+  
+  // 添加用户消息
+  messages.value.push({
+    type: 'user',
+    content: userInput,
+    time: new Date().toLocaleTimeString()
+  })
+
+  loading.value = true
+  try {
+    if (currentMode.value === 'course') {
+      const courseInfo = parseCourseInput(userInput)
+      const response = await generateCourseContent(courseInfo)
+      
+      if (response.code === 0) {
+        messages.value.push({
+          type: 'ai',
+          content: `课程内容生成成功：<br><pre>${JSON.stringify(response.data, null, 2)}</pre>`,
+          time: new Date().toLocaleTimeString()
+        })
+      } else {
+        throw new Error(response.msg)
+      }
+    } else {
+      // 普通对话模式的处理逻辑
+      messages.value.push({
+        type: 'ai',
+        content: '收到您的消息，我会尽快回复。',
+        time: new Date().toLocaleTimeString()
+      })
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '操作失败')
+    messages.value.push({
+      type: 'ai',
+      content: `错误：${error.message || '生成失败，请重试'}`,
+      time: new Date().toLocaleTimeString()
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const newChat = () => {
+  currentMode.value = 'normal'
+  messages.value = []
+  bottomInput.value = ''
 }
 </script>
 
@@ -239,5 +344,65 @@ const handleSend = () => {
 .history-item:hover {
   background-color: #f0f4ff;
   color: #6366f1;
+}
+
+.chat-messages {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+}
+
+.message {
+  margin-bottom: 20px;
+  max-width: 80%;
+}
+
+.message.user {
+  margin-left: auto;
+  background: #6366f1;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 12px 12px 0 12px;
+}
+
+.message.ai {
+  margin-right: auto;
+  background: white;
+  color: #333;
+  padding: 12px 20px;
+  border-radius: 12px 12px 12px 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+
+.message-time {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+pre {
+  background: #f5f7fa;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
 }
 </style> 

@@ -614,4 +614,60 @@ export async function deleteCourse(courseId) {
     }
 }
 
+// 课程内容生成
+export async function generateCourseContent(params) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '课程内容生成成功',
+            data: {
+                id: 1,
+                title: params.course_name,
+                description: params.course_description,
+                subject: params.subject,
+                grade_level: params.grade_level,
+                created_at: new Date().toISOString()
+            }
+        });
+    }
+
+    try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/course-content-generation/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                course_name: params.course_name,
+                chapter_count: params.chapter_count || 20,
+                course_description: params.course_description,
+                subject: params.subject,
+                grade_level: params.grade_level,
+                additional_requirements: params.additional_requirements,
+                chatInput: params.chatInput,
+                sessionId: params.sessionId || 'default-session'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`请求失败: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+            code: 0,
+            msg: '课程内容生成成功',
+            data: data
+        };
+    } catch (error) {
+        console.error('生成课程内容失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '生成课程内容失败',
+            data: null
+        };
+    }
+}
+
 // 你可以继续添加其他接口方法，按需mock或真实请求
