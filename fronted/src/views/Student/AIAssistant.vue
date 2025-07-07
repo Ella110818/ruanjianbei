@@ -100,6 +100,40 @@ const searchQuery = ref('')
 const activeMainTab = ref('features')
 const activeSubTab = ref('marketing')
 const showChat = ref(false)
+const loading = ref(false)
+
+// API调用函数
+const generateQuestions = async (input) => {
+  try {
+    loading.value = true;
+    const response = await fetch('https://d6e2-218-26-34-121.ngrok-free.app/api/question-generation/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        knowledge_point_ids: [1], // 这里可以根据实际需求修改
+        question_types: ['single_choice'],
+        quantity: 50,
+        difficulty: 5,
+        chatInput: input,
+        sessionId: 'user-session-1' // 这里可以使用实际的session ID
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('网络请求失败');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('生成问题失败:', error);
+    throw error;
+  } finally {
+    loading.value = false;
+  }
+}
 
 // 定义功能特性
 const features = ref({
@@ -176,26 +210,46 @@ const messages = ref([
   }
 ])
 
-const sendMessage = () => {
+const sendMessage = async () => {
   if (!inputMessage.value.trim()) return
 
+  const userMessage = inputMessage.value;
+  
+  // 添加用户消息
   messages.value.push({
     id: messages.value.length + 1,
     type: 'user',
-    content: inputMessage.value,
+    content: userMessage,
     time: '刚刚'
   })
 
   inputMessage.value = ''
+  showChat.value = true
 
-  setTimeout(() => {
+  try {
+    // 添加加载中的消息
     messages.value.push({
       id: messages.value.length + 1,
       type: 'ai',
-      content: '我理解你的问题，让我来帮你解答...',
+      content: '正在思考中...',
       time: '刚刚'
     })
-  }, 1000)
+
+    // 调用API获取响应
+    const response = await generateQuestions(userMessage);
+    
+    // 更新最后一条AI消息
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (response && response.data) {
+      lastMessage.content = response.data;
+    } else {
+      lastMessage.content = '抱歉，我现在无法回答这个问题。请稍后再试。';
+    }
+  } catch (error) {
+    // 发生错误时更新最后一条消息
+    const lastMessage = messages.value[messages.value.length - 1];
+    lastMessage.content = '抱歉，发生了一些错误。请稍后再试。';
+  }
 }
 
 // 历史记录数据
