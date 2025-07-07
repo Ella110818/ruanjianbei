@@ -670,4 +670,69 @@ export async function generateCourseContent(params) {
     }
 }
 
+// 导出问题
+export async function exportQuestions(sessionKey, format = 'json', filename = 'questions') {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '导出成功',
+            data: {
+                url: 'mock_export_url.json'
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        const response = await fetch(`${API_CONFIG.BASE_URL}/question-generation/export/?session_key=${sessionKey}&format=${format}&filename=${filename}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': token ? `Bearer ${token}` : '',
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`导出失败: ${response.status}`);
+        }
+
+        // 检查Content-Type
+        const contentType = response.headers.get('Content-Type');
+
+        if (contentType && contentType.includes('application/json')) {
+            // 如果是JSON响应,返回数据
+            const data = await response.json();
+            return {
+                code: 0,
+                msg: '导出成功',
+                data
+            };
+        } else {
+            // 如果是文件下载,创建下载链接
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `${filename}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+
+            return {
+                code: 0,
+                msg: '文件下载成功',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('导出问题失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '导出失败',
+            data: null
+        };
+    }
+}
+
 // 你可以继续添加其他接口方法，按需mock或真实请求

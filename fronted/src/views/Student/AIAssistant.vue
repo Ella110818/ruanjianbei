@@ -71,6 +71,27 @@
         <!-- 聊天部分 -->
         <div class="chat-section" v-if="showChat">
           <el-card class="chat-card">
+            <div class="chat-header">
+              <h3>对话记录</h3>
+              <div class="chat-actions">
+                <el-button 
+                  type="primary" 
+                  size="small" 
+                  @click="handleExport('json')"
+                  :loading="exporting"
+                >
+                  导出JSON
+                </el-button>
+                <el-button 
+                  type="success" 
+                  size="small" 
+                  @click="handleExport('csv')"
+                  :loading="exporting"
+                >
+                  导出CSV
+                </el-button>
+              </div>
+            </div>
             <div class="chat-messages" ref="chatMessages">
               <div v-for="message in messages" :key="message.id" 
                    :class="['message', message.type]">
@@ -104,7 +125,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
-import { API_CONFIG } from '@/api/index.js'
+import { API_CONFIG, exportQuestions } from '@/api/index.js'
+import { ElMessage } from 'element-plus'
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
@@ -112,6 +134,8 @@ const activeSubTab = ref('marketing')
 const showChat = ref(false)
 const loading = ref(false)
 const currentEnvironment = ref('生产API')
+const exporting = ref(false)
+const sessionId = ref('user-session-1') // 使用与生成问题时相同的sessionId
 
 // API调用函数
 const generateQuestions = async (input) => {
@@ -344,6 +368,24 @@ const currentFeatureRows = computed(() => {
   }
   return []
 })
+
+// 处理导出
+const handleExport = async (format) => {
+  try {
+    exporting.value = true;
+    const result = await exportQuestions(sessionId.value, format);
+    if (result.code === 0) {
+      ElMessage.success(result.msg);
+    } else {
+      ElMessage.error(result.msg);
+    }
+  } catch (error) {
+    console.error('导出失败:', error);
+    ElMessage.error('导出失败，请稍后重试');
+  } finally {
+    exporting.value = false;
+  }
+}
 </script>
 
 <style scoped>
@@ -590,6 +632,25 @@ const currentFeatureRows = computed(() => {
   height: 400px;
   display: flex;
   flex-direction: column;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #303133;
+}
+
+.chat-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .chat-messages {
