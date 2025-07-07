@@ -18,12 +18,14 @@
               v-model="searchQuery"
               placeholder="AI能帮你解决哪些学习难题？"
               class="search-input"
+              @keyup.enter="handleSearch"
             >
-            <button class="search-button">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="search-button" @click="handleSearch" :disabled="loading">
+              <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
               </svg>
+              <span v-else class="loading-spinner"></span>
             </button>
           </div>
         </div>
@@ -44,7 +46,10 @@
           <!-- 功能卡片区域 -->
           <div class="features-grid" v-if="activeMainTab === 'features'">
             <div class="feature-row" v-for="(row, rowIndex) in currentFeatureRows" :key="rowIndex">
-              <div class="feature-card" v-for="feature in row" :key="feature.id">
+              <div class="feature-card" 
+                   v-for="feature in row" 
+                   :key="feature.id"
+                   @click="handleFeatureClick(feature)">
                 <h3>{{ feature.title }}</h3>
                 <p>{{ feature.description }}</p>
               </div>
@@ -79,14 +84,18 @@
                 v-model="inputMessage"
                 placeholder="输入你的问题..."
                 @keyup.enter="sendMessage"
+                :disabled="loading"
               >
                 <template #append>
-                  <el-button type="primary" @click="sendMessage">发送</el-button>
+                  <el-button type="primary" @click="sendMessage" :loading="loading">发送</el-button>
                 </template>
               </el-input>
             </div>
           </el-card>
         </div>
+      </div>
+      <div class="environment-status">
+        当前环境: {{ currentEnvironment }}
       </div>
     </div>
   </div>
@@ -95,37 +104,40 @@
 <script setup>
 import { ref, computed } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
+import { API_CONFIG } from '@/api/index.js'
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
 const activeSubTab = ref('marketing')
 const showChat = ref(false)
 const loading = ref(false)
+const currentEnvironment = ref('生产API')
 
 // API调用函数
 const generateQuestions = async (input) => {
   try {
     loading.value = true;
-    const response = await fetch('https://d6e2-218-26-34-121.ngrok-free.app/api/question-generation/', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/question-generation/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        knowledge_point_ids: [1], // 这里可以根据实际需求修改
+        knowledge_point_ids: [1],
         question_types: ['single_choice'],
         quantity: 50,
         difficulty: 5,
         chatInput: input,
-        sessionId: 'user-session-1' // 这里可以使用实际的session ID
+        sessionId: 'user-session-1'
       })
     });
 
     if (!response.ok) {
-      throw new Error('网络请求失败');
+      throw new Error(`网络请求失败: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('API响应:', data);
     return data;
   } catch (error) {
     console.error('生成问题失败:', error);
@@ -134,6 +146,140 @@ const generateQuestions = async (input) => {
     loading.value = false;
   }
 }
+
+// 处理搜索
+const handleSearch = async () => {
+  if (searchQuery.value.trim()) {
+    showChat.value = true;
+    try {
+      loading.value = true;
+      // 添加用户消息
+      messages.value.push({
+        id: messages.value.length + 1,
+        type: 'user',
+        content: searchQuery.value,
+        time: '刚刚'
+      });
+
+      // 添加AI思考消息
+      const loadingMessageId = messages.value.length + 1;
+      messages.value.push({
+        id: loadingMessageId,
+        type: 'ai',
+        content: '正在思考中...',
+        time: '刚刚'
+      });
+
+      // 调用API获取响应
+      const response = await generateQuestions(searchQuery.value);
+      
+      // 更新AI消息
+      const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
+      if (messageIndex !== -1) {
+        if (response && response.data) {
+          messages.value[messageIndex].content = response.data;
+        } else {
+          messages.value[messageIndex].content = '抱歉，我现在无法回答这个问题。请稍后再试。';
+        }
+      }
+
+      // 清空搜索框
+      searchQuery.value = '';
+    } catch (error) {
+      console.error('搜索请求失败:', error);
+      messages.value.push({
+        id: messages.value.length + 1,
+        type: 'ai',
+        content: '抱歉，发生了错误。请稍后再试。',
+        time: '刚刚'
+      });
+    } finally {
+      loading.value = false;
+    }
+  }
+}
+
+// 处理功能卡片点击
+const handleFeatureClick = (feature) => {
+  showChat.value = true;
+  sendMessage(`请帮我${feature.title}：${feature.description}`);
+}
+
+// 聊天相关逻辑
+const inputMessage = ref('')
+const messages = ref([
+  {
+    id: 1,
+    type: 'ai',
+    content: '你好！我是你的AI学习助手，有什么我可以帮你的吗？',
+    time: '刚刚'
+  }
+])
+
+const sendMessage = async (message = null) => {
+  const userInput = message || inputMessage.value;
+  if (!userInput.trim()) return;
+
+  // 添加用户消息
+  messages.value.push({
+    id: messages.value.length + 1,
+    type: 'user',
+    content: userInput,
+    time: '刚刚'
+  });
+
+  if (!message) {
+    inputMessage.value = '';
+  }
+
+  try {
+    // 添加加载中的消息
+    const loadingMessageId = messages.value.length + 1;
+    messages.value.push({
+      id: loadingMessageId,
+      type: 'ai',
+      content: '正在思考中...',
+      time: '刚刚'
+    });
+
+    // 调用API获取响应
+    const response = await generateQuestions(userInput);
+    
+    // 更新AI消息
+    const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
+    if (messageIndex !== -1) {
+      if (response && response.data) {
+        messages.value[messageIndex].content = response.data;
+      } else {
+        messages.value[messageIndex].content = '抱歉，我现在无法回答这个问题。请稍后再试。';
+      }
+    }
+  } catch (error) {
+    console.error('发送消息失败:', error);
+    messages.value.push({
+      id: messages.value.length + 1,
+      type: 'ai',
+      content: '抱歉，发生了错误。请稍后再试。',
+      time: '刚刚'
+    });
+  }
+}
+
+// 历史记录数据
+const historyList = ref([
+  {
+    id: 1,
+    title: '知识点解析',
+    time: '2024-03-20 14:30',
+    content: '完成了数学函数相关知识点的解析'
+  },
+  {
+    id: 2,
+    title: '练习题生成',
+    time: '2024-03-19 16:45',
+    content: '生成了一套数学练习题'
+  }
+])
 
 // 定义功能特性
 const features = ref({
@@ -198,75 +344,6 @@ const currentFeatureRows = computed(() => {
   }
   return []
 })
-
-// 聊天相关逻辑
-const inputMessage = ref('')
-const messages = ref([
-  {
-    id: 1,
-    type: 'ai',
-    content: '你好！我是你的AI学习助手，有什么我可以帮你的吗？',
-    time: '刚刚'
-  }
-])
-
-const sendMessage = async () => {
-  if (!inputMessage.value.trim()) return
-
-  const userMessage = inputMessage.value;
-  
-  // 添加用户消息
-  messages.value.push({
-    id: messages.value.length + 1,
-    type: 'user',
-    content: userMessage,
-    time: '刚刚'
-  })
-
-  inputMessage.value = ''
-  showChat.value = true
-
-  try {
-    // 添加加载中的消息
-    messages.value.push({
-      id: messages.value.length + 1,
-      type: 'ai',
-      content: '正在思考中...',
-      time: '刚刚'
-    })
-
-    // 调用API获取响应
-    const response = await generateQuestions(userMessage);
-    
-    // 更新最后一条AI消息
-    const lastMessage = messages.value[messages.value.length - 1];
-    if (response && response.data) {
-      lastMessage.content = response.data;
-    } else {
-      lastMessage.content = '抱歉，我现在无法回答这个问题。请稍后再试。';
-    }
-  } catch (error) {
-    // 发生错误时更新最后一条消息
-    const lastMessage = messages.value[messages.value.length - 1];
-    lastMessage.content = '抱歉，发生了一些错误。请稍后再试。';
-  }
-}
-
-// 历史记录数据
-const historyList = ref([
-  {
-    id: 1,
-    title: '营销方案策划',
-    time: '2024-03-20 14:30',
-    content: '完成了春季营销活动方案的策划'
-  },
-  {
-    id: 2,
-    title: '产品文案创作',
-    time: '2024-03-19 16:45',
-    content: '编写了新产品发布会的宣传文案'
-  }
-])
 </script>
 
 <style scoped>
@@ -601,5 +678,38 @@ const historyList = ref([
   font-size: 14px;
   color: #666;
   line-height: 1.5;
+}
+
+/* 添加新的样式 */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.environment-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.search-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 </style> 
