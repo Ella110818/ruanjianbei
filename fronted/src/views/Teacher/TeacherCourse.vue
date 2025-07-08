@@ -135,7 +135,7 @@ import { ref, onMounted, watch } from 'vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import CourseDetail from '@/components/CourseDetail.vue'
-import { getCourses, checkAndSetMockEnvironment, getExercises } from '@/api'
+import { getCourseList, checkAndSetMockEnvironment, getExercises } from '@/api'
 import { ElMessage, ElPagination } from 'element-plus'
 import { useRouter } from 'vue-router'
 
@@ -190,7 +190,7 @@ const loadCourses = async () => {
     // 检查并设置Mock环境
     checkAndSetMockEnvironment();
     
-    const response = await getCourses()
+    const response = await getCourseList()
     if (response.code === 0) {
       courses.value = response.data.map(course => ({
         id: course.id,
