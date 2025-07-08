@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://29c44f27bbdc.ngrok-free.app',  // 更新为新的ngrok地址
+        API_URL: 'https://29c44f27bbdc.ngrok-free.app?bypass-tunnel-reminder=true',  // 添加bypass参数
         API_VERSION: 'api'
     }
 };
@@ -22,6 +22,11 @@ export const API_CONFIG = {
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
+    },
+    fetchOptions: {
+        cache: 'no-store',  // 禁用缓存
+        redirect: 'follow',  // 自动跟随重定向
+        referrerPolicy: 'no-referrer'  // 不发送referrer
     }
 };
 
@@ -339,15 +344,10 @@ export async function refreshToken() {
 // 获取课程列表
 export async function getCourses() {
     if (getMockFlag()) {
-        // 返回mock数据
         return mockApiResponse(mockCourses);
     }
 
     try {
-        console.log('===== 获取课程列表开始 =====');
-        console.log('请求URL:', `${API_CONFIG.BASE_URL}/courses/`);
-        console.log('请求方法: GET');
-
         const token = TokenManager.getAccessToken();
         const headers = {
             'Content-Type': 'application/json',
@@ -358,96 +358,54 @@ export async function getCourses() {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
+        console.log('发起请求:', {
+            url: `${API_CONFIG.BASE_URL}/courses/`,
             method: 'GET',
             headers: headers
+        });
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
+            method: 'GET',
+            headers: headers,
+            cache: 'no-store'  // 禁用缓存
         });
 
         console.log('响应状态:', response.status);
         console.log('响应头:', Object.fromEntries(response.headers.entries()));
 
-        // 如果是401或403，输出更多信息
-        if (response.status === 401 || response.status === 403) {
-            console.log('认证失败，详细信息：');
-            console.log('- 当前token是否存在:', !!token);
-            console.log('- Authorization头:', headers.Authorization);
-            const errorText = await response.text();
-            console.log('- 错误响应:', errorText);
-            try {
-                const errorData = JSON.parse(errorText);
-                console.log('- 解析后的错误响应:', errorData);
-            } catch (e) {
-                console.log('- 无法解析错误响应为JSON');
-            }
-            // 如果是401或403，尝试刷新token
-            try {
-                const newToken = await refreshToken();
-                // 使用新token重试请求
-                const retryResponse = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
-                    method: 'GET',
-                    headers: {
-                        ...headers,
-                        'Authorization': `Bearer ${newToken}`
-                    }
-                });
-
-                if (retryResponse.ok) {
-                    const retryData = await retryResponse.json();
-                    return {
-                        code: 0,
-                        msg: '获取课程列表成功',
-                        data: retryData.data.results || []
-                    };
-                }
-            } catch (refreshError) {
-                console.error('刷新token失败:', refreshError);
-                TokenManager.clearTokens();
-                return {
-                    code: 1,
-                    msg: '登录已过期，请重新登录',
-                    data: []
-                };
-            }
-        }
-
         // 检查响应类型
         const contentType = response.headers.get('content-type');
+        console.log('响应内容类型:', contentType);
+
         if (!contentType || !contentType.includes('application/json')) {
-            console.error('响应不是JSON格式:', contentType);
-            const text = await response.text();
-            console.error('响应内容:', text);
+            // 如果不是JSON，尝试读取文本内容以便调试
+            const textContent = await response.text();
+            console.log('非JSON响应内容:', textContent);
             return {
                 code: 1,
-                msg: '服务器响应格式错误',
+                msg: '服务器返回了非JSON格式的响应',
                 data: []
             };
         }
 
-        const responseData = await response.json();
-        console.log('课程列表响应数据:', responseData);
+        const data = await response.json();
+        console.log('响应数据:', data);
 
         if (!response.ok) {
-            return handleHttpError(response, responseData);
+            return handleHttpError(response, data);
         }
 
-        if (responseData.success && responseData.status_code === 200) {
-            return {
-                code: 0,
-                msg: '获取课程列表成功',
-                data: responseData.data.results || []
-            };
-        } else {
-            return {
-                code: 1,
-                msg: responseData.message || '获取课程列表失败',
-                data: []
-            };
-        }
+        return {
+            code: 0,
+            msg: '获取课程列表成功',
+            data: data.data || []
+        };
+
     } catch (error) {
         console.error('获取课程列表失败:', error);
         return {
             code: 1,
-            msg: error.message || '网络错误，请稍后重试',
+            msg: error.message || '获取课程列表失败',
             data: []
         };
     }
