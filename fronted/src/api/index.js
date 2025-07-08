@@ -762,11 +762,19 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
 
     try {
         const token = TokenManager.getAccessToken();
-        const response = await fetch(`${API_CONFIG.BASE_URL}/question-generation/export/?session_key=${sessionKey}&format=${format}&filename=${filename}`, {
+        if (!token) {
+            throw new Error('请先登录');
+        }
+
+        // 构建导出URL
+        const exportUrl = addBypassParam(`${API_CONFIG.BASE_URL}/questions-generate/export/?session_key=${sessionKey}&format=${format}&filename=${filename}`);
+        console.log('导出URL:', exportUrl);
+
+        const response = await fetch(exportUrl, {
             method: 'GET',
             headers: {
-                'Authorization': token ? `Bearer ${token}` : '',
-                'Accept': 'application/json'
+                'Authorization': `Bearer ${token}`,
+                'Accept': format === 'json' ? 'application/json' : 'text/csv'
             }
         });
 
@@ -776,9 +784,9 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
 
         // 检查Content-Type
         const contentType = response.headers.get('Content-Type');
-
+        
         if (contentType && contentType.includes('application/json')) {
-            // 如果是JSON响应,返回数据
+            // JSON响应
             const data = await response.json();
             return {
                 code: 0,
@@ -786,7 +794,7 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
                 data
             };
         } else {
-            // 如果是文件下载,创建下载链接
+            // 文件下载
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');

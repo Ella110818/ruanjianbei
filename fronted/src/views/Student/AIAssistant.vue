@@ -184,7 +184,6 @@ const showChat = ref(false)
 const loading = ref(false)
 const currentEnvironment = ref('生产API')
 const exporting = ref(false)
-const sessionId = ref('user-session-1') // 使用与生成问题时相同的sessionId
 
 // 添加配置选项
 const questionConfig = ref({
@@ -222,25 +221,30 @@ const currentConfig = ref({
 
 // 生成唯一的会话ID
 const generateSessionId = () => {
-  return 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+  return 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 }
+
+// 当前会话ID
+const currentSessionId = ref(generateSessionId());
 
 // API调用函数
 const generateQuestions = async (input) => {
   try {
     loading.value = true;
+    const sessionId = currentSessionId.value;
     const response = await fetch(`${API_CONFIG.BASE_URL}/questions-generate/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({
-        knowledge_point_ids: [1],  // 固定使用基础知识点
-        question_types: ['single_choice'],  // 固定使用单选题
-        quantity: 1,  // 固定生成1题
-        difficulty: 1,  // 固定使用最简单难度
+        knowledge_point_ids: currentConfig.value.knowledgePointIds,
+        question_types: currentConfig.value.selectedTypes,
+        quantity: currentConfig.value.quantity,
+        difficulty: currentConfig.value.difficulty,
         chatInput: input,
-        sessionId: generateSessionId()
+        sessionId: sessionId
       })
     });
 
@@ -460,12 +464,19 @@ const currentFeatureRows = computed(() => {
 // 处理导出
 const handleExport = async (format) => {
   try {
+    if (!currentSessionId.value) {
+      ElMessage.warning('请先生成问题后再导出');
+      return;
+    }
+
     exporting.value = true;
-    const result = await exportQuestions(sessionId.value, format);
+    const filename = `问题导出_${new Date().toISOString().split('T')[0]}`;
+    const result = await exportQuestions(currentSessionId.value, format, filename);
+    
     if (result.code === 0) {
       ElMessage.success(result.msg);
     } else {
-      ElMessage.error(result.msg);
+      ElMessage.error(result.msg || '导出失败');
     }
   } catch (error) {
     console.error('导出失败:', error);
