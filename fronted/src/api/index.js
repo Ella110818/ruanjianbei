@@ -193,24 +193,7 @@ export async function login(username, password, role) {
                 // 验证并保存token
                 if (TokenManager.isValidToken(access) &&
                     TokenManager.isValidToken(refresh)) {
-
-                    console.log('Token验证通过:', {
-                        accessToken: access ? `${access.substring(0, 10)}...` : 'missing',
-                        refreshToken: refresh ? `${refresh.substring(0, 10)}...` : 'missing'
-                    });
-
                     TokenManager.setTokens(access, refresh);
-
-                    // 验证token是否正确保存
-                    const savedToken = TokenManager.getAccessToken();
-                    const savedRefreshToken = TokenManager.getRefreshToken();
-                    
-                    console.log('Token保存状态:', {
-                        accessToken: savedToken ? `${savedToken.substring(0, 10)}...` : 'not saved',
-                        refreshToken: savedRefreshToken ? `${savedRefreshToken.substring(0, 10)}...` : 'not saved',
-                        accessMatches: savedToken === access,
-                        refreshMatches: savedRefreshToken === refresh
-                    });
 
                     // 保存用户信息
                     const userInfo = {
@@ -218,6 +201,27 @@ export async function login(username, password, role) {
                         role
                     };
                     localStorage.setItem('user', JSON.stringify(userInfo));
+
+                    // 获取用户权限
+                    try {
+                        const permissionsResponse = await fetch(`${API_CONFIG.BASE_URL}/roles/${user.role_id || 1}/permissions/`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${access}`,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (permissionsResponse.ok) {
+                            const permissionsData = await permissionsResponse.json();
+                            // 保存权限信息
+                            localStorage.setItem('userPermissions', JSON.stringify(permissionsData));
+                            console.log('用户权限已保存:', permissionsData);
+                        }
+                    } catch (error) {
+                        console.error('获取权限失败:', error);
+                    }
 
                     return {
                         code: 0,
@@ -641,6 +645,17 @@ export async function deleteCourse(courseId) {
     }
 }
 
+// 检查用户是否有特定权限
+function hasPermission(permissionName) {
+    try {
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{}');
+        return permissions.permissions?.some(p => p.name === permissionName) || false;
+    } catch (error) {
+        console.error('检查权限失败:', error);
+        return false;
+    }
+}
+
 // 课程内容生成
 export async function generateCourseContent() {
     if (getMockFlag()) {
@@ -658,18 +673,25 @@ export async function generateCourseContent() {
         });
     }
 
+    // 检查是否有生成课程的权限
+    if (!hasPermission('generate_course')) {
+        return {
+            code: 1,
+            msg: '没有生成课程的权限',
+            data: null
+        };
+    }
+
+    const token = TokenManager.getAccessToken();
+    if (!token) {
+        return {
+            code: 1,
+            msg: '请先登录',
+            data: null
+        };
+    }
+
     try {
-        const token = TokenManager.getAccessToken();
-        console.log('当前Token状态:', {
-            exists: !!token,
-            length: token ? token.length : 0,
-            preview: token ? `${token.substring(0, 10)}...` : 'no token'
-        });
-
-        if (!token) {
-            throw new Error('请先登录');
-        }
-
         // 使用固定的简单参数
         const requestBody = {
             course_name: 'Python编程基础',
@@ -679,15 +701,7 @@ export async function generateCourseContent() {
             chapter_count: 5
         };
 
-        const requestUrl = `${API_CONFIG.BASE_URL}/course-generate/`;
-        console.log('请求URL:', requestUrl);
-        console.log('请求头:', {
-            'Authorization': `Bearer ${token.substring(0, 10)}...`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        });
-
-        const response = await fetch(requestUrl, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/course-generate/`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -702,9 +716,11 @@ export async function generateCourseContent() {
 
         if (!response.ok) {
             if (response.status === 403) {
-                // 检查响应头
-                console.log('响应头:', Object.fromEntries(response.headers.entries()));
-                throw new Error(responseData.message || '没有权限，请确保已登录');
+                return {
+                    code: 1,
+                    msg: responseData.message || '没有权限访问此功能',
+                    data: null
+                };
             }
             return handleHttpError(response, responseData);
         }
