@@ -10,13 +10,22 @@ const ENV = {
     }
 };
 
-// 根据当前环境选择配置
-const currentEnv = process.env.NODE_ENV || 'development';
-const config = ENV[currentEnv];
+// 获取基础URL
+function getBaseUrl() {
+    const env = getEnvironment();
+    const baseApiUrl = `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
+    // 在生产环境下添加bypass参数到主域名
+    if (env === 'production') {
+        const url = new URL(ENV[env].API_URL);
+        url.searchParams.set('bypass-tunnel-reminder', 'true');
+        return `${url.toString()}/${ENV[env].API_VERSION}`;
+    }
+    return baseApiUrl;
+}
 
 // 导出API配置
 export const API_CONFIG = {
-    BASE_URL: `${config.API_URL}/${config.API_VERSION}`,
+    BASE_URL: getBaseUrl(),
     TIMEOUT: 10000,  // 请求超时时间：10秒
     withCredentials: false,  // 不需要跨域凭证
     headers: {
@@ -56,12 +65,6 @@ export function toggleMockEnvironment() {
     localStorage.setItem('USE_MOCK', (!currentState).toString());
     console.log('Mock环境已切换为:', !currentState);
     return !currentState;
-}
-
-// 获取基础URL
-function getBaseUrl() {
-    const env = getEnvironment();
-    return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
 }
 
 // 基础URL配置
@@ -162,10 +165,7 @@ export async function login(username, password, role) {
         try {
             console.log('===== 登录请求开始 =====');
             console.log('登录信息:', { username, role });
-            
-            // 添加 bypass 参数到 URL
-            const loginUrl = `${API_CONFIG.BASE_URL}/login/?bypass-tunnel-reminder=true`;
-            console.log('登录API地址:', loginUrl);
+            console.log('登录API地址:', `${API_CONFIG.BASE_URL}/login/`);
 
             const loginData = {
                 username,
@@ -174,7 +174,7 @@ export async function login(username, password, role) {
             };
             console.log('发送的登录数据:', loginData);
 
-            const response = await fetch(loginUrl, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/login/`, {
                 method: 'POST',
                 headers: {
                     ...API_CONFIG.headers,  // 使用默认headers
