@@ -13,14 +13,12 @@ const ENV = {
 // 获取基础URL
 function getBaseUrl() {
     const env = getEnvironment();
-    const baseApiUrl = `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
-    // 在生产环境下添加bypass参数到主域名
+    // 构建基础API URL
     if (env === 'production') {
-        const url = new URL(ENV[env].API_URL);
-        url.searchParams.set('bypass-tunnel-reminder', 'true');
-        return `${url.toString()}/${ENV[env].API_VERSION}`;
+        // 生产环境：先构建完整的API路径，然后添加bypass参数
+        return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
     }
-    return baseApiUrl;
+    return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
 }
 
 // 导出API配置
@@ -139,6 +137,11 @@ const handleHttpError = (response, errorData) => {
     }
 };
 
+// 辅助函数：添加bypass参数到URL
+function addBypassParam(url) {
+    return url + (url.includes('?') ? '&' : '?') + 'bypass-tunnel-reminder=true';
+}
+
 // 登录接口
 export async function login(username, password, role) {
     if (getMockFlag()) {
@@ -165,7 +168,10 @@ export async function login(username, password, role) {
         try {
             console.log('===== 登录请求开始 =====');
             console.log('登录信息:', { username, role });
-            console.log('登录API地址:', `${API_CONFIG.BASE_URL}/login/`);
+            
+            // 构建登录URL并添加bypass参数
+            const loginUrl = addBypassParam(`${API_CONFIG.BASE_URL}/login/`);
+            console.log('登录API地址:', loginUrl);
 
             const loginData = {
                 username,
@@ -174,10 +180,10 @@ export async function login(username, password, role) {
             };
             console.log('发送的登录数据:', loginData);
 
-            const response = await fetch(`${API_CONFIG.BASE_URL}/login/`, {
+            const response = await fetch(loginUrl, {
                 method: 'POST',
                 headers: {
-                    ...API_CONFIG.headers,  // 使用默认headers
+                    ...API_CONFIG.headers,
                 },
                 body: JSON.stringify(loginData)
             });
