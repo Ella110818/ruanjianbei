@@ -58,6 +58,73 @@
         <div v-else-if="selectedCourseId" class="course-detail-container">
           <CourseDetail :course-id="selectedCourseId" />
         </div>
+        <div v-else-if="sideTab === 'exercises'" class="exercises-container">
+          <!-- 练习题筛选器 -->
+          <div class="filter-section">
+            <el-input
+              v-model="exerciseFilters.search"
+              placeholder="搜索练习题"
+              @input="handleFilterChange"
+              class="filter-item"
+            />
+            <el-select
+              v-model="exerciseFilters.type"
+              placeholder="题目类型"
+              @change="handleFilterChange"
+              class="filter-item"
+            >
+              <el-option label="单选题" value="single_choice" />
+              <el-option label="多选题" value="multiple_choice" />
+              <el-option label="判断题" value="true_false" />
+            </el-select>
+            <el-select
+              v-model="exerciseFilters.difficulty"
+              placeholder="难度等级"
+              @change="handleFilterChange"
+              class="filter-item"
+            >
+              <el-option label="简单" value="1" />
+              <el-option label="中等" value="2" />
+              <el-option label="困难" value="3" />
+            </el-select>
+          </div>
+
+          <!-- 练习题列表 -->
+          <div class="exercises-list" v-loading="exerciseLoading">
+            <el-card v-for="exercise in exercises" :key="exercise.id" class="exercise-card">
+              <div class="exercise-header">
+                <span class="exercise-title">{{ exercise.title }}</span>
+                <el-tag size="small" :type="exercise.type === 'single_choice' ? 'primary' : 'success'">
+                  {{ exercise.type === 'single_choice' ? '单选题' : '多选题' }}
+                </el-tag>
+              </div>
+              <div class="exercise-content">{{ exercise.content }}</div>
+              <div class="exercise-footer">
+                <span class="knowledge-point">知识点：{{ exercise.knowledge_point }}</span>
+                <span class="difficulty">
+                  难度：
+                  <el-rate
+                    v-model="exercise.difficulty"
+                    :max="3"
+                    disabled
+                    text-color="#ff9900"
+                  />
+                </span>
+              </div>
+            </el-card>
+          </div>
+
+          <!-- 分页器 -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="currentPage"
+              :page-size="pageSize"
+              :total="totalExercises"
+              @current-change="handlePageChange"
+              layout="prev, pager, next"
+            />
+          </div>
+        </div>
       </main>
     </div>
   </div>
@@ -68,8 +135,8 @@ import { ref, onMounted, watch } from 'vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import CourseDetail from '@/components/CourseDetail.vue'
-import { getCourses, checkAndSetMockEnvironment } from '@/api'
-import { ElMessage } from 'element-plus'
+import { getCourses, checkAndSetMockEnvironment, getExercises } from '@/api'
+import { ElMessage, ElPagination } from 'element-plus'
 import { useRouter } from 'vue-router'
 
 const sideTab = ref('dashboard')
@@ -81,6 +148,20 @@ const studentCount = ref(0)
 const selectedCourseId = ref(null)
 const courses = ref([])
 const router = useRouter()
+
+// 添加练习题相关的状态
+const exercises = ref([])
+const totalExercises = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const exerciseLoading = ref(false)
+const exerciseFilters = ref({
+    search: '',
+    ordering: '1',
+    knowledge_point: '',
+    type: 'single_choice',
+    difficulty: '1'
+})
 
 // 初始化状态
 const initializeState = () => {
@@ -149,10 +230,48 @@ const handleSideTabChange = (tab) => {
   }
 }
 
+// 加载练习题数据
+const loadExercises = async () => {
+    if (exerciseLoading.value) return;
+    
+    exerciseLoading.value = true;
+    try {
+        const response = await getExercises({
+            ...exerciseFilters.value,
+            page: currentPage.value
+        });
+        
+        if (response.code === 0 && response.data) {
+            exercises.value = response.data.results || [];
+            totalExercises.value = response.data.count || 0;
+        } else {
+            ElMessage.error(response.msg || '获取练习题失败');
+        }
+    } catch (error) {
+        console.error('加载练习题失败:', error);
+        ElMessage.error('加载练习题失败，请稍后重试');
+    } finally {
+        exerciseLoading.value = false;
+    }
+};
+
+// 处理页码变化
+const handlePageChange = (newPage) => {
+    currentPage.value = newPage;
+    loadExercises();
+};
+
+// 处理筛选条件变化
+const handleFilterChange = () => {
+    currentPage.value = 1; // 重置页码
+    loadExercises();
+};
+
 // 组件挂载时初始化状态
 onMounted(() => {
   initializeState()
   loadCourses()
+  loadExercises() // 加载练习题数据
 })
 </script>
 
@@ -408,5 +527,75 @@ onMounted(() => {
   .course-cards-row {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   }
+}
+
+/* 练习题相关样式 */
+.exercises-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.filter-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.filter-item {
+  min-width: 200px;
+}
+
+.exercises-list {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.exercise-card {
+  border-radius: 8px;
+  transition: transform 0.2s;
+}
+
+.exercise-card:hover {
+  transform: translateY(-2px);
+}
+
+.exercise-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.exercise-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.exercise-content {
+  color: #666;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.exercise-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #999;
+  font-size: 14px;
+}
+
+.knowledge-point {
+  color: #409EFF;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
 }
 </style> 
