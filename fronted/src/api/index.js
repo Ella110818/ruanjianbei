@@ -18,7 +18,12 @@ const config = ENV[currentEnv];
 export const API_CONFIG = {
     BASE_URL: `${config.API_URL}/${config.API_VERSION}`,
     TIMEOUT: 10000,  // 请求超时时间：10秒
-    withCredentials: false  // 不需要跨域凭证
+    withCredentials: false,  // 不需要跨域凭证
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'ngrok-skip-browser-warning': 'true'  // 添加这个header来跳过ngrok警告
+    }
 };
 
 // 获取当前环境
@@ -165,8 +170,7 @@ export async function login(username, password, role) {
             const response = await fetch(`${API_CONFIG.BASE_URL}/login/`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    ...API_CONFIG.headers,  // 使用默认headers
                 },
                 body: JSON.stringify(loginData)
             });
@@ -340,32 +344,23 @@ export async function getCourses() {
 
     try {
         console.log('===== 获取课程列表开始 =====');
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            console.error('Token不存在');
-            return {
-                code: 1,
-                msg: '未登录或token已过期',
-                data: []
-            };
-        }
-
-        // 检查token格式
-        console.log('Token前20个字符:', token.substring(0, 20) + '...');
-
-        const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        };
-        console.log('请求头信息:', headers);
-
         console.log('请求URL:', `${API_CONFIG.BASE_URL}/courses/`);
         console.log('请求方法: GET');
 
+        const token = TokenManager.getAccessToken();
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'  // 添加这个header来跳过ngrok警告
+        };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
             method: 'GET',
-            headers
+            headers: headers
         });
 
         console.log('响应状态:', response.status);
