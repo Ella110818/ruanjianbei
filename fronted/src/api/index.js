@@ -21,8 +21,7 @@ export const API_CONFIG = {
     withCredentials: false,  // 不需要跨域凭证
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true'  // 添加这个header来跳过ngrok警告
+        'Accept': 'application/json'
     }
 };
 
@@ -57,7 +56,9 @@ export function toggleMockEnvironment() {
 // 获取基础URL
 function getBaseUrl() {
     const env = getEnvironment();
-    return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
+    // 添加bypass-tunnel-reminder参数来跳过ngrok提醒
+    const baseUrl = `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
+    return env === 'production' ? `${baseUrl}?bypass-tunnel-reminder=true` : baseUrl;
 }
 
 // 基础URL配置
@@ -350,8 +351,7 @@ export async function getCourses() {
         const token = TokenManager.getAccessToken();
         const headers = {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'ngrok-skip-browser-warning': 'true'  // 添加这个header来跳过ngrok警告
+            'Accept': 'application/json'
         };
 
         if (token) {
