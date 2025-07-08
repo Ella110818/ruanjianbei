@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://d6e2-218-26-34-121.ngrok-free.app',
+        API_URL: 'https://29c44f27bbdc.ngrok-free.app',
         API_VERSION: 'api'
     }
 };
@@ -632,9 +632,11 @@ export async function generateCourseContent(params) {
     }
 
     try {
+        const token = TokenManager.getAccessToken();
         const response = await fetch(`${API_CONFIG.BASE_URL}/course-content-generation/`, {
             method: 'POST',
             headers: {
+                'Authorization': token ? `Bearer ${token}` : '',
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
@@ -650,21 +652,31 @@ export async function generateCourseContent(params) {
             })
         });
 
+        const responseData = await response.json();
+        console.log('课程内容生成响应:', responseData);
+
         if (!response.ok) {
-            throw new Error(`请求失败: ${response.status}`);
+            return handleHttpError(response, responseData);
         }
 
-        const data = await response.json();
-        return {
-            code: 0,
-            msg: '课程内容生成成功',
-            data: data
-        };
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '课程内容生成成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '生成课程内容失败',
+                data: null
+            };
+        }
     } catch (error) {
         console.error('生成课程内容失败:', error);
         return {
             code: 1,
-            msg: error.message || '生成课程内容失败',
+            msg: error.message || '网络错误，请稍后重试',
             data: null
         };
     }
