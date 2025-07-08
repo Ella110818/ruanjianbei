@@ -21,8 +21,7 @@ export const API_CONFIG = {
     withCredentials: false,  // 不需要跨域凭证
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true'  // 添加 ngrok 跳过警告头
+        'Accept': 'application/json'
     },
     fetchOptions: {
         cache: 'no-store',  // 禁用缓存
@@ -163,7 +162,10 @@ export async function login(username, password, role) {
         try {
             console.log('===== 登录请求开始 =====');
             console.log('登录信息:', { username, role });
-            console.log('登录API地址:', `${API_CONFIG.BASE_URL}/login/`);
+            
+            // 添加 bypass 参数到 URL
+            const loginUrl = `${API_CONFIG.BASE_URL}/login/?bypass-tunnel-reminder=true`;
+            console.log('登录API地址:', loginUrl);
 
             const loginData = {
                 username,
@@ -172,7 +174,7 @@ export async function login(username, password, role) {
             };
             console.log('发送的登录数据:', loginData);
 
-            const response = await fetch(`${API_CONFIG.BASE_URL}/login/`, {
+            const response = await fetch(loginUrl, {
                 method: 'POST',
                 headers: {
                     ...API_CONFIG.headers,  // 使用默认headers
