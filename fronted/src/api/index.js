@@ -152,13 +152,15 @@ export async function login(username, password, role) {
         // 真实API请求
         try {
             console.log('尝试登录:', { username, role });
+            console.log('登录API地址:', `${API_CONFIG.BASE_URL}/login/`);
 
-            const response = await fetch(`${BASE_URL}/login/`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/login/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     username,
                     password,
@@ -167,6 +169,7 @@ export async function login(username, password, role) {
             });
 
             console.log('登录响应状态:', response.status);
+            console.log('登录响应头:', Object.fromEntries(response.headers.entries()));
 
             let responseData;
             try {
@@ -193,6 +196,12 @@ export async function login(username, password, role) {
                 if (TokenManager.isValidToken(access) &&
                     TokenManager.isValidToken(refresh)) {
                     TokenManager.setTokens(access, refresh);
+
+                    // 保存用户信息
+                    localStorage.setItem('user', JSON.stringify({
+                        ...user,
+                        role
+                    }));
 
                     return {
                         code: 0,
@@ -311,6 +320,7 @@ export async function getCourses() {
     try {
         const token = TokenManager.getAccessToken();
         if (!token) {
+            console.error('Token不存在');
             return {
                 code: 1,
                 msg: '未登录或token已过期',
@@ -319,6 +329,7 @@ export async function getCourses() {
         }
 
         console.log('正在请求课程列表:', `${API_CONFIG.BASE_URL}/courses/`);
+        console.log('使用的Token:', token);
 
         const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
             method: 'GET',
@@ -327,11 +338,46 @@ export async function getCourses() {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            credentials: 'include'  // 添加凭证
+            credentials: 'include'
         });
 
         console.log('课程列表响应状态:', response.status);
         console.log('课程列表响应头:', Object.fromEntries(response.headers.entries()));
+
+        // 如果是401或403，尝试刷新token
+        if (response.status === 401 || response.status === 403) {
+            try {
+                const newToken = await refreshToken();
+                // 使用新token重试请求
+                const retryResponse = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${newToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                if (retryResponse.ok) {
+                    const retryData = await retryResponse.json();
+                    return {
+                        code: 0,
+                        msg: '获取课程列表成功',
+                        data: retryData.data.results || []
+                    };
+                }
+            } catch (refreshError) {
+                console.error('刷新token失败:', refreshError);
+                // Token刷新失败，需要重新登录
+                TokenManager.clearTokens();
+                return {
+                    code: 1,
+                    msg: '登录已过期，请重新登录',
+                    data: []
+                };
+            }
+        }
 
         // 检查响应类型
         const contentType = response.headers.get('content-type');
