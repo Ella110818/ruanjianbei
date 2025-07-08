@@ -297,46 +297,42 @@ export async function refreshToken() {
 
 // 通用请求处理函数
 async function handleRequest(url, options = {}) {
-    try {
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                ...API_CONFIG.headers,
-                ...options.headers
-            }
-        });
-
-        if (response.status === 401) {
-            // Token过期，尝试刷新
-            const newToken = await refreshToken();
-            if (newToken) {
-                // 使用新Token重试请求
-                options.headers = {
-                    ...options.headers,
-                    'Authorization': `Bearer ${newToken}`
-                };
-                return handleRequest(url, options);
-            }
-            throw new Error('认证失败');
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...API_CONFIG.headers,
+            ...options.headers
         }
+    });
 
-        const contentType = response.headers.get('content-type');
-        let data;
-
-        if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-        } else {
-            data = await response.text();
+    if (response.status === 401) {
+        // Token过期，尝试刷新
+        const newToken = await refreshToken();
+        if (newToken) {
+            // 使用新Token重试请求
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${newToken}`
+            };
+            return handleRequest(url, options);
         }
-
-        if (!response.ok) {
-            return handleHttpError(response, data);
-        }
-
-        return data;
-    } catch (error) {
-        throw error;
+        throw new Error('认证失败');
     }
+
+    const contentType = response.headers.get('content-type');
+    let data;
+
+    if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+    } else {
+        data = await response.text();
+    }
+
+    if (!response.ok) {
+        return handleHttpError(response, data);
+    }
+
+    return data;
 }
 
 // 获取课程列表
@@ -910,6 +906,77 @@ export async function getKnowledgePoints(params) {
             data: null
         };
     }
+}
+
+// 获取角色权限列表
+export async function getRolePermissions(roleId) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取角色权限成功',
+            data: {
+                permissions: [
+                    {
+                        id: 1,
+                        name: 'create_course',
+                        description: '创建课程'
+                    },
+                    {
+                        id: 2,
+                        name: 'edit_course',
+                        description: '编辑课程'
+                    },
+                    {
+                        id: 3,
+                        name: 'delete_course',
+                        description: '删除课程'
+                    },
+                    {
+                        id: 4,
+                        name: 'view_students',
+                        description: '查看学生列表'
+                    }
+                ]
+            }
+        });
+    }
+
+    const token = TokenManager.getAccessToken();
+    if (!token) {
+        return {
+            code: 1,
+            msg: '请先登录',
+            data: null
+        };
+    }
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}/roles/${roleId}/permissions/`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+        if (response.status === 403) {
+            return {
+                code: 1,
+                msg: '没有权限访问',
+                data: null
+            };
+        }
+        return handleHttpError(response, responseData);
+    }
+
+    return {
+        code: 0,
+        msg: '获取角色权限成功',
+        data: responseData
+    };
 }
 
 // 你可以继续添加其他接口方法，按需mock或真实请求
