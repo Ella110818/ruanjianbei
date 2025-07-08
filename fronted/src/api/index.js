@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://b0642ff316d7.ngrok-free.app?bypass-tunnel-reminder=true',  // 更新为新的ngrok地址并添加bypass参数
+        API_URL: 'https://b0642ff316d7.ngrok-free.app',  // 更新为新的ngrok地址
         API_VERSION: 'api'
     }
 };
@@ -61,9 +61,14 @@ export function toggleMockEnvironment() {
 // 获取基础URL
 function getBaseUrl() {
     const env = getEnvironment();
-    // 添加bypass-tunnel-reminder参数来跳过ngrok提醒
     const baseUrl = `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
-    return env === 'production' ? `${baseUrl}?bypass-tunnel-reminder=true` : baseUrl;
+    // 只在生产环境添加 bypass 参数，并确保它在路径之后
+    if (env === 'production') {
+        // 检查是否已经有查询参数
+        const hasQuery = baseUrl.includes('?');
+        return `${baseUrl}${hasQuery ? '&' : '?'}bypass-tunnel-reminder=true`;
+    }
+    return baseUrl;
 }
 
 // 基础URL配置
