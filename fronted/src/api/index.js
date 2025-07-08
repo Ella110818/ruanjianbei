@@ -340,6 +340,7 @@ export async function getCourses() {
     }
 
     try {
+        console.log('===== 获取课程列表开始 =====');
         const token = TokenManager.getAccessToken();
         if (!token) {
             console.error('Token不存在');
@@ -350,21 +351,41 @@ export async function getCourses() {
             };
         }
 
-        console.log('正在请求课程列表:', `${API_CONFIG.BASE_URL}/courses/`);
-        console.log('使用的Token:', token);
+        // 检查token格式
+        console.log('Token前20个字符:', token.substring(0, 20) + '...');
+
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
+        console.log('请求头信息:', headers);
+
+        console.log('请求URL:', `${API_CONFIG.BASE_URL}/courses/`);
+        console.log('请求方法: GET');
+        console.log('请求模式: credentials=include');
 
         const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers,
             credentials: 'include'
         });
 
-        console.log('课程列表响应状态:', response.status);
-        console.log('课程列表响应头:', Object.fromEntries(response.headers.entries()));
+        console.log('响应状态:', response.status);
+        console.log('响应头:', Object.fromEntries(response.headers.entries()));
+
+        // 如果是401或403，输出更多信息
+        if (response.status === 401 || response.status === 403) {
+            console.log('认证失败，详细信息：');
+            console.log('- 当前token是否存在:', !!token);
+            console.log('- Authorization头:', headers.Authorization);
+            try {
+                const errorData = await response.json();
+                console.log('- 错误响应:', errorData);
+            } catch (e) {
+                console.log('- 无法解析错误响应:', e);
+            }
+        }
 
         // 如果是401或403，尝试刷新token
         if (response.status === 401 || response.status === 403) {
