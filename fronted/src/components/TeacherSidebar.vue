@@ -29,6 +29,12 @@
          @click.prevent="selectSide('lesson-prep', '/teacher/ai')">
         备课助手
       </a>
+      <!-- 添加练习题入口 -->
+      <a href="#" 
+         :class="{active: currentTab === 'exercises'}" 
+         @click.prevent="selectSide('exercises', '/teacher/exercises')">
+        练习题库
+      </a>
     </nav>
   </aside>
 </template>
