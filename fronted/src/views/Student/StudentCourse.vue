@@ -84,6 +84,126 @@
               </div>
             </el-card>
           </div>
+
+          <!-- 添加答案列表展示 -->
+          <div class="answers-section">
+            <div class="section-header">
+              <h3>我的答题记录</h3>
+              <div class="header-actions">
+                <el-input
+                  v-model="answerSearchText"
+                  placeholder="搜索答题记录"
+                  prefix-icon="Search"
+                  clearable
+                  style="width: 200px;"
+                />
+              </div>
+            </div>
+
+            <el-table
+              v-loading="loading"
+              :data="filteredAnswers"
+              style="width: 100%"
+              border
+              stripe
+            >
+              <el-table-column prop="exercise_id" label="题目ID" width="100" align="center" />
+              <el-table-column label="答案内容" min-width="300">
+                <template #default="scope">
+                  <div class="answer-content">
+                    <el-tooltip
+                      :content="scope.row.answer_content"
+                      placement="top"
+                      :show-after="1000"
+                    >
+                      <span>{{ scope.row.answer_content }}</span>
+                    </el-tooltip>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="score" label="得分" width="100" align="center">
+                <template #default="scope">
+                  <span :class="getScoreClass(scope.row.score)">
+                    {{ scope.row.score || '未批改' }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column label="正确性" width="100" align="center">
+                <template #default="scope">
+                  <el-tag :type="scope.row.is_correct ? 'success' : 'danger'" effect="light">
+                    {{ scope.row.is_correct ? '正确' : '错误' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="submitted_at" label="提交时间" width="180" align="center">
+                <template #default="scope">
+                  {{ formatDate(scope.row.submitted_at) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150" align="center">
+                <template #default="scope">
+                  <el-button
+                    link
+                    type="primary"
+                    @click="viewAnswerDetail(scope.row)"
+                  >
+                    查看详情
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pagination-container">
+              <el-pagination
+                v-model:current-page="currentPage"
+                v-model:page-size="pageSize"
+                :page-sizes="[10, 20, 50, 100]"
+                :total="total"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+              />
+            </div>
+          </div>
+
+          <!-- 答案详情对话框 -->
+          <el-dialog
+            v-model="answerDetailVisible"
+            title="答案详情"
+            width="600px"
+          >
+            <div v-if="selectedAnswer" class="answer-detail">
+              <div class="detail-item">
+                <label>题目ID：</label>
+                <span>{{ selectedAnswer.exercise_id }}</span>
+              </div>
+              <div class="detail-item">
+                <label>答案内容：</label>
+                <p>{{ selectedAnswer.answer_content }}</p>
+              </div>
+              <div class="detail-item">
+                <label>得分：</label>
+                <span :class="getScoreClass(selectedAnswer.score)">
+                  {{ selectedAnswer.score || '未批改' }}
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>正确性：</label>
+                <el-tag :type="selectedAnswer.is_correct ? 'success' : 'danger'" effect="light">
+                  {{ selectedAnswer.is_correct ? '正确' : '错误' }}
+                </el-tag>
+              </div>
+              <div class="detail-item">
+                <label>提交时间：</label>
+                <span>{{ formatDate(selectedAnswer.submitted_at) }}</span>
+              </div>
+              <div class="detail-item">
+                <label>教师反馈：</label>
+                <p>{{ selectedAnswer.feedback || '暂无反馈' }}</p>
+              </div>
+            </div>
+          </el-dialog>
+
         </div>
       </el-tab-pane>
       <el-tab-pane label="成绩单" name="grade">
@@ -834,6 +954,61 @@ watch([currentPage, pageSize], () => {
 onMounted(() => {
   fetchStudentAnswers();
 });
+
+// 答案列表相关
+const answerSearchText = ref('');
+const answerDetailVisible = ref(false);
+const selectedAnswer = ref(null);
+
+// 过滤后的答案列表
+const filteredAnswers = computed(() => {
+  if (!answerSearchText.value) {
+    return studentAnswers.value;
+  }
+  const searchQuery = answerSearchText.value.toLowerCase();
+  return studentAnswers.value.filter(answer => 
+    answer.answer_content.toLowerCase().includes(searchQuery) ||
+    String(answer.exercise_id).includes(searchQuery)
+  );
+});
+
+// 查看答案详情
+const viewAnswerDetail = (answer) => {
+  selectedAnswer.value = answer;
+  answerDetailVisible.value = true;
+};
+
+// 格式化日期
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+// 获取分数样式
+const getScoreClass = (score) => {
+  if (!score && score !== 0) return 'score-pending';
+  if (score >= 90) return 'score-excellent';
+  if (score >= 80) return 'score-good';
+  if (score >= 60) return 'score-pass';
+  return 'score-fail';
+};
+
+// 分页处理
+const handleSizeChange = (val) => {
+  pageSize.value = val;
+  currentPage.value = 1;
+};
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val;
+};
 </script>
 
 <style scoped>
@@ -1437,5 +1612,106 @@ onMounted(() => {
 :deep(.el-button--small) {
   padding: 4px 8px;
   font-size: 12px;
+}
+
+.answers-section {
+  margin-top: 30px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.answer-content {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.answer-detail {
+  padding: 20px;
+}
+
+.detail-item {
+  margin-bottom: 16px;
+}
+
+.detail-item label {
+  font-weight: bold;
+  color: #606266;
+  margin-right: 8px;
+}
+
+.detail-item p {
+  margin: 8px 0;
+  line-height: 1.6;
+  color: #303133;
+}
+
+.score-excellent {
+  color: #67c23a;
+  font-weight: bold;
+}
+
+.score-good {
+  color: #409eff;
+  font-weight: bold;
+}
+
+.score-pass {
+  color: #e6a23c;
+  font-weight: bold;
+}
+
+.score-fail {
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+.score-pending {
+  color: #909399;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+:deep(.el-table) {
+  background: transparent;
+}
+
+:deep(.el-table th) {
+  background-color: #f5f7fa;
+  color: #606266;
+  font-weight: 500;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td) {
+  background: rgba(250, 250, 250, 0.5);
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td) {
+  background-color: rgba(236, 245, 255, 0.5);
 }
 </style>
