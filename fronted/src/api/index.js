@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://29c44f27bbdc.ngrok-free.app',
+        API_URL: 'https://d6e2-218-26-34-121.ngrok-free.app',  // 更新为新的ngrok地址
         API_VERSION: 'api'
     }
 };
@@ -18,7 +18,7 @@ const config = ENV[currentEnv];
 export const API_CONFIG = {
     BASE_URL: `${config.API_URL}/${config.API_VERSION}`,
     TIMEOUT: 10000,  // 请求超时时间：10秒
-    withCredentials: true  // 允许跨域请求携带凭证
+    withCredentials: false  // 不需要跨域凭证
 };
 
 // 获取当前环境
