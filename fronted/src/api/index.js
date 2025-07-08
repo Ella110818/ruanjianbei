@@ -21,7 +21,8 @@ export const API_CONFIG = {
     withCredentials: false,  // 不需要跨域凭证
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'ngrok-skip-browser-warning': 'true'  // 添加 ngrok 跳过警告头
     },
     fetchOptions: {
         cache: 'no-store',  // 禁用缓存
