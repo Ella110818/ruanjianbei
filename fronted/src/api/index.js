@@ -23,8 +23,7 @@ export const API_CONFIG = {
     withCredentials: false,  // 不需要跨域凭证
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true'  // 添加ngrok跳过警告的请求头
+        'Accept': 'application/json'
     },
     fetchOptions: {
         cache: 'no-store',  // 禁用缓存
@@ -696,7 +695,7 @@ export async function generateCourseContent(params) {
 
     try {
         const token = TokenManager.getAccessToken();
-        const response = await fetch(`${API_CONFIG.BASE_URL}/course-content-generation/`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/course-generate/`, {
             method: 'POST',
             headers: {
                 'Authorization': token ? `Bearer ${token}` : '',
