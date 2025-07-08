@@ -151,8 +151,16 @@ export async function login(username, password, role) {
     } else {
         // 真实API请求
         try {
-            console.log('尝试登录:', { username, role });
+            console.log('===== 登录请求开始 =====');
+            console.log('登录信息:', { username, role });
             console.log('登录API地址:', `${API_CONFIG.BASE_URL}/login/`);
+
+            const loginData = {
+                username,
+                password,
+                role
+            };
+            console.log('发送的登录数据:', loginData);
 
             const response = await fetch(`${API_CONFIG.BASE_URL}/login/`, {
                 method: 'POST',
@@ -161,11 +169,7 @@ export async function login(username, password, role) {
                     'Accept': 'application/json'
                 },
                 credentials: 'include',
-                body: JSON.stringify({
-                    username,
-                    password,
-                    role
-                })
+                body: JSON.stringify(loginData)
             });
 
             console.log('登录响应状态:', response.status);
@@ -185,38 +189,55 @@ export async function login(username, password, role) {
             }
 
             if (!response.ok) {
+                console.error('登录失败:', responseData);
                 return handleHttpError(response, responseData);
             }
 
             // 检查响应是否成功
             if (responseData.success && responseData.status_code === 200 && responseData.data) {
                 const { access, refresh, user } = responseData.data;
+                console.log('获取到的Token信息:', {
+                    access: access ? '存在' : '不存在',
+                    refresh: refresh ? '存在' : '不存在'
+                });
 
                 // 验证并保存token
                 if (TokenManager.isValidToken(access) &&
                     TokenManager.isValidToken(refresh)) {
+                    console.log('Token验证通过，准备保存');
                     TokenManager.setTokens(access, refresh);
 
                     // 保存用户信息
-                    localStorage.setItem('user', JSON.stringify({
+                    const userInfo = {
                         ...user,
                         role
-                    }));
+                    };
+                    localStorage.setItem('user', JSON.stringify(userInfo));
+                    console.log('用户信息已保存:', userInfo);
 
+                    // 验证token是否正确保存
+                    const savedToken = TokenManager.getAccessToken();
+                    const savedRefreshToken = TokenManager.getRefreshToken();
+                    console.log('Token保存状态:', {
+                        accessToken: savedToken ? '已保存' : '未保存',
+                        refreshToken: savedRefreshToken ? '已保存' : '未保存'
+                    });
+
+                    console.log('===== 登录成功 =====');
                     return {
                         code: 0,
                         msg: '登录成功',
                         data: {
                             token: access,
                             refreshToken: refresh,
-                            user: {
-                                ...user,
-                                role
-                            }
+                            user: userInfo
                         }
                     };
                 } else {
-                    console.error('Token格式无效:', responseData);
+                    console.error('Token格式验证失败:', {
+                        access: !!access,
+                        refresh: !!refresh
+                    });
                     return {
                         code: 1,
                         msg: 'Token格式无效',
@@ -224,6 +245,7 @@ export async function login(username, password, role) {
                     };
                 }
             } else {
+                console.error('登录响应格式错误:', responseData);
                 return {
                     code: 1,
                     msg: responseData.message || '登录失败',
