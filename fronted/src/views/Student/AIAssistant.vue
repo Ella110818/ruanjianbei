@@ -229,7 +229,7 @@ const generateSessionId = () => {
 const generateQuestions = async (input) => {
   try {
     loading.value = true;
-    const response = await fetch(`${API_CONFIG.BASE_URL}/question-generation/`, {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/questions-generate/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
