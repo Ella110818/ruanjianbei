@@ -684,114 +684,57 @@ export async function generateCourseContent(params) {
             msg: '课程内容生成成功',
             data: {
                 id: 1,
-                title: params.course_name,
-                description: params.course_description,
-                subject: params.subject,
-                grade_level: params.grade_level,
+                title: 'Python编程基础',
+                description: 'Python入门课程',
+                subject: 'Python编程',
+                grade_level: '大学一年级',
                 created_at: new Date().toISOString()
             }
         });
     }
 
     try {
-        console.log('===== 生成课程内容开始 =====');
-        
-        // 获取并验证token
         const token = TokenManager.getAccessToken();
-        console.log('当前token状态:', token ? '存在' : '不存在');
-        
         if (!token) {
-            console.error('Token不存在，尝试从localStorage直接获取');
-            const localToken = localStorage.getItem('token');
-            if (localToken) {
-                console.log('从localStorage获取到token');
-                TokenManager.setTokens(localToken, null);
-            } else {
-                throw new Error('未找到有效的登录凭证，请重新登录');
-            }
+            throw new Error('请先登录');
         }
 
-        // 构建请求头
-        const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        };
-        console.log('请求头:', headers);
-
-        // 构建请求体
+        // 使用固定的简单参数
         const requestBody = {
-            course_name: params.course_name,
-            chapter_count: params.chapter_count || 5,  // 默认改为5章
-            course_description: params.course_description,
-            subject: params.subject,
-            grade_level: params.grade_level,
-            additional_requirements: params.additional_requirements,
-            chatInput: params.chatInput,
-            sessionId: params.sessionId || 'default-session'
+            course_name: 'Python编程基础',
+            course_description: 'Python入门课程',
+            subject: 'Python编程',
+            grade_level: '大学一年级',
+            chapter_count: 5
         };
-        console.log('请求参数:', requestBody);
 
-        // 发送请求
-        const url = `${API_CONFIG.BASE_URL}/course-generate/`;
-        console.log('请求URL:', url);
-        
-        const response = await fetch(url, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/course-generate/`, {
             method: 'POST',
-            headers: headers,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
             body: JSON.stringify(requestBody)
         });
 
-        console.log('响应状态:', response.status);
-        console.log('响应头:', Object.fromEntries(response.headers.entries()));
-
         const responseData = await response.json();
-        console.log('响应数据:', responseData);
+        console.log('课程内容生成响应:', responseData);
 
         if (!response.ok) {
             if (response.status === 403) {
-                // 尝试刷新token
-                try {
-                    console.log('尝试刷新token...');
-                    const newToken = await refreshToken();
-                    if (newToken) {
-                        console.log('token刷新成功，重试请求');
-                        headers.Authorization = `Bearer ${newToken}`;
-                        const retryResponse = await fetch(url, {
-                            method: 'POST',
-                            headers: headers,
-                            body: JSON.stringify(requestBody)
-                        });
-                        
-                        if (retryResponse.ok) {
-                            const retryData = await retryResponse.json();
-                            if (retryData.success && retryData.status_code === 200) {
-                                return {
-                                    code: 0,
-                                    msg: '课程内容生成成功',
-                                    data: retryData.data
-                                };
-                            }
-                        }
-                    }
-                } catch (refreshError) {
-                    console.error('token刷新失败:', refreshError);
-                    TokenManager.clearTokens();
-                    throw new Error('登录已过期，请重新登录');
-                }
+                throw new Error('没有权限，请确保已登录');
             }
             return handleHttpError(response, responseData);
         }
 
         if (responseData.success && responseData.status_code === 200) {
-            console.log('===== 生成课程内容成功 =====');
             return {
                 code: 0,
                 msg: '课程内容生成成功',
                 data: responseData.data
             };
         } else {
-            console.error('生成课程内容失败:', responseData);
             return {
                 code: 1,
                 msg: responseData.message || '生成课程内容失败',
