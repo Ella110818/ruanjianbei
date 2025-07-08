@@ -377,12 +377,13 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, nextTick, onUnmounted } from 'vue';
+import { onMounted, ref, computed, nextTick, onUnmounted, watch } from 'vue';
 import * as echarts from 'echarts';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Document, User, Location, Download, Upload, Folder, Collection, VideoPlay, Files, More, UploadFilled } from '@element-plus/icons-vue';
 import StudentHeader from '@/components/StudentHeader.vue';
+import { getStudentAnswers, submitStudentAnswer } from '@/api'
 
 const route = useRoute();
 const courseId = computed(() => {
@@ -769,6 +770,70 @@ const formatFileSize = (bytes) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
+
+// 在 script setup 中添加
+const studentAnswers = ref([]);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+const loading = ref(false);
+
+// 获取学生答案列表
+const fetchStudentAnswers = async () => {
+  try {
+    loading.value = true;
+    const params = {
+      page: currentPage.value,
+      page_size: pageSize.value,
+      student_id: localStorage.getItem('userId') // 从localStorage获取学生ID
+    };
+
+    const response = await getStudentAnswers(params);
+    if (response.code === 0 && response.data) {
+      studentAnswers.value = response.data.results;
+      total.value = response.data.count;
+    } else {
+      ElMessage.error(response.msg || '获取答案列表失败');
+    }
+  } catch (error) {
+    console.error('获取答案列表失败:', error);
+    ElMessage.error('获取答案列表失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 提交答案
+const submitAnswer = async (exerciseId, answerContent) => {
+  try {
+    const data = {
+      exercise_id: exerciseId,
+      answer_content: answerContent,
+      student_id: localStorage.getItem('userId')
+    };
+
+    const response = await submitStudentAnswer(data);
+    if (response.code === 0) {
+      ElMessage.success('提交答案成功');
+      await fetchStudentAnswers(); // 刷新答案列表
+    } else {
+      ElMessage.error(response.msg || '提交答案失败');
+    }
+  } catch (error) {
+    console.error('提交答案失败:', error);
+    ElMessage.error('提交答案失败');
+  }
+};
+
+// 监听分页变化
+watch([currentPage, pageSize], () => {
+  fetchStudentAnswers();
+});
+
+// 在组件挂载时获取答案列表
+onMounted(() => {
+  fetchStudentAnswers();
+});
 </script>
 
 <style scoped>
