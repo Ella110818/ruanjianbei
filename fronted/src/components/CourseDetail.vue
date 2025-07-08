@@ -473,7 +473,7 @@ import * as echarts from 'echarts'
 import { useRoute } from 'vue-router'
 import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { mockCourseDetail } from '@/mock/courseData'
-import { checkAndSetMockEnvironment, getCourseDetail } from '@/api'
+import { checkAndSetMockEnvironment, getCourseDetail, getCoursewareList } from '@/api'
 
 // 声明 gradeChart 变量
 let gradeChart = null;
@@ -832,17 +832,15 @@ const handleRowClick = (row) => {
 
 const handleDownload = async (file) => {
   try {
-    ElMessage.info(`正在准备下载文件：${file.name}...`)
-    // TODO: Add download logic
-    console.log('Downloading file:', {
-      id: file.id,
-      name: file.name,
-      type: file.type
-    })
-    ElMessage.success('下载成功')
+    if (file.file_url) {
+      window.open(file.file_url, '_blank');
+      ElMessage.success('开始下载文件');
+    } else {
+      ElMessage.error('文件链接不存在');
+    }
   } catch (error) {
-    console.error('下载失败:', error)
-    ElMessage.error(`下载失败: ${error.message || '未知错误'}`)
+    console.error('下载失败:', error);
+    ElMessage.error(`下载失败: ${error.message || '未知错误'}`);
   }
 }
 
@@ -960,23 +958,44 @@ const formatFileSize = (bytes) => {
 
 const fetchResources = async () => {
   try {
-    // TODO: Add API call to fetch resources
-    resources.value = [
-      {
-        id: 1,
-        name: '示例文档.pdf',
-        type: 'document',
-        size: 1024 * 1024, // 1MB
-        uploadTime: '2024-03-15 14:30',
-        uploader: '张老师'
-      },
-      // Add more mock data as needed
-    ]
+    const params = {
+      search: resourceSearchText.value || '',
+      ordering: '1',
+      page: currentPage.value
+    };
+
+    const response = await getCoursewareList(params);
+    if (response.code === 0 && response.data) {
+      resources.value = response.data.results.map(item => ({
+        id: item.id,
+        name: item.title,
+        type: 'courseware',
+        size: 0, // 如果API返回文件大小则使用实际值
+        uploadTime: item.created_at,
+        uploader: item.creator || '未知',
+        description: item.description,
+        file_url: item.file_url
+      }));
+      total.value = response.data.count || 0;
+    } else {
+      ElMessage.error(response.msg || '获取课件列表失败');
+    }
   } catch (error) {
-    console.error('获取资源列表失败:', error)
-    ElMessage.error('获取资源列表失败')
+    console.error('获取课件列表失败:', error);
+    ElMessage.error('获取课件列表失败');
   }
 }
+
+// 监听搜索文本变化
+watch(resourceSearchText, debounce(() => {
+  currentPage.value = 1;
+  fetchResources();
+}, 500));
+
+// 监听分页变化
+watch([currentPage, pageSize], () => {
+  fetchResources();
+});
 </script>
 
 <style lang="scss" scoped>

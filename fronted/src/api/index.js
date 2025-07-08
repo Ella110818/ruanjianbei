@@ -1028,5 +1028,74 @@ export async function getRolePermissions(roleId) {
     };
 }
 
+// 获取课件列表
+export async function getCoursewareList(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取课件列表成功',
+            data: {
+                count: 10,
+                results: Array(10).fill().map((_, index) => ({
+                    id: index + 1,
+                    title: `示例课件 ${index + 1}`,
+                    description: '这是一个示例课件',
+                    file_url: 'https://example.com/file.pdf',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }))
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('请先登录');
+        }
+
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.ordering) queryParams.append('ordering', params.ordering);
+        if (params.page) queryParams.append('page', params.page);
+
+        const coursewareUrl = `${API_CONFIG.BASE_URL}/courseware/by_course/?${queryParams.toString()}`;
+        console.log('获取课件列表请求URL:', coursewareUrl);
+
+        const response = await fetch(coursewareUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('课件列表响应数据:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('没有权限，请确保已登录');
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取课件列表成功',
+            data: responseData
+        };
+    } catch (error) {
+        console.error('获取课件列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
 // 你可以继续添加其他接口方法，按需mock或真实请求
 
