@@ -23,7 +23,8 @@ export const API_CONFIG = {
     withCredentials: false,  // 不需要跨域凭证
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'ngrok-skip-browser-warning': 'true'  // 添加ngrok跳过警告的请求头
     },
     fetchOptions: {
         cache: 'no-store',  // 禁用缓存
@@ -164,8 +165,7 @@ export async function login(username, password, role) {
             console.log('===== 登录请求开始 =====');
             console.log('登录信息:', { username, role });
 
-            // 构建登录URL并添加bypass参数
-            const loginUrl = addBypassParam(`${API_CONFIG.BASE_URL}/login/`);
+            const loginUrl = `${API_CONFIG.BASE_URL}/login/`;
             console.log('登录API地址:', loginUrl);
 
             const loginData = {
@@ -352,17 +352,14 @@ export async function getCourses() {
     try {
         const token = TokenManager.getAccessToken();
         const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            ...API_CONFIG.headers
         };
 
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-
-        // 构建课程URL并添加bypass参数
-        const coursesUrl = addBypassParam(`${API_CONFIG.BASE_URL}/courses/`);
         
+        const coursesUrl = `${API_CONFIG.BASE_URL}/courses/`;
         console.log('发起请求:', {
             url: coursesUrl,
             method: 'GET',
