@@ -97,7 +97,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { getExercises, getKnowledgePoints, getCourses } from '@/api'
+import { getExercises, getKnowledgePoints, getCourseList } from '@/api'
 import { ElMessage } from 'element-plus'
 
 // 状态管理
@@ -162,7 +162,7 @@ const loadKnowledgePoints = async () => {
 // 加载课程列表
 const loadCourses = async () => {
   try {
-    const response = await getCourses()
+    const response = await getCourseList()
     if (response.code === 0) {
       courses.value = response.data
     }
