@@ -365,13 +365,16 @@ export async function getCourses() {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
+        // 构建URL并添加bypass参数
+        const coursesUrl = addBypassParam(`${API_CONFIG.BASE_URL}/courses/`);
+        
         console.log('发起请求:', {
-            url: `${API_CONFIG.BASE_URL}/courses/`,
+            url: coursesUrl,
             method: 'GET',
             headers: headers
         });
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
+        const response = await fetch(coursesUrl, {
             method: 'GET',
             headers: headers,
             cache: 'no-store'  // 禁用缓存
@@ -442,7 +445,10 @@ export async function getCourseDetail(courseId) {
             throw new Error('No access token available');
         }
 
-        const response = await fetch(`${BASE_URL}/courses/${courseId}/`, {
+        // 构建URL并添加bypass参数
+        const courseDetailUrl = addBypassParam(`${API_CONFIG.BASE_URL}/courses/${courseId}/`);
+
+        const response = await fetch(courseDetailUrl, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
