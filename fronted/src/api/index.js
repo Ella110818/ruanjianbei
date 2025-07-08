@@ -311,20 +311,43 @@ export async function getCourses() {
     try {
         const token = TokenManager.getAccessToken();
         if (!token) {
-            throw new Error('No access token available');
+            return {
+                code: 1,
+                msg: '未登录或token已过期',
+                data: []
+            };
         }
 
-        const response = await fetch(`${BASE_URL}/courses/`, {
+        console.log('正在请求课程列表:', `${API_CONFIG.BASE_URL}/courses/`);
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'include'  // 添加凭证
         });
 
+        console.log('课程列表响应状态:', response.status);
+        console.log('课程列表响应头:', Object.fromEntries(response.headers.entries()));
+
+        // 检查响应类型
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            console.error('响应不是JSON格式:', contentType);
+            const text = await response.text();
+            console.error('响应内容:', text);
+            return {
+                code: 1,
+                msg: '服务器响应格式错误',
+                data: []
+            };
+        }
+
         const responseData = await response.json();
-        console.log('课程列表响应:', responseData);
+        console.log('课程列表响应数据:', responseData);
 
         if (!response.ok) {
             return handleHttpError(response, responseData);
