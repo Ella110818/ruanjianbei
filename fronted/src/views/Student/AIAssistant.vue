@@ -216,8 +216,8 @@ const questionConfig = ref({
 const currentConfig = ref({
   knowledgePointIds: [1],  // 默认选择第一个知识点
   selectedTypes: ['single_choice'],  // 默认单选题
-  quantity: 10,  // 默认10题
-  difficulty: 3  // 默认中等难度
+  quantity: 1,  // 改为1题
+  difficulty: 1  // 改为最简单难度
 })
 
 // 生成唯一的会话ID
@@ -235,10 +235,10 @@ const generateQuestions = async (input) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        knowledge_point_ids: currentConfig.value.knowledgePointIds,
-        question_types: currentConfig.value.selectedTypes,
-        quantity: currentConfig.value.quantity,
-        difficulty: currentConfig.value.difficulty,
+        knowledge_point_ids: [1],  // 固定使用基础知识点
+        question_types: ['single_choice'],  // 固定使用单选题
+        quantity: 1,  // 固定生成1题
+        difficulty: 1,  // 固定使用最简单难度
         chatInput: input,
         sessionId: generateSessionId()
       })
