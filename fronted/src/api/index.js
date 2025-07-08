@@ -1097,5 +1097,132 @@ export async function getCoursewareList(params = {}) {
     }
 }
 
+// 获取学生答案列表
+export async function getStudentAnswers(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取学生答案成功',
+            data: {
+                count: 10,
+                results: Array(10).fill().map((_, index) => ({
+                    id: index + 1,
+                    student_id: 1,
+                    exercise_id: index + 1,
+                    answer_content: '示例答案内容',
+                    score: Math.floor(Math.random() * 100),
+                    feedback: '答案反馈',
+                    submitted_at: new Date().toISOString(),
+                    is_correct: Math.random() > 0.5
+                }))
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('请先登录');
+        }
+
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.student_id) queryParams.append('student_id', params.student_id);
+        if (params.exercise_id) queryParams.append('exercise_id', params.exercise_id);
+        if (params.page) queryParams.append('page', params.page);
+        if (params.page_size) queryParams.append('page_size', params.page_size);
+
+        const answersUrl = `${API_CONFIG.BASE_URL}/student-answers/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+        console.log('获取学生答案请求URL:', answersUrl);
+
+        const response = await fetch(answersUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('学生答案响应数据:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('没有权限，请确保已登录');
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取学生答案成功',
+            data: responseData
+        };
+    } catch (error) {
+        console.error('获取学生答案失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 提交学生答案
+export async function submitStudentAnswer(data) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '提交答案成功',
+            data: {
+                id: Date.now(),
+                ...data,
+                submitted_at: new Date().toISOString()
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('请先登录');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/student-answers/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const responseData = await response.json();
+        console.log('提交答案响应:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('没有权限，请确保已登录');
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '提交答案成功',
+            data: responseData
+        };
+    } catch (error) {
+        console.error('提交答案失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
 // 你可以继续添加其他接口方法，按需mock或真实请求
 
