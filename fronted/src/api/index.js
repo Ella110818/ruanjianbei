@@ -13,9 +13,6 @@ const ENV = {
 // 获取基础URL
 function getBaseUrl() {
     const env = getEnvironment();
-    if (env === 'production') {
-        return `${ENV[env].API_URL}?bypass-tunnel-reminder=true/${ENV[env].API_VERSION}`;
-    }
     return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
 }
 
@@ -362,14 +359,17 @@ export async function getCourses() {
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
+
+        // 构建课程URL并添加bypass参数
+        const coursesUrl = addBypassParam(`${API_CONFIG.BASE_URL}/courses/`);
         
         console.log('发起请求:', {
-            url: `${API_CONFIG.BASE_URL}/courses/`,
+            url: coursesUrl,
             method: 'GET',
             headers: headers
         });
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
+        const response = await fetch(coursesUrl, {
             method: 'GET',
             headers: headers,
             cache: 'no-store'  // 禁用缓存
