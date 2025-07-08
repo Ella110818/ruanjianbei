@@ -13,10 +13,8 @@ const ENV = {
 // 获取基础URL
 function getBaseUrl() {
     const env = getEnvironment();
-    // 构建基础API URL
     if (env === 'production') {
-        // 生产环境：先构建完整的API路径，然后添加bypass参数
-        return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
+        return `${ENV[env].API_URL}?bypass-tunnel-reminder=true/${ENV[env].API_VERSION}`;
     }
     return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
 }
@@ -168,7 +166,7 @@ export async function login(username, password, role) {
         try {
             console.log('===== 登录请求开始 =====');
             console.log('登录信息:', { username, role });
-            
+
             // 构建登录URL并添加bypass参数
             const loginUrl = addBypassParam(`${API_CONFIG.BASE_URL}/login/`);
             console.log('登录API地址:', loginUrl);
@@ -364,17 +362,14 @@ export async function getCourses() {
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-
-        // 构建URL并添加bypass参数
-        const coursesUrl = addBypassParam(`${API_CONFIG.BASE_URL}/courses/`);
         
         console.log('发起请求:', {
-            url: coursesUrl,
+            url: `${API_CONFIG.BASE_URL}/courses/`,
             method: 'GET',
             headers: headers
         });
 
-        const response = await fetch(coursesUrl, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
             method: 'GET',
             headers: headers,
             cache: 'no-store'  // 禁用缓存
