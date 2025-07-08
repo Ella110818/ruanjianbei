@@ -168,7 +168,6 @@ export async function login(username, password, role) {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                credentials: 'include',
                 body: JSON.stringify(loginData)
             });
 
@@ -363,12 +362,10 @@ export async function getCourses() {
 
         console.log('请求URL:', `${API_CONFIG.BASE_URL}/courses/`);
         console.log('请求方法: GET');
-        console.log('请求模式: credentials=include');
 
         const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
             method: 'GET',
-            headers,
-            credentials: 'include'
+            headers
         });
 
         console.log('响应状态:', response.status);
@@ -379,27 +376,24 @@ export async function getCourses() {
             console.log('认证失败，详细信息：');
             console.log('- 当前token是否存在:', !!token);
             console.log('- Authorization头:', headers.Authorization);
+            const errorText = await response.text();
+            console.log('- 错误响应:', errorText);
             try {
-                const errorData = await response.json();
-                console.log('- 错误响应:', errorData);
+                const errorData = JSON.parse(errorText);
+                console.log('- 解析后的错误响应:', errorData);
             } catch (e) {
-                console.log('- 无法解析错误响应:', e);
+                console.log('- 无法解析错误响应为JSON');
             }
-        }
-
-        // 如果是401或403，尝试刷新token
-        if (response.status === 401 || response.status === 403) {
+            // 如果是401或403，尝试刷新token
             try {
                 const newToken = await refreshToken();
                 // 使用新token重试请求
                 const retryResponse = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${newToken}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'include'
+                        ...headers,
+                        'Authorization': `Bearer ${newToken}`
+                    }
                 });
 
                 if (retryResponse.ok) {
@@ -412,7 +406,6 @@ export async function getCourses() {
                 }
             } catch (refreshError) {
                 console.error('刷新token失败:', refreshError);
-                // Token刷新失败，需要重新登录
                 TokenManager.clearTokens();
                 return {
                     code: 1,
