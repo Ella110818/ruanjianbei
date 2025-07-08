@@ -61,14 +61,7 @@ export function toggleMockEnvironment() {
 // 获取基础URL
 function getBaseUrl() {
     const env = getEnvironment();
-    const baseUrl = `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
-    // 只在生产环境添加 bypass 参数，并确保它在路径之后
-    if (env === 'production') {
-        // 检查是否已经有查询参数
-        const hasQuery = baseUrl.includes('?');
-        return `${baseUrl}${hasQuery ? '&' : '?'}bypass-tunnel-reminder=true`;
-    }
-    return baseUrl;
+    return `${ENV[env].API_URL}/${ENV[env].API_VERSION}`;
 }
 
 // 基础URL配置
