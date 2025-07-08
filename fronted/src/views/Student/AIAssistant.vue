@@ -114,6 +114,55 @@
             </div>
           </el-card>
         </div>
+
+        <!-- 添加配置面板 -->
+        <div class="config-panel" v-if="showChat">
+          <el-form :model="currentConfig" label-width="100px">
+            <el-form-item label="知识点">
+              <el-select v-model="currentConfig.knowledgePointIds" multiple placeholder="选择知识点">
+                <el-option
+                  v-for="point in questionConfig.knowledgePoints"
+                  :key="point.id"
+                  :label="point.name"
+                  :value="point.id"
+                />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item label="题目类型">
+              <el-select v-model="currentConfig.selectedTypes" multiple placeholder="选择题目类型">
+                <el-option
+                  v-for="type in questionConfig.questionTypes"
+                  :key="type.value"
+                  :label="type.label"
+                  :value="type.value"
+                />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item label="题目数量">
+              <el-select v-model="currentConfig.quantity" placeholder="选择题目数量">
+                <el-option
+                  v-for="qty in questionConfig.quantities"
+                  :key="qty.value"
+                  :label="qty.label"
+                  :value="qty.value"
+                />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item label="难度等级">
+              <el-select v-model="currentConfig.difficulty" placeholder="选择难度等级">
+                <el-option
+                  v-for="diff in questionConfig.difficulties"
+                  :key="diff.value"
+                  :label="diff.label"
+                  :value="diff.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </div>
       </div>
       <div class="environment-status">
         当前环境: {{ currentEnvironment }}
@@ -137,6 +186,45 @@ const currentEnvironment = ref('生产API')
 const exporting = ref(false)
 const sessionId = ref('user-session-1') // 使用与生成问题时相同的sessionId
 
+// 添加配置选项
+const questionConfig = ref({
+  knowledgePoints: [
+    { id: 1, name: '基础知识' },
+    { id: 2, name: '进阶概念' },
+    { id: 3, name: '高级应用' }
+  ],
+  questionTypes: [
+    { value: 'single_choice', label: '单选题' },
+    { value: 'multiple_choice', label: '多选题' },
+    { value: 'true_false', label: '判断题' },
+    { value: 'short_answer', label: '简答题' }
+  ],
+  difficulties: [
+    { value: 1, label: '简单' },
+    { value: 3, label: '中等' },
+    { value: 5, label: '困难' }
+  ],
+  quantities: [
+    { value: 5, label: '5题' },
+    { value: 10, label: '10题' },
+    { value: 20, label: '20题' },
+    { value: 50, label: '50题' }
+  ]
+})
+
+// 当前选择的配置
+const currentConfig = ref({
+  knowledgePointIds: [1],  // 默认选择第一个知识点
+  selectedTypes: ['single_choice'],  // 默认单选题
+  quantity: 10,  // 默认10题
+  difficulty: 3  // 默认中等难度
+})
+
+// 生成唯一的会话ID
+const generateSessionId = () => {
+  return 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+}
+
 // API调用函数
 const generateQuestions = async (input) => {
   try {
@@ -147,12 +235,12 @@ const generateQuestions = async (input) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        knowledge_point_ids: [1],
-        question_types: ['single_choice'],
-        quantity: 50,
-        difficulty: 5,
+        knowledge_point_ids: currentConfig.value.knowledgePointIds,
+        question_types: currentConfig.value.selectedTypes,
+        quantity: currentConfig.value.quantity,
+        difficulty: currentConfig.value.difficulty,
         chatInput: input,
-        sessionId: 'user-session-1'
+        sessionId: generateSessionId()
       })
     });
 
@@ -772,5 +860,13 @@ const handleExport = async (format) => {
 .search-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.config-panel {
+  background: #f5f7fa;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style> 
