@@ -816,4 +816,148 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
     }
 }
 
+// 获取练习题列表
+export async function getExercises(params) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取练习题成功',
+            data: {
+                count: 10,
+                results: Array(10).fill().map((_, index) => ({
+                    id: index + 1,
+                    title: `模拟练习题 ${index + 1}`,
+                    content: '这是一道模拟练习题',
+                    type: 'single_choice',
+                    difficulty: 1,
+                    knowledge_point: '基础知识',
+                    options: ['A', 'B', 'C', 'D'],
+                    answer: 'A'
+                }))
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('请先登录');
+        }
+
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.ordering) queryParams.append('ordering', params.ordering);
+        if (params.knowledge_point) queryParams.append('knowledge_point', params.knowledge_point);
+        if (params.type) queryParams.append('type', params.type);
+        if (params.difficulty) queryParams.append('difficulty', params.difficulty);
+        if (params.page) queryParams.append('page', params.page);
+
+        const exercisesUrl = `${API_CONFIG.BASE_URL}/exercises/?${queryParams.toString()}`;
+        console.log('获取练习题请求URL:', exercisesUrl);
+
+        const response = await fetch(exercisesUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('练习题响应数据:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('没有权限，请确保已登录');
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取练习题成功',
+            data: responseData
+        };
+    } catch (error) {
+        console.error('获取练习题失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 获取知识点列表
+export async function getKnowledgePoints(params) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取知识点成功',
+            data: {
+                count: 10,
+                results: Array(10).fill().map((_, index) => ({
+                    id: index + 1,
+                    title: `知识点 ${index + 1}`,
+                    description: '这是一个知识点的描述',
+                    subject: '计算机科学',
+                    grade_level: '大学一年级',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }))
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('请先登录');
+        }
+
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.ordering) queryParams.append('ordering', params.ordering);
+        if (params.page) queryParams.append('page', params.page);
+
+        const knowledgePointsUrl = `${API_CONFIG.BASE_URL}/knowledge-points/?${queryParams.toString()}`;
+        console.log('获取知识点请求URL:', knowledgePointsUrl);
+
+        const response = await fetch(knowledgePointsUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('知识点响应数据:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('没有权限，请确保已登录');
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取知识点成功',
+            data: responseData
+        };
+    } catch (error) {
+        console.error('获取知识点失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
 // 你可以继续添加其他接口方法，按需mock或真实请求
