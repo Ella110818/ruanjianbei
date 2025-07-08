@@ -40,13 +40,9 @@ function getEnvironment() {
 // 检查并设置Mock环境
 export function checkAndSetMockEnvironment() {
     const env = getEnvironment();
-    console.log('当前环境:', env);
-    console.log('Mock状态:', getMockFlag());
-
     // 如果是开发环境且没有设置过mock标志，默认设置为true
     if (env === 'development' && localStorage.getItem('USE_MOCK') === null) {
         localStorage.setItem('USE_MOCK', 'true');
-        console.log('已自动设置为Mock环境');
         return true;
     }
     return getMockFlag();
@@ -56,7 +52,6 @@ export function checkAndSetMockEnvironment() {
 export function toggleMockEnvironment() {
     const currentState = getMockFlag();
     localStorage.setItem('USE_MOCK', (!currentState).toString());
-    console.log('Mock环境已切换为:', !currentState);
     return !currentState;
 }
 
@@ -161,18 +156,12 @@ export async function login(username, password, role) {
     } else {
         // 真实API请求
         try {
-            console.log('===== 登录请求开始 =====');
-            console.log('登录信息:', { username, role });
-
             const loginUrl = `${API_CONFIG.BASE_URL}/login/`;
-            console.log('登录API地址:', loginUrl);
-
             const loginData = {
                 username,
                 password,
                 role
             };
-            console.log('发送的登录数据:', loginData);
 
             const response = await fetch(loginUrl, {
                 method: 'POST',
@@ -182,15 +171,10 @@ export async function login(username, password, role) {
                 body: JSON.stringify(loginData)
             });
 
-            console.log('登录响应状态:', response.status);
-            console.log('登录响应头:', Object.fromEntries(response.headers.entries()));
-
             let responseData;
             try {
                 responseData = await response.json();
-                console.log('登录响应数据:', responseData);
             } catch (e) {
-                console.error('解析响应数据失败:', e);
                 return {
                     code: 1,
                     msg: '服务器响应格式错误',
@@ -199,22 +183,16 @@ export async function login(username, password, role) {
             }
 
             if (!response.ok) {
-                console.error('登录失败:', responseData);
                 return handleHttpError(response, responseData);
             }
 
             // 检查响应是否成功
             if (responseData.success && responseData.status_code === 200 && responseData.data) {
                 const { access, refresh, user } = responseData.data;
-                console.log('获取到的Token信息:', {
-                    access: access ? '存在' : '不存在',
-                    refresh: refresh ? '存在' : '不存在'
-                });
 
                 // 验证并保存token
                 if (TokenManager.isValidToken(access) &&
                     TokenManager.isValidToken(refresh)) {
-                    console.log('Token验证通过，准备保存');
                     TokenManager.setTokens(access, refresh);
 
                     // 保存用户信息
@@ -223,17 +201,7 @@ export async function login(username, password, role) {
                         role
                     };
                     localStorage.setItem('user', JSON.stringify(userInfo));
-                    console.log('用户信息已保存:', userInfo);
 
-                    // 验证token是否正确保存
-                    const savedToken = TokenManager.getAccessToken();
-                    const savedRefreshToken = TokenManager.getRefreshToken();
-                    console.log('Token保存状态:', {
-                        accessToken: savedToken ? '已保存' : '未保存',
-                        refreshToken: savedRefreshToken ? '已保存' : '未保存'
-                    });
-
-                    console.log('===== 登录成功 =====');
                     return {
                         code: 0,
                         msg: '登录成功',
@@ -244,10 +212,6 @@ export async function login(username, password, role) {
                         }
                     };
                 } else {
-                    console.error('Token格式验证失败:', {
-                        access: !!access,
-                        refresh: !!refresh
-                    });
                     return {
                         code: 1,
                         msg: 'Token格式无效',
@@ -255,7 +219,6 @@ export async function login(username, password, role) {
                     };
                 }
             } else {
-                console.error('登录响应格式错误:', responseData);
                 return {
                     code: 1,
                     msg: responseData.message || '登录失败',
@@ -263,7 +226,6 @@ export async function login(username, password, role) {
                 };
             }
         } catch (error) {
-            console.error('登录请求失败:', error);
             return {
                 code: 1,
                 msg: error.message || '网络错误，请稍后重试',
@@ -273,141 +235,131 @@ export async function login(username, password, role) {
     }
 }
 
-// 示例接口：获取用户信息
-export async function getUserInfo() {
-    if (getMockFlag()) {
-        return Promise.resolve({
-            name: '本地测试用户',
-            role: 'teacher',
-            id: 1
-        });
-    } else {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${BASE_URL}/api/user/info`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `获取用户信息失败，状态码: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('获取用户信息失败:', error);
-            throw error;
+// Mock数据
+const mockCourseList = {
+    code: 0,
+    msg: '获取课程列表成功',
+    data: [
+        {
+            id: 1,
+            title: 'Python编程基础',
+            description: 'Python入门课程',
+            subject: 'Python编程',
+            grade_level: '大学一年级',
+            created_at: new Date().toISOString()
+        },
+        {
+            id: 2,
+            title: 'Java编程基础',
+            description: 'Java入门课程',
+            subject: 'Java编程',
+            grade_level: '大学一年级',
+            created_at: new Date().toISOString()
         }
+    ]
+};
+
+// 获取用户信息
+export function getUserInfo() {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+        return null;
     }
+    return JSON.parse(userStr);
 }
 
-// 刷新token的函数
+// 刷新Token
 export async function refreshToken() {
-    const refreshToken = TokenManager.getRefreshToken();
-    if (!refreshToken) {
-        throw new Error('No refresh token available');
-    }
-
     try {
-        const response = await fetch(`${BASE_URL}/token/refresh/`, {
+        const refreshToken = TokenManager.getRefreshToken();
+        if (!refreshToken) {
+            throw new Error('刷新Token不存在');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/token/refresh/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
             },
-            body: JSON.stringify({
-                refresh: refreshToken
-            })
+            body: JSON.stringify({ refresh: refreshToken })
         });
 
-        const responseData = await response.json();
+        const data = await response.json();
+        if (response.ok && data.access) {
+            TokenManager.setAccessToken(data.access);
+            return data.access;
+        }
+        throw new Error('刷新Token失败');
+    } catch (error) {
+        throw new Error('刷新Token失败');
+    }
+}
+
+// 通用请求处理函数
+async function handleRequest(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                ...API_CONFIG.headers,
+                ...options.headers
+            }
+        });
+
+        if (response.status === 401) {
+            // Token过期，尝试刷新
+            const newToken = await refreshToken();
+            if (newToken) {
+                // 使用新Token重试请求
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${newToken}`
+                };
+                return handleRequest(url, options);
+            }
+            throw new Error('认证失败');
+        }
+
+        const contentType = response.headers.get('content-type');
+        let data;
+
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            data = await response.text();
+        }
 
         if (!response.ok) {
-            throw new Error(responseData.message || `刷新token失败，状态码: ${response.status}`);
+            return handleHttpError(response, data);
         }
 
-        if (responseData.success && responseData.status_code === 200 && responseData.data?.access) {
-            TokenManager.setTokens(responseData.data.access, null); // 只更新access token
-            return responseData.data.access;
-        } else {
-            throw new Error('响应中没有有效的access token');
-        }
+        return data;
     } catch (error) {
-        console.error('Token刷新失败:', error);
-        TokenManager.clearTokens(); // 刷新失败时清除所有token
         throw error;
     }
 }
 
 // 获取课程列表
-export async function getCourses() {
+export async function getCourseList(params = {}) {
     if (getMockFlag()) {
-        return mockApiResponse(mockCourses);
+        return mockApiResponse(mockCourseList);
     }
 
     try {
-        const token = TokenManager.getAccessToken();
-        const headers = {
-            ...API_CONFIG.headers
-        };
-
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        const coursesUrl = `${API_CONFIG.BASE_URL}/courses/`;
-        console.log('发起请求:', {
-            url: coursesUrl,
-            method: 'GET',
-            headers: headers
-        });
-
-        const response = await fetch(coursesUrl, {
-            method: 'GET',
-            headers: headers,
-            cache: 'no-store'  // 禁用缓存
-        });
-
-        console.log('响应状态:', response.status);
-        console.log('响应头:', Object.fromEntries(response.headers.entries()));
-
-        // 检查响应类型
-        const contentType = response.headers.get('content-type');
-        console.log('响应内容类型:', contentType);
-
-        if (!contentType || !contentType.includes('application/json')) {
-            // 如果不是JSON，尝试读取文本内容以便调试
-            const textContent = await response.text();
-            console.log('非JSON响应内容:', textContent);
-            return {
-                code: 1,
-                msg: '服务器返回了非JSON格式的响应',
-                data: []
-            };
-        }
-
-        const data = await response.json();
-        console.log('响应数据:', data);
-
-        if (!response.ok) {
-            return handleHttpError(response, data);
-        }
+        const queryString = new URLSearchParams(params).toString();
+        const url = `${API_CONFIG.BASE_URL}/courses/${queryString ? `?${queryString}` : ''}`;
+        const data = await handleRequest(url);
 
         return {
             code: 0,
             msg: '获取课程列表成功',
             data: data.data || []
         };
-
     } catch (error) {
-        console.error('获取课程列表失败:', error);
         return {
             code: 1,
             msg: error.message || '获取课程列表失败',
-            data: []
+            data: null
         };
     }
 }
@@ -677,7 +629,7 @@ export async function deleteCourse(courseId) {
 }
 
 // 课程内容生成
-export async function generateCourseContent(params) {
+export async function generateCourseContent() {
     if (getMockFlag()) {
         return mockApiResponse({
             code: 0,
@@ -961,3 +913,4 @@ export async function getKnowledgePoints(params) {
 }
 
 // 你可以继续添加其他接口方法，按需mock或真实请求
+
