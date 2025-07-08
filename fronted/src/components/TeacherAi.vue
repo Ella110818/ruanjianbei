@@ -78,64 +78,77 @@ const messages = ref([])
 // 新增底部输入框相关
 const bottomInput = ref('')
 
+// 解析用户输入的课程信息
+const parseCourseInput = (input) => {
+  const lines = input.split('\n')
+  const courseInfo = {
+    course_name: 'Python编程基础',
+    course_description: 'Python入门课程，包含基础语法和简单应用',
+    subject: 'Python编程',
+    grade_level: '大学一年级',
+    additional_requirements: '简单易懂，适合初学者',
+    chapter_count: 5,  // 减少章节数，使内容更简洁
+    chatInput: input || '默认Python基础课程生成',
+    sessionId: 'session-' + Date.now()
+  }
+
+  // 如果用户有输入，则覆盖默认值
+  if (input) {
+    lines.forEach(line => {
+      if (line.includes('课程名称')) {
+        courseInfo.course_name = line.split('：')[1]?.trim() || courseInfo.course_name
+      } else if (line.includes('课程描述')) {
+        courseInfo.course_description = line.split('：')[1]?.trim() || courseInfo.course_description
+      } else if (line.includes('学科')) {
+        courseInfo.subject = line.split('：')[1]?.trim() || courseInfo.subject
+      } else if (line.includes('年级')) {
+        courseInfo.grade_level = line.split('：')[1]?.trim() || courseInfo.grade_level
+      } else if (line.includes('其他要求')) {
+        courseInfo.additional_requirements = line.split('：')[1]?.trim() || courseInfo.additional_requirements
+      }
+    })
+  }
+
+  return courseInfo
+}
+
 // 处理课程生成模式
 const handleCourseGeneration = () => {
   currentMode.value = 'course'
   messages.value = [{
     type: 'ai',
-    content: '请输入课程相关信息，包含：<br>1. 课程名称<br>2. 课程描述<br>3. 学科<br>4. 年级<br>5. 其他要求',
+    content: `已设置默认课程信息：<br>
+    1. 课程名称：Python编程基础<br>
+    2. 课程描述：Python入门课程，包含基础语法和简单应用<br>
+    3. 学科：Python编程<br>
+    4. 年级：大学一年级<br>
+    5. 其他要求：简单易懂，适合初学者<br><br>
+    您可以直接点击发送使用默认配置，或输入新的课程信息覆盖默认配置。`,
     time: new Date().toLocaleTimeString()
   }]
 }
 
-// 解析用户输入的课程信息
-const parseCourseInput = (input) => {
-  const lines = input.split('\n')
-  const courseInfo = {
-    course_name: '',
-    course_description: '',
-    subject: '',
-    grade_level: '',
-    additional_requirements: '',
-    chapter_count: 20,
-    chatInput: input,
-    sessionId: 'session-' + Date.now()
-  }
-
-  lines.forEach(line => {
-    if (line.includes('课程名称')) {
-      courseInfo.course_name = line.split('：')[1]?.trim() || ''
-    } else if (line.includes('课程描述')) {
-      courseInfo.course_description = line.split('：')[1]?.trim() || ''
-    } else if (line.includes('学科')) {
-      courseInfo.subject = line.split('：')[1]?.trim() || ''
-    } else if (line.includes('年级')) {
-      courseInfo.grade_level = line.split('：')[1]?.trim() || ''
-    } else if (line.includes('其他要求')) {
-      courseInfo.additional_requirements = line.split('：')[1]?.trim() || ''
-    }
-  })
-
-  return courseInfo
-}
-
 const handleSend = async () => {
-  if (!bottomInput.value.trim()) return
-  
-  const userInput = bottomInput.value
-  bottomInput.value = ''
-  
-  // 添加用户消息
-  messages.value.push({
-    type: 'user',
-    content: userInput,
-    time: new Date().toLocaleTimeString()
-  })
+  if (currentMode.value === 'course') {
+    loading.value = true
+    try {
+      // 如果是课程模式，即使用户没有输入也可以使用默认值
+      const courseInfo = parseCourseInput(bottomInput.value.trim())
+      
+      // 添加用户消息，显示实际使用的配置
+      messages.value.push({
+        type: 'user',
+        content: `生成课程：<br>
+        课程名称：${courseInfo.course_name}<br>
+        课程描述：${courseInfo.course_description}<br>
+        学科：${courseInfo.subject}<br>
+        年级：${courseInfo.grade_level}<br>
+        其他要求：${courseInfo.additional_requirements}`,
+        time: new Date().toLocaleTimeString()
+      })
 
-  loading.value = true
-  try {
-    if (currentMode.value === 'course') {
-      const courseInfo = parseCourseInput(userInput)
+      bottomInput.value = ''
+      
       const response = await generateCourseContent(courseInfo)
       
       if (response.code === 0) {
@@ -147,14 +160,39 @@ const handleSend = async () => {
       } else {
         throw new Error(response.msg)
       }
-    } else {
-      // 普通对话模式的处理逻辑
+    } catch (error) {
+      ElMessage.error(error.message || '操作失败')
       messages.value.push({
         type: 'ai',
-        content: '收到您的消息，我会尽快回复。',
+        content: `错误：${error.message || '生成失败，请重试'}`,
         time: new Date().toLocaleTimeString()
       })
+    } finally {
+      loading.value = false
     }
+    return
+  }
+
+  // 普通对话模式的处理
+  if (!bottomInput.value.trim()) return
+  
+  const userInput = bottomInput.value
+  bottomInput.value = ''
+  
+  messages.value.push({
+    type: 'user',
+    content: userInput,
+    time: new Date().toLocaleTimeString()
+  })
+
+  loading.value = true
+  try {
+    // 普通对话模式的处理逻辑
+    messages.value.push({
+      type: 'ai',
+      content: '收到您的消息，我会尽快回复。',
+      time: new Date().toLocaleTimeString()
+    })
   } catch (error) {
     ElMessage.error(error.message || '操作失败')
     messages.value.push({

@@ -695,10 +695,14 @@ export async function generateCourseContent(params) {
 
     try {
         const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('请先登录');
+        }
+
         const response = await fetch(`${API_CONFIG.BASE_URL}/course-generate/`, {
             method: 'POST',
             headers: {
-                'Authorization': token ? `Bearer ${token}` : '',
+                'Authorization': `Bearer ${token}`,  // 修改token格式
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
@@ -718,6 +722,9 @@ export async function generateCourseContent(params) {
         console.log('课程内容生成响应:', responseData);
 
         if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('没有权限，请确保已登录');
+            }
             return handleHttpError(response, responseData);
         }
 
