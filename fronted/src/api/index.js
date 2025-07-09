@@ -1638,7 +1638,54 @@ export async function getRoleById(roleId) {
     }
 }
 
-// 在登录成功后获取用户角色和权限
+// 获取我的课程列表
+export async function getMyCourses(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse(mockCourseList);
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const queryString = new URLSearchParams(params).toString();
+        const url = `${API_CONFIG.BASE_URL}/courses/my/${queryString ? `?${queryString}` : ''}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('获取我的课程列表响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取我的课程列表成功',
+            data: responseData.data || []
+        };
+    } catch (error) {
+        console.error('获取我的课程列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取我的课程列表失败',
+            data: null
+        };
+    }
+}
+
+// 修改获取用户角色和权限的函数
 export async function getUserRoleAndPermissions() {
     try {
         const token = TokenManager.getAccessToken();
@@ -1648,12 +1695,24 @@ export async function getUserRoleAndPermissions() {
 
         // 获取用户信息
         const userInfo = getUserInfo();
-        if (!userInfo || !userInfo.role) {
-            throw new Error('用户信息或角色不存在');
+        if (!userInfo) {
+            throw new Error('用户信息不存在');
+        }
+
+        // 获取所有角色列表
+        const rolesResponse = await getRoles();
+        if (rolesResponse.code !== 0) {
+            throw new Error(rolesResponse.msg);
+        }
+
+        // 根据用户的role名称找到对应的角色ID
+        const userRole = rolesResponse.data.find(role => role.name === userInfo.role);
+        if (!userRole) {
+            throw new Error('未找到用户对应的角色');
         }
 
         // 获取角色详情
-        const roleResponse = await getRoleById(userInfo.role);
+        const roleResponse = await getRoleById(userRole.id);
         if (roleResponse.code !== 0) {
             throw new Error(roleResponse.msg);
         }
