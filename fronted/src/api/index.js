@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://b8d6dd43f441.ngrok-free.app',  // 更新为新的ngrok地址
+        API_URL: ' https://12e11e70c836.ngrok-free.app',  // 更新为新的ngrok地址
         API_VERSION: 'api'
     }
 };
@@ -784,7 +784,7 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
 
         // 检查Content-Type
         const contentType = response.headers.get('Content-Type');
-        
+
         if (contentType && contentType.includes('application/json')) {
             // JSON响应
             const data = await response.json();
@@ -1230,6 +1230,96 @@ export async function submitStudentAnswer(data) {
             data: null
         };
     }
+}
+
+// 获取用户列表
+export async function getUserList(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            total: 2,
+            results: [
+                {
+                    username: 'teacher1',
+                    name: '张老师',
+                    role: 'teacher',
+                    email: 'teacher1@example.com',
+                    lastLogin: '2024-03-15 10:30:00',
+                    status: 'active'
+                },
+                {
+                    username: 'student1',
+                    name: '李同学',
+                    role: 'student',
+                    email: 'student1@example.com',
+                    lastLogin: '2024-03-14 15:20:00',
+                    status: 'active'
+                }
+            ]
+        });
+    }
+
+    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/`);
+    const queryParams = new URLSearchParams();
+
+    if (params.search) queryParams.append('search', params.search);
+    if (params.role) queryParams.append('role', params.role);
+    if (params.status) queryParams.append('status', params.status);
+    if (params.page) queryParams.append('page', params.page);
+    if (params.ordering) queryParams.append('ordering', params.ordering);
+
+    const finalUrl = `${url}${queryParams.toString() ? '&' + queryParams.toString() : ''}`;
+
+    return handleRequest(finalUrl);
+}
+
+// 创建用户
+export async function createUser(userData) {
+    if (getMockFlag()) {
+        return mockApiResponse({ success: true });
+    }
+
+    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/`);
+    return handleRequest(url, {
+        method: 'POST',
+        body: JSON.stringify(userData)
+    });
+}
+
+// 更新用户
+export async function updateUser(username, userData) {
+    if (getMockFlag()) {
+        return mockApiResponse({ success: true });
+    }
+
+    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/${username}/`);
+    return handleRequest(url, {
+        method: 'PATCH',
+        body: JSON.stringify(userData)
+    });
+}
+
+// 重置用户密码
+export async function resetUserPassword(username) {
+    if (getMockFlag()) {
+        return mockApiResponse({ success: true });
+    }
+
+    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/${username}/reset-password/`);
+    return handleRequest(url, {
+        method: 'POST'
+    });
+}
+
+// 切换用户状态
+export async function toggleUserStatus(username) {
+    if (getMockFlag()) {
+        return mockApiResponse({ success: true });
+    }
+
+    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/${username}/toggle-status/`);
+    return handleRequest(url, {
+        method: 'POST'
+    });
 }
 
 // 你可以继续添加其他接口方法，按需mock或真实请求

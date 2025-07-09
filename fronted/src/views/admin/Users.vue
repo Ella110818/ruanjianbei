@@ -136,6 +136,7 @@ import { Search } from '@element-plus/icons-vue'
 import AdminHeader from '@/components/AdminHeader.vue'
 import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getUserList, createUser, updateUser, resetUserPassword, toggleUserStatus } from '@/api'
 
 export default {
   name: 'AdminUsers',
@@ -159,24 +160,7 @@ export default {
       total: 0,
       dialogVisible: false,
       dialogType: 'add',
-      userList: [
-        {
-          username: 'teacher1',
-          name: '张老师',
-          role: 'teacher',
-          email: 'teacher1@example.com',
-          lastLogin: '2024-03-15 10:30:00',
-          status: 'active'
-        },
-        {
-          username: 'student1',
-          name: '李同学',
-          role: 'student',
-          email: 'student1@example.com',
-          lastLogin: '2024-03-14 15:20:00',
-          status: 'active'
-        }
-      ],
+      userList: [],
       userForm: {
         username: '',
         name: '',
@@ -206,30 +190,38 @@ export default {
       }
     }
   },
+  created() {
+    this.fetchUserList()
+  },
   methods: {
-    getRoleTagType(role) {
-      const types = {
-        admin: 'danger',
-        teacher: 'warning',
-        student: 'success'
+    async fetchUserList() {
+      this.loading = true
+      try {
+        const params = {
+          search: this.searchQuery || undefined,
+          role: this.roleFilter || undefined,
+          status: this.statusFilter || undefined,
+          page: this.currentPage,
+          ordering: '1'
+        }
+        
+        const response = await getUserList(params)
+        if (response.code === 0) {
+          this.userList = response.data.results
+          this.total = response.data.total
+        } else {
+          ElMessage.error(response.msg || '获取用户列表失败')
+        }
+      } catch (error) {
+        console.error('获取用户列表失败:', error)
+        ElMessage.error('获取用户列表失败')
+      } finally {
+        this.loading = false
       }
-      return types[role] || 'info'
-    },
-    getRoleLabel(role) {
-      const labels = {
-        admin: '管理员',
-        teacher: '教师',
-        student: '学生'
-      }
-      return labels[role] || role
     },
     handleSearch() {
-      // 实现搜索逻辑
-      console.log('搜索条件：', {
-        query: this.searchQuery,
-        role: this.roleFilter,
-        status: this.statusFilter
-      })
+      this.currentPage = 1
+      this.fetchUserList()
     },
     handleAddUser() {
       this.dialogType = 'add'
@@ -244,7 +236,12 @@ export default {
     },
     handleEdit(row) {
       this.dialogType = 'edit'
-      this.userForm = { ...row }
+      this.userForm = {
+        username: row.username,
+        name: row.name,
+        role: row.role,
+        email: row.email
+      }
       this.dialogVisible = true
     },
     async handleResetPassword(row) {
@@ -258,10 +255,18 @@ export default {
             type: 'warning'
           }
         )
-        // 实现重置密码逻辑
-        ElMessage.success('密码重置成功')
-      } catch {
-        // 用户取消操作
+        
+        const response = await resetUserPassword(row.username)
+        if (response.code === 0) {
+          ElMessage.success('密码重置成功')
+        } else {
+          ElMessage.error(response.msg || '密码重置失败')
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('重置密码失败:', error)
+          ElMessage.error('重置密码失败')
+        }
       }
     },
     async handleToggleStatus(row) {
@@ -276,29 +281,47 @@ export default {
             type: 'warning'
           }
         )
-        // 实现状态切换逻辑
-        row.status = row.status === 'active' ? 'disabled' : 'active'
-        ElMessage.success(`${action}成功`)
-      } catch {
-        // 用户取消操作
+        
+        const response = await toggleUserStatus(row.username)
+        if (response.code === 0) {
+          row.status = row.status === 'active' ? 'disabled' : 'active'
+          ElMessage.success(`${action}成功`)
+        } else {
+          ElMessage.error(response.msg || `${action}失败`)
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error(`${action}用户失败:`, error)
+          ElMessage.error(`${action}失败`)
+        }
       }
-    },
-    handleSizeChange(val) {
-      this.pageSize = val
-      // 重新加载数据
     },
     handleCurrentChange(val) {
       this.currentPage = val
-      // 重新加载数据
+      this.fetchUserList()
     },
     async handleSubmitForm() {
       try {
         await this.$refs.userForm.validate()
-        // 实现表单提交逻辑
-        ElMessage.success(this.dialogType === 'add' ? '添加成功' : '修改成功')
-        this.dialogVisible = false
-      } catch {
-        // 表单验证失败
+        
+        const apiMethod = this.dialogType === 'add' ? createUser : updateUser
+        const response = await apiMethod(
+          this.dialogType === 'edit' ? this.userForm.username : undefined,
+          this.userForm
+        )
+        
+        if (response.code === 0) {
+          ElMessage.success(this.dialogType === 'add' ? '添加成功' : '修改成功')
+          this.dialogVisible = false
+          this.fetchUserList()
+        } else {
+          ElMessage.error(response.msg || (this.dialogType === 'add' ? '添加失败' : '修改失败'))
+        }
+      } catch (error) {
+        if (error !== 'validation') {
+          console.error(this.dialogType === 'add' ? '添加用户失败:' : '修改用户失败:', error)
+          ElMessage.error(this.dialogType === 'add' ? '添加失败' : '修改失败')
+        }
       }
     }
   }
