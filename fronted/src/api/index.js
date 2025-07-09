@@ -1745,31 +1745,41 @@ export async function getUserRoleAndPermissions() {
             throw new Error('用户信息不存在');
         }
 
-        // 直接获取用户的角色详情
-        const roleResponse = await getRoleById(userInfo.id);
-        console.log('角色详情响应:', roleResponse);
+        // 直接使用用户信息中的role
+        const userRole = userInfo.role;
+        console.log('用户角色:', userRole);
 
-        // 检查roleResponse的格式
-        if (roleResponse.code === 0 && roleResponse.data) {
-            const roleData = roleResponse.data;
-            console.log('角色详情数据:', roleData);
-
-            // 保存角色和权限信息
-            localStorage.setItem('userRole', roleData.name);
-            localStorage.setItem('isStaff', 'true'); // 如果是教师角色，设置为staff
-            localStorage.setItem('isSuperuser', roleData.name === 'admin' ? 'true' : 'false');
-            localStorage.setItem('userPermissions', JSON.stringify({
-                permissions: roleData.permissions || []
-            }));
-
-            return {
-                code: 0,
-                msg: '获取用户角色和权限成功',
-                data: roleData
-            };
-        } else {
-            throw new Error(roleResponse.msg || '获取角色详情失败');
+        if (!userRole) {
+            throw new Error('用户角色信息不存在');
         }
+
+        // 根据角色名称获取角色详情
+        const roleResponse = await getRoles();
+        console.log('获取角色列表响应:', roleResponse);
+
+        if (roleResponse.code === 0 && roleResponse.data) {
+            // 在角色列表中找到用户的角色
+            const roleData = roleResponse.data.find(role => role.name === userRole);
+            console.log('用户角色详情:', roleData);
+
+            if (roleData) {
+                // 保存角色和权限信息
+                localStorage.setItem('userRole', roleData.name);
+                localStorage.setItem('isStaff', roleData.name === 'teacher' ? 'true' : 'false');
+                localStorage.setItem('isSuperuser', roleData.name === 'admin' ? 'true' : 'false');
+                localStorage.setItem('userPermissions', JSON.stringify({
+                    permissions: roleData.permissions || []
+                }));
+
+                return {
+                    code: 0,
+                    msg: '获取用户角色和权限成功',
+                    data: roleData
+                };
+            }
+        }
+
+        throw new Error('获取角色详情失败');
     } catch (error) {
         console.error('获取用户角色和权限失败:', error);
         return {
