@@ -626,12 +626,93 @@ export async function getCourseList(params = {}) {
         return mockApiResponse(mockCourseList);
     }
 
-    const queryString = new URLSearchParams(params).toString();
-    const url = `${API_CONFIG.BASE_URL}/courses/${queryString ? `?${queryString}` : ''}`;
+    try {
+        // 检查token
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            console.log('没有access token，尝试刷新');
+            const newToken = await TokenManager.refreshToken();
+            if (!newToken) {
+                console.log('刷新token失败，需要重新登录');
+                TokenManager.clearTokens();
+                window.location.href = '/login';
+                return {
+                    code: 1,
+                    msg: '请重新登录',
+                    data: null
+                };
+            }
+        }
 
-    return handleRequest(url, {
-        method: 'GET'
-    });
+        const queryString = new URLSearchParams(params).toString();
+        const url = `${API_CONFIG.BASE_URL}/courses/${queryString ? `?${queryString}` : ''}`;
+
+        console.log('请求课程列表:', {
+            url,
+            token: token ? '存在' : '不存在',
+            params
+        });
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${TokenManager.getAccessToken()}`,
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        // 打印详细的响应信息
+        console.log('课程列表响应状态:', response.status);
+        console.log('课程列表响应头:', Object.fromEntries(response.headers.entries()));
+
+        const responseText = await response.text();
+        console.log('课程列表原始响应:', responseText);
+
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (e) {
+            console.error('响应解析失败:', e);
+            throw new Error('服务器返回了非JSON格式的数据');
+        }
+
+        // 如果是401或403，尝试刷新token
+        if (response.status === 401 || response.status === 403) {
+            console.log('权限错误，尝试刷新token');
+            const newToken = await TokenManager.refreshToken();
+            if (newToken) {
+                console.log('Token刷新成功，重试请求');
+                return getCourseList(params); // 递归调用，重试请求
+            } else {
+                console.log('Token刷新失败，需要重新登录');
+                TokenManager.clearTokens();
+                window.location.href = '/login';
+                return {
+                    code: 1,
+                    msg: '请重新登录',
+                    data: null
+                };
+            }
+        }
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取课程列表成功',
+            data: responseData.data || []
+        };
+    } catch (error) {
+        console.error('获取课程列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取课程列表失败',
+            data: null
+        };
+    }
 }
 
 // 获取单个课程详情
