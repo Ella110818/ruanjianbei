@@ -204,7 +204,9 @@ export async function login(username, password, role) {
 
                     // 获取用户权限
                     try {
-                        const permissionsResponse = await fetch(`${API_CONFIG.BASE_URL}/roles/${user.role_id || 1}/permissions/`, {
+                        // 根据用户角色获取权限
+                        const permissionsUrl = `${API_CONFIG.BASE_URL}/users/permissions/`;
+                        const permissionsResponse = await fetch(permissionsUrl, {
                             method: 'GET',
                             headers: {
                                 'Authorization': `Bearer ${access}`,
@@ -213,14 +215,36 @@ export async function login(username, password, role) {
                             }
                         });
 
-                        if (permissionsResponse.ok) {
-                            const permissionsData = await permissionsResponse.json();
-                            // 保存权限信息
+                        // 检查响应状态
+                        if (!permissionsResponse.ok) {
+                            throw new Error(`获取权限失败: ${permissionsResponse.status}`);
+                        }
+
+                        // 检查Content-Type
+                        const contentType = permissionsResponse.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            throw new Error('服务器返回了非JSON格式的数据');
+                        }
+
+                        const permissionsData = await permissionsResponse.json();
+
+                        // 验证权限数据格式
+                        if (permissionsData && Array.isArray(permissionsData.permissions)) {
                             localStorage.setItem('userPermissions', JSON.stringify(permissionsData));
                             console.log('用户权限已保存:', permissionsData);
+                        } else {
+                            console.warn('权限数据格式不正确:', permissionsData);
+                            // 设置默认权限
+                            localStorage.setItem('userPermissions', JSON.stringify({
+                                permissions: []
+                            }));
                         }
                     } catch (error) {
                         console.error('获取权限失败:', error);
+                        // 设置默认权限
+                        localStorage.setItem('userPermissions', JSON.stringify({
+                            permissions: []
+                        }));
                     }
 
                     return {
@@ -998,42 +1022,66 @@ export async function getRolePermissions(roleId) {
         });
     }
 
-    const token = TokenManager.getAccessToken();
-    if (!token) {
-        return {
-            code: 1,
-            msg: '请先登录',
-            data: null
-        };
-    }
-
-    const response = await fetch(`${API_CONFIG.BASE_URL}/roles/${roleId}/permissions/`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    });
-
-    const responseData = await response.json();
-
-    if (!response.ok) {
-        if (response.status === 403) {
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
             return {
                 code: 1,
-                msg: '没有权限访问',
+                msg: '请先登录',
                 data: null
             };
         }
-        return handleHttpError(response, responseData);
-    }
 
-    return {
-        code: 0,
-        msg: '获取角色权限成功',
-        data: responseData
-    };
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/permissions/`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        // 检查Content-Type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('服务器返回了非JSON格式的数据');
+        }
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                return {
+                    code: 1,
+                    msg: '没有权限访问',
+                    data: null
+                };
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        // 验证权限数据格式
+        if (!responseData || !Array.isArray(responseData.permissions)) {
+            return {
+                code: 1,
+                msg: '权限数据格式不正确',
+                data: null
+            };
+        }
+
+        return {
+            code: 0,
+            msg: '获取角色权限成功',
+            data: responseData
+        };
+    } catch (error) {
+        console.error('获取权限失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取权限失败',
+            data: null
+        };
+    }
 }
 
 // 获取课件列表
