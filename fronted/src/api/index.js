@@ -72,6 +72,13 @@ const TokenManager = {
         }
     },
 
+    setAccessToken(accessToken) {
+        if (accessToken) {
+            localStorage.setItem('token', accessToken);
+            console.log('Access Token已更新');
+        }
+    },
+
     getAccessToken() {
         const token = localStorage.getItem('token');
         console.log('当前Token状态:', token ? '存在' : '不存在');
@@ -104,11 +111,11 @@ const TokenManager = {
         }
 
         try {
-            // 这里可以添加token过期检查逻辑
+            // 验证当前token
             const response = await fetch(`${API_CONFIG.BASE_URL}/token/verify/`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    ...API_CONFIG.headers,
                     'ngrok-skip-browser-warning': 'true'
                 },
                 body: JSON.stringify({ token })
@@ -116,10 +123,17 @@ const TokenManager = {
 
             if (!response.ok) {
                 console.log('Token已过期，尝试刷新');
-                const newToken = await refreshToken();
-                if (newToken) {
-                    console.log('Token刷新成功');
-                    return true;
+                try {
+                    const newToken = await refreshToken();
+                    if (newToken) {
+                        console.log('Token刷新成功');
+                        return true;
+                    }
+                } catch (refreshError) {
+                    console.error('Token刷新失败:', refreshError);
+                    this.clearTokens();
+                    window.location.href = '/login';
+                    return false;
                 }
                 console.log('Token刷新失败');
                 return false;
@@ -379,7 +393,7 @@ export async function refreshToken() {
         const response = await fetch(`${API_CONFIG.BASE_URL}/token/refresh/`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                ...API_CONFIG.headers,
                 'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify({ refresh: refreshToken })
@@ -387,11 +401,14 @@ export async function refreshToken() {
 
         const data = await response.json();
         if (response.ok && data.access) {
-            TokenManager.setAccessToken(data.access);
+            TokenManager.setTokens(data.access, refreshToken);
             return data.access;
         }
         throw new Error('刷新Token失败');
     } catch (error) {
+        console.error('刷新Token失败:', error);
+        TokenManager.clearTokens();
+        window.location.href = '/login';
         throw new Error('刷新Token失败');
     }
 }
@@ -1862,20 +1879,15 @@ export async function getMyCourses(params = {}) {
 
         // 4. 构建请求头
         const headers = {
+            ...API_CONFIG.headers,
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
             'ngrok-skip-browser-warning': 'true'
         };
         console.log('请求头信息:', headers);
 
         const response = await fetch(url, {
             method: 'GET',
-            headers: {
-                ...API_CONFIG.headers,
-                'Authorization': `Bearer ${token}`,
-                'ngrok-skip-browser-warning': 'true'
-            }
+            headers: headers
         });
 
         // 5. 获取响应数据
