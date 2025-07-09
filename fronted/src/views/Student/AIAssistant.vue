@@ -284,56 +284,85 @@ const generateQuestions = async (input) => {
   }
 }
 
-// 处理搜索
+// 修改 generateQuestions 函数的响应处理
+const handleQuestionResponse = (response) => {
+  if (!response || !response.data) return '抱歉，生成题目失败。';
+  
+  try {
+    // 如果response.data已经是对象，直接使用；否则尝试解析JSON字符串
+    const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+    
+    if (!data.questions || !Array.isArray(data.questions)) {
+      return '抱歉，题目格式不正确。';
+    }
+
+    // 返回格式化后的数据
+    return {
+      questions: data.questions,
+      session_key: data.session_key,
+      saved_exercises: data.saved_exercises,
+      failed_exercises: data.failed_exercises
+    };
+  } catch (error) {
+    console.error('处理题目响应失败:', error);
+    return '抱歉，处理题目数据时出错。';
+  }
+}
+
+// 修改 handleSearch 函数
 const handleSearch = async () => {
   if (searchQuery.value.trim()) {
     showChat.value = true;
     try {
       loading.value = true;
-      // 添加用户消息
       messages.value.push({
         id: messages.value.length + 1,
         type: 'user',
         content: searchQuery.value,
-        time: '刚刚'
+        time: formatTime(new Date())
       });
 
-      // 添加AI思考消息
       const loadingMessageId = messages.value.length + 1;
       messages.value.push({
         id: loadingMessageId,
         type: 'ai',
-        content: '正在思考中...',
-        time: '刚刚'
+        content: '正在生成题目...',
+        time: formatTime(new Date())
       });
 
-      // 调用API获取响应
       const response = await generateQuestions(searchQuery.value);
+      const processedResponse = handleQuestionResponse(response);
       
-      // 更新AI消息
       const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
       if (messageIndex !== -1) {
-        if (response && response.data) {
-          messages.value[messageIndex].content = response.data;
-        } else {
-          messages.value[messageIndex].content = '抱歉，我现在无法回答这个问题。请稍后再试。';
-        }
+        messages.value[messageIndex] = {
+          id: loadingMessageId,
+          type: 'ai',
+          content: processedResponse,
+          time: formatTime(new Date())
+        };
       }
 
-      // 清空搜索框
       searchQuery.value = '';
     } catch (error) {
-      console.error('搜索请求失败:', error);
+      console.error('生成题目失败:', error);
       messages.value.push({
         id: messages.value.length + 1,
         type: 'ai',
-        content: '抱歉，发生了错误。请稍后再试。',
-        time: '刚刚'
+        content: '抱歉，生成题目时发生错误。',
+        time: formatTime(new Date())
       });
     } finally {
       loading.value = false;
     }
   }
+}
+
+// 添加时间格式化函数
+const formatTime = (date) => {
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
 // 处理功能卡片点击
@@ -357,12 +386,11 @@ const sendMessage = async (message = null) => {
   const userInput = message || inputMessage.value;
   if (!userInput.trim()) return;
 
-  // 添加用户消息
   messages.value.push({
     id: messages.value.length + 1,
     type: 'user',
     content: userInput,
-    time: '刚刚'
+    time: formatTime(new Date())
   });
 
   if (!message) {
@@ -370,34 +398,33 @@ const sendMessage = async (message = null) => {
   }
 
   try {
-    // 添加加载中的消息
     const loadingMessageId = messages.value.length + 1;
     messages.value.push({
       id: loadingMessageId,
       type: 'ai',
-      content: '正在思考中...',
-      time: '刚刚'
+      content: '正在生成题目...',
+      time: formatTime(new Date())
     });
 
-    // 调用API获取响应
     const response = await generateQuestions(userInput);
+    const processedResponse = handleQuestionResponse(response);
     
-    // 更新AI消息
     const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
     if (messageIndex !== -1) {
-      if (response && response.data) {
-        messages.value[messageIndex].content = response.data;
-      } else {
-        messages.value[messageIndex].content = '抱歉，我现在无法回答这个问题。请稍后再试。';
-      }
+      messages.value[messageIndex] = {
+        id: loadingMessageId,
+        type: 'ai',
+        content: processedResponse,
+        time: formatTime(new Date())
+      };
     }
   } catch (error) {
-    console.error('发送消息失败:', error);
+    console.error('生成题目失败:', error);
     messages.value.push({
       id: messages.value.length + 1,
       type: 'ai',
-      content: '抱歉，发生了错误。请稍后再试。',
-      time: '刚刚'
+      content: '抱歉，生成题目时发生错误。',
+      time: formatTime(new Date())
     });
   }
 }
