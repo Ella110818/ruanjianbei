@@ -95,8 +95,15 @@
             <div class="chat-messages" ref="chatMessages">
               <div v-for="message in messages" :key="message.id" 
                    :class="['message', message.type]">
-                <div class="message-content">{{ message.content }}</div>
-                <div class="message-time">{{ message.time }}</div>
+                      <div class="message-content">
+        <template v-if="message.type === 'ai' && isQuestionResponse(message.content)">
+          <QuestionDisplay :content="message.content" />
+        </template>
+        <template v-else>
+          <div class="text-content">{{ message.content }}</div>
+        </template>
+      </div>
+      <div class="message-time">{{ message.time }}</div>
               </div>
             </div>
             
@@ -174,6 +181,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
+import QuestionDisplay from '@/components/QuestionDisplay.vue'
 import { API_CONFIG, exportQuestions } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
 
@@ -184,6 +192,19 @@ const showChat = ref(false)
 const loading = ref(false)
 const currentEnvironment = ref('生产API')
 const exporting = ref(false)
+
+// 判断是否为题目响应
+const isQuestionResponse = (content) => {
+  try {
+    if (typeof content === 'string') {
+      const data = JSON.parse(content);
+      return data && data.questions && Array.isArray(data.questions);
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 // 添加配置选项
 const questionConfig = ref({
@@ -879,5 +900,124 @@ const handleExport = async (format) => {
   margin-bottom: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 题目列表样式 */
+.question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.question-item {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
+}
+
+.question-header {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+  color: #666;
+  font-size: 14px;
+  align-items: center;
+}
+
+.question-number {
+  font-weight: bold;
+  color: #409EFF;
+}
+
+.question-type {
+  background: #e6f1fc;
+  color: #409EFF;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.question-difficulty {
+  color: #f56c6c;
+}
+
+.question-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #303133;
+}
+
+.question-content {
+  font-size: 15px;
+  color: #606266;
+  margin-bottom: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.question-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option-item {
+  padding: 8px 15px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  color: #606266;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.option-item:hover {
+  background: #e6f1fc;
+  color: #409EFF;
+}
+
+/* 调整AI消息样式 */
+.message.ai .message-content {
+  background: #ffffff;
+  padding: 0;
+  width: 100%;
+}
+
+.message.ai .question-list {
+  background: transparent;
+}
+
+/* 调整消息容器样式 */
+.message {
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.message.user {
+  margin-left: auto;
+  width: auto;
+}
+
+.message.ai {
+  margin-right: auto;
+  width: 100%;
+}
+
+/* 消息内容样式 */
+.text-content {
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  color: #303133;
+  white-space: pre-wrap;
+}
+
+.message.ai .message-content {
+  background: transparent;
+  padding: 0;
+  width: 100%;
 }
 </style> 
