@@ -135,7 +135,7 @@ import { ref, onMounted, watch } from 'vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import CourseDetail from '@/components/CourseDetail.vue'
-import { checkAndSetMockEnvironment, getExercises, getMyCourses } from '@/api'
+import { getExercises, getMyCourses } from '@/api'
 import { ElMessage, ElPagination } from 'element-plus'
 import { useRouter } from 'vue-router'
 
@@ -198,48 +198,47 @@ const loadCourses = async () => {
     // 检查用户角色
     const userRole = localStorage.getItem('userRole');
     console.log('当前用户角色:', userRole);
-    
-    // 检查并设置Mock环境
-    checkAndSetMockEnvironment();
-    
-    // 使用getMyCourses接口
+    if (userRole !== 'teacher') {
+      ElMessage.error('只有教师可以访问此页面');
+      router.push('/login');
+      return;
+    }
+
     const response = await getMyCourses({
-      page: 1,
-      ordering: '1'
+      ordering: '1',
+      page: 1
     });
 
     console.log('获取课程列表响应:', response);
-    
-    if (response.code === 0) {
-      courses.value = response.data.map(course => ({
-        id: course.id,
-        name: course.title || course.name,
-        img: require('@/assets/course1.jpg'),
-        description: course.description,
-        subject: course.subject,
-        grade_level: course.grade_level,
-        teacher_name: course.teacher_name || course.teacher
-      }))
+
+    if (response.code === 0 && response.data) {
+      courses.value = response.data.results || [];
+      courseCount.value = response.data.total || 0;
       
-      // 更新统计数据
-      courseCount.value = courses.value.length
-      classCount.value = courses.value.reduce((acc, curr) => acc + (curr.class_count || 1), 0)
-      studentCount.value = courses.value.reduce((acc, curr) => acc + (curr.student_count || 30), 0)
-      
-      // 获取教师名称
+      // 更新其他统计数据
+      let totalStudents = 0;
+      let totalClasses = 0;
+      courses.value.forEach(course => {
+        totalStudents += course.student_count || 0;
+        totalClasses += course.class_count || 0;
+      });
+      studentCount.value = totalStudents;
+      classCount.value = totalClasses;
+
+      // 获取教师姓名
       const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
-      teacherName.value = userInfo.username || '老师';
+      teacherName.value = userInfo.name || '尊敬的老师';
     } else {
-      if (response.code === 1 && response.msg.includes('权限')) {
-        ElMessage.error('没有访问权限，请确认您是否具有教师角色');
-        router.push('/login');
+      // 如果是权限问题，显示具体的错误信息
+      if (response.msg.includes('没有访问权限')) {
+        ElMessage.error('您没有教师权限，请联系管理员');
       } else {
         ElMessage.error(response.msg || '获取课程列表失败');
       }
     }
   } catch (error) {
-    console.error('加载课程失败:', error)
-    ElMessage.error('加载课程数据失败，请稍后重试')
+    console.error('加载课程数据失败:', error);
+    ElMessage.error('加载课程数据失败，请稍后重试');
   }
 }
 
