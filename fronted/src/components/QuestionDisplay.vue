@@ -64,14 +64,25 @@ const parseContent = computed(() => {
 })
 
 const contentStatus = computed(() => {
-  const content = parseContent.value
+  const content = parseContent.value;
   if (!content) {
-    return { valid: false, message: '题目数据格式不正确' }
+    return { valid: false, message: '题目数据格式不正确' };
   }
-  if (!content.questions || !Array.isArray(content.questions)) {
-    return { valid: false, message: '未找到有效的题目数据' }
+  if (content.error) {
+    return { valid: false, message: content.error };
   }
-  return { valid: true, message: '' }
+  if (!content.questions || !Array.isArray(content.questions) || content.questions.length === 0) {
+    return { valid: false, message: '未找到有效的题目数据' };
+  }
+  // 检查题目格式
+  const invalidQuestion = content.questions.find(q => 
+    !q.title || !q.content || !q.type || 
+    (q.type === 'single_choice' && (!Array.isArray(q.answer_template) || q.answer_template.length === 0))
+  );
+  if (invalidQuestion) {
+    return { valid: false, message: '题目格式不完整' };
+  }
+  return { valid: true, message: '' };
 })
 
 const isValidContent = computed(() => contentStatus.value.valid)
@@ -133,8 +144,9 @@ const selectAnswer = (questionIndex, optionIndex) => {
 <style scoped>
 .question-container {
   width: 100%;
-  max-width: 800px;
+  max-width: 100%;
   margin: 0 auto;
+  overflow: visible;
 }
 
 .error-message {
@@ -144,19 +156,22 @@ const selectAnswer = (questionIndex, optionIndex) => {
   border-radius: 8px;
   margin-bottom: 16px;
   text-align: center;
+  word-break: break-word;
 }
 
 .question-list {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
 }
 
 .question-item {
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+  overflow: visible;
+  width: 100%;
 }
 
 .question-header {
@@ -190,6 +205,7 @@ const selectAnswer = (questionIndex, optionIndex) => {
 
 .question-content {
   padding: 20px;
+  width: 100%;
 }
 
 .question-title {
@@ -197,6 +213,7 @@ const selectAnswer = (questionIndex, optionIndex) => {
   font-weight: 600;
   color: #303133;
   margin-bottom: 12px;
+  word-break: break-word;
 }
 
 .question-text {
@@ -205,12 +222,15 @@ const selectAnswer = (questionIndex, optionIndex) => {
   line-height: 1.6;
   margin-bottom: 20px;
   white-space: pre-wrap;
+  word-break: break-word;
+  width: 100%;
 }
 
 .question-options {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
 }
 
 .option-item {
@@ -222,6 +242,8 @@ const selectAnswer = (questionIndex, optionIndex) => {
   cursor: pointer;
   transition: all 0.3s ease;
   border: 1px solid transparent;
+  width: 100%;
+  word-break: break-word;
 }
 
 .option-item:hover {
@@ -246,6 +268,7 @@ const selectAnswer = (questionIndex, optionIndex) => {
   color: #606266;
   line-height: 1.5;
   flex: 1;
+  word-break: break-word;
 }
 
 .option-item:hover .option-text,
