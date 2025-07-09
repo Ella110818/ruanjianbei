@@ -88,6 +88,12 @@ const TokenManager = {
             const timeUntilExpiry = expirationTime - currentTime;
             const fiveMinutes = 5 * 60 * 1000; // 5分钟（毫秒）
 
+            console.log('Token过期时间检查:', {
+                currentTime: new Date(currentTime).toISOString(),
+                expirationTime: new Date(expirationTime).toISOString(),
+                timeUntilExpiry: Math.floor(timeUntilExpiry / 1000) + '秒'
+            });
+
             return timeUntilExpiry < fiveMinutes;
         } catch (e) {
             console.error('检查token过期失败:', e);
@@ -166,7 +172,8 @@ const TokenManager = {
         return valid;
     },
 
-    async refreshToken() {
+    async refreshToken(retryCount = 0) {
+        const MAX_RETRIES = 2;
         try {
             const refreshToken = this.getRefreshToken();
             console.log('准备刷新token，当前refresh token状态:', refreshToken ? '存在' : '不存在');
@@ -177,10 +184,10 @@ const TokenManager = {
             }
 
             // 先尝试获取新token
-            const tokenUrl = `${API_CONFIG.BASE_URL}/token/`;
-            console.log('尝试获取新token');
+            const tokenUrl = `${API_CONFIG.BASE_URL}/token/refresh/`;
+            console.log('尝试刷新token，请求URL:', tokenUrl);
 
-            const tokenResponse = await fetch(tokenUrl, {
+            const response = await fetch(tokenUrl, {
                 method: 'POST',
                 headers: {
                     ...API_CONFIG.headers,
@@ -189,48 +196,52 @@ const TokenManager = {
                 body: JSON.stringify({ refresh: refreshToken })
             });
 
-            const tokenData = await tokenResponse.json();
-            console.log('获取新token响应:', tokenData);
+            // 打印响应头信息
+            console.log('Token刷新响应状态:', response.status);
+            console.log('Token刷新响应头:', Object.fromEntries(response.headers.entries()));
 
-            if (tokenResponse.ok && tokenData.success && tokenData.data) {
-                const { access, refresh } = tokenData.data;
+            const responseText = await response.text();
+            console.log('Token刷新原始响应:', responseText);
+
+            let responseData;
+            try {
+                responseData = JSON.parse(responseText);
+                console.log('Token刷新解析后响应:', responseData);
+            } catch (e) {
+                console.error('Token刷新响应解析失败:', e);
+                throw new Error('服务器响应格式错误');
+            }
+
+            if (response.ok && responseData.success && responseData.data) {
+                const { access, refresh } = responseData.data;
                 if (access && refresh) {
                     this.setTokens(access, refresh);
                     return access;
                 }
             }
 
-            // 如果获取新token失败，尝试刷新token
-            const refreshUrl = `${API_CONFIG.BASE_URL}/token/refresh/`;
-            console.log('尝试刷新token');
-
-            const response = await fetch(refreshUrl, {
-                method: 'POST',
-                headers: {
-                    ...API_CONFIG.headers,
-                    'ngrok-skip-browser-warning': 'true'
-                },
-                body: JSON.stringify({ refresh: refreshToken })
-            });
-
-            const responseData = await response.json();
-            console.log('刷新token响应:', responseData);
-
-            if (response.ok && responseData.access) {
-                this.setAccessToken(responseData.access);
-                return responseData.access;
+            // 如果刷新失败且未超过重试次数，等待后重试
+            if (retryCount < MAX_RETRIES) {
+                console.log(`Token刷新失败，${retryCount + 1}秒后重试...`);
+                await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000));
+                return this.refreshToken(retryCount + 1);
             }
 
-            if (response.status === 401) {
-                console.error('Refresh Token已失效，需要重新登录');
-                this.clearTokens();
-                window.location.href = '/login';
-            } else {
-                console.error('刷新Token失败:', responseData);
-            }
+            // 如果所有重试都失败，清除tokens并重定向到登录页
+            console.error('Token刷新重试次数已达上限');
+            this.clearTokens();
+            window.location.href = '/login';
             return null;
         } catch (error) {
             console.error('刷新Token过程出错:', error);
+
+            // 如果是网络错误且未超过重试次数，等待后重试
+            if (error.name === 'TypeError' && retryCount < MAX_RETRIES) {
+                console.log(`网络错误，${retryCount + 1}秒后重试...`);
+                await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000));
+                return this.refreshToken(retryCount + 1);
+            }
+
             return null;
         }
     }
@@ -1232,7 +1243,7 @@ export async function getExercises(params) {
             if (response.status === 401 || response.status === 403) {
                 // 尝试刷新token
                 try {
-                    const newToken = await refreshToken();
+                    const newToken = await TokenManager.refreshToken();
                     if (newToken) {
                         // 使用新token重试请求
                         return await getExercises(params);
