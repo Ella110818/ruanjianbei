@@ -342,42 +342,50 @@ export async function refreshToken() {
 
 // 通用请求处理函数
 async function handleRequest(url, options = {}) {
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            ...API_CONFIG.headers,
-            ...options.headers
+    try {
+        const response = await fetch(url, {
+            ...API_CONFIG.fetchOptions,
+            ...options,
+            headers: {
+                ...API_CONFIG.headers,
+                ...(options.headers || {}),
+            }
+        });
+
+        // 添加详细的响应日志
+        console.log('API Response Status:', response.status);
+        console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
+
+        // 获取原始响应文本
+        const responseText = await response.text();
+        console.log('API Raw Response:', responseText);
+
+        // 尝试解析JSON
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (e) {
+            console.error('JSON Parse Error:', e);
+            console.log('Non-JSON Response Content:', responseText);
+            throw new Error('服务器返回了非JSON格式的数据');
         }
-    });
 
-    if (response.status === 401) {
-        // Token过期，尝试刷新
-        const newToken = await refreshToken();
-        if (newToken) {
-            // 使用新Token重试请求
-            options.headers = {
-                ...options.headers,
-                'Authorization': `Bearer ${newToken}`
-            };
-            return handleRequest(url, options);
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
         }
-        throw new Error('认证失败');
+
+        return responseData;
+    } catch (error) {
+        console.error('Request Error:', error);
+        console.log('Request URL:', url);
+        console.log('Request Options:', options);
+
+        return {
+            code: 1,
+            msg: error.message || '请求失败',
+            data: null
+        };
     }
-
-    const contentType = response.headers.get('content-type');
-    let data;
-
-    if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-    } else {
-        data = await response.text();
-    }
-
-    if (!response.ok) {
-        return handleHttpError(response, data);
-    }
-
-    return data;
 }
 
 // 获取课程列表
