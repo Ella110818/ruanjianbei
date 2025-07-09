@@ -20,7 +20,7 @@ function getBaseUrl() {
 export const API_CONFIG = {
     BASE_URL: getBaseUrl(),
     TIMEOUT: 10000,  // 请求超时时间：10秒
-    withCredentials: false,  // 不需要跨域凭证
+    withCredentials: true,  // 允许跨域凭证
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -1656,9 +1656,19 @@ export async function getMyCourses(params = {}) {
     }
 
     try {
+        // 先检查并刷新token如果需要
+        await TokenManager.refreshTokenIfNeeded();
+
         const token = TokenManager.getAccessToken();
         if (!token) {
-            throw new Error('No access token available');
+            console.log('没有有效的token，重定向到登录页');
+            TokenManager.clearTokens();
+            window.location.href = '/login';
+            return {
+                code: 1,
+                msg: '请重新登录',
+                data: null
+            };
         }
 
         // 构建查询参数
@@ -1680,7 +1690,7 @@ export async function getMyCourses(params = {}) {
 
         const response = await fetch(url, {
             method: 'GET',
-            credentials: 'include',  // 添加这个选项以包含cookies
+            credentials: 'include',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
@@ -1698,13 +1708,13 @@ export async function getMyCourses(params = {}) {
 
         if (!response.ok) {
             if (response.status === 403 || response.status === 401) {
-                console.log('尝试刷新token并重试请求');
+                console.log('认证失败，尝试刷新token');
                 const newToken = await TokenManager.refreshToken();
                 if (newToken) {
                     console.log('token刷新成功，重试请求');
                     return getMyCourses(params);
                 } else {
-                    console.log('token刷新失败');
+                    console.log('token刷新失败，需要重新登录');
                     TokenManager.clearTokens();
                     window.location.href = '/login';
                     return {
@@ -1736,6 +1746,278 @@ export async function getMyCourses(params = {}) {
         return {
             code: 1,
             msg: error.message || '获取我的课程列表失败',
+            data: null
+        };
+    }
+}
+
+// 获取用户列表
+export async function getUserList(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取用户列表成功',
+            data: {
+                total: 100,
+                results: Array(10).fill().map((_, index) => ({
+                    id: index + 1,
+                    username: `user${index + 1}`,
+                    name: `用户${index + 1}`,
+                    role: index % 2 === 0 ? 'teacher' : 'student',
+                    email: `user${index + 1}@example.com`,
+                    lastLogin: new Date().toISOString(),
+                    status: index % 5 === 0 ? 'disabled' : 'active'
+                }))
+            }
+        });
+    }
+
+    try {
+        // 先检查并刷新token如果需要
+        await TokenManager.refreshTokenIfNeeded();
+
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            console.log('没有有效的token，重定向到登录页');
+            TokenManager.clearTokens();
+            window.location.href = '/login';
+            return {
+                code: 1,
+                msg: '请重新登录',
+                data: null
+            };
+        }
+
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.role) queryParams.append('role', params.role);
+        if (params.status) queryParams.append('status', params.status);
+        if (params.page) queryParams.append('page', params.page);
+        if (params.ordering) queryParams.append('ordering', params.ordering);
+
+        const queryString = queryParams.toString();
+        const url = `${API_CONFIG.BASE_URL}/users/${queryString ? `?${queryString}` : ''}`;
+
+        console.log('请求用户列表URL:', url);
+        console.log('请求Headers:', {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+        });
+
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        // 打印响应头信息，帮助调试
+        console.log('响应状态:', response.status);
+        console.log('响应头:', Object.fromEntries(response.headers.entries()));
+
+        const responseData = await response.json();
+        console.log('获取用户列表响应:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403 || response.status === 401) {
+                console.log('认证失败，尝试刷新token');
+                const newToken = await TokenManager.refreshToken();
+                if (newToken) {
+                    console.log('token刷新成功，重试请求');
+                    return getUserList(params);
+                } else {
+                    console.log('token刷新失败，需要重新登录');
+                    TokenManager.clearTokens();
+                    window.location.href = '/login';
+                    return {
+                        code: 1,
+                        msg: '认证失败，请重新登录',
+                        data: null
+                    };
+                }
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        // 检查响应格式
+        if (responseData.success && responseData.data) {
+            return {
+                code: 0,
+                msg: '获取用户列表成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取用户列表失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取用户列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取用户列表失败',
+            data: null
+        };
+    }
+}
+
+// 创建用户
+export async function createUser(userData) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '创建用户成功',
+            data: {
+                ...userData,
+                id: Math.floor(Math.random() * 1000),
+                created_at: new Date().toISOString()
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify(userData)
+        });
+
+        const responseData = await response.json();
+        console.log('创建用户响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '创建用户成功',
+            data: responseData.data
+        };
+    } catch (error) {
+        console.error('创建用户失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '创建用户失败',
+            data: null
+        };
+    }
+}
+
+// 更新用户信息
+export async function updateUser(username, userData) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '更新用户成功',
+            data: {
+                ...userData,
+                updated_at: new Date().toISOString()
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/${username}/`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify(userData)
+        });
+
+        const responseData = await response.json();
+        console.log('更新用户响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '更新用户成功',
+            data: responseData.data
+        };
+    } catch (error) {
+        console.error('更新用户失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '更新用户失败',
+            data: null
+        };
+    }
+}
+
+// 切换用户状态（启用/禁用）
+export async function toggleUserStatus(username) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '切换用户状态成功',
+            data: null
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/${username}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('切换用户状态响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '切换用户状态成功',
+            data: responseData.data
+        };
+    } catch (error) {
+        console.error('切换用户状态失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '切换用户状态失败',
             data: null
         };
     }
