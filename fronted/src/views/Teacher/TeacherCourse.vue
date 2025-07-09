@@ -117,7 +117,7 @@
           <!-- 分页器 -->
           <div class="pagination-container">
             <el-pagination
-              v-model:current-page="currentPage"
+              v-model="currentPage"
               :page-size="pageSize"
               :total="totalExercises"
               @current-change="handlePageChange"
@@ -135,7 +135,7 @@ import { ref, onMounted, watch } from 'vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import CourseDetail from '@/components/CourseDetail.vue'
-import { getCourseList, checkAndSetMockEnvironment, getExercises } from '@/api'
+import { checkAndSetMockEnvironment, getExercises, getMyCourses } from '@/api'
 import { ElMessage, ElPagination } from 'element-plus'
 import { useRouter } from 'vue-router'
 
@@ -195,10 +195,21 @@ const loadCourses = async () => {
       return;
     }
 
+    // 检查用户角色
+    const userRole = localStorage.getItem('userRole');
+    console.log('当前用户角色:', userRole);
+    
     // 检查并设置Mock环境
     checkAndSetMockEnvironment();
     
-    const response = await getCourseList()
+    // 使用getMyCourses接口
+    const response = await getMyCourses({
+      page: 1,
+      ordering: '1'
+    });
+
+    console.log('获取课程列表响应:', response);
+    
     if (response.code === 0) {
       courses.value = response.data.map(course => ({
         id: course.id,
@@ -216,11 +227,15 @@ const loadCourses = async () => {
       studentCount.value = courses.value.reduce((acc, curr) => acc + (curr.student_count || 30), 0)
       
       // 获取教师名称
-      if (courses.value.length > 0) {
-        teacherName.value = courses.value[0].teacher_name || localStorage.getItem('teacherName') || '老师'
-      }
+      const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+      teacherName.value = userInfo.username || '老师';
     } else {
-      ElMessage.error(response.msg || '获取课程列表失败')
+      if (response.code === 1 && response.msg.includes('权限')) {
+        ElMessage.error('没有访问权限，请确认您是否具有教师角色');
+        router.push('/login');
+      } else {
+        ElMessage.error(response.msg || '获取课程列表失败');
+      }
     }
   } catch (error) {
     console.error('加载课程失败:', error)
