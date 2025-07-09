@@ -363,44 +363,13 @@ export async function login(username, password, role) {
                     };
                     localStorage.setItem('user', JSON.stringify(userInfo));
 
-                    // 获取用户权限
-                    try {
-                        // 使用新的access token获取权限
-                        const permissionsUrl = `${API_CONFIG.BASE_URL}/users/my_permissions/`;
-                        const permissionsResponse = await fetch(permissionsUrl, {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${access}`,
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'ngrok-skip-browser-warning': 'true'
-                            }
-                        });
-
-                        if (!permissionsResponse.ok) {
-                            throw new Error(`获取权限失败: ${permissionsResponse.status}`);
-                        }
-
-                        const permissionsData = await permissionsResponse.json();
-                        console.log('权限数据:', permissionsData);
-
-                        if (permissionsData.success && permissionsData.status_code === 200) {
-                            const data = permissionsData.data;
-
-                            // 保存权限信息
-                            localStorage.setItem('userRole', data.role || '');
-                            localStorage.setItem('isStaff', String(data.is_staff || false));
-                            localStorage.setItem('isSuperuser', String(data.is_superuser || false));
-                            localStorage.setItem('userPermissions', JSON.stringify({
-                                permissions: Array.isArray(data.permissions) ? data.permissions : []
-                            }));
-                        }
-                    } catch (error) {
-                        console.error('获取权限失败:', error);
-                        // 设置默认权限
-                        localStorage.setItem('userPermissions', JSON.stringify({
-                            permissions: []
-                        }));
+                    // 获取用户角色和权限
+                    console.log('开始获取用户角色和权限');
+                    const roleResponse = await getUserRoleAndPermissions();
+                    if (roleResponse.code !== 0) {
+                        console.error('获取角色和权限失败:', roleResponse.msg);
+                    } else {
+                        console.log('成功获取角色和权限:', roleResponse.data);
                     }
 
                     return {
@@ -621,7 +590,9 @@ export async function resetUserPassword(username) {
 }
 
 // 获取课程列表
-export async function getCourseList(params = {}) {
+export async function getCourseList(params = {}, retryCount = 0) {
+    const MAX_RETRIES = 1; // 最多只重试一次
+
     if (getMockFlag()) {
         return mockApiResponse(mockCourseList);
     }
@@ -650,7 +621,8 @@ export async function getCourseList(params = {}) {
         console.log('请求课程列表:', {
             url,
             token: token ? '存在' : '不存在',
-            params
+            params,
+            retryCount
         });
 
         const response = await fetch(url, {
@@ -677,13 +649,13 @@ export async function getCourseList(params = {}) {
             throw new Error('服务器返回了非JSON格式的数据');
         }
 
-        // 如果是401或403，尝试刷新token
-        if (response.status === 401 || response.status === 403) {
-            console.log('权限错误，尝试刷新token');
+        // 如果是401或403，并且还没有达到最大重试次数，尝试刷新token
+        if ((response.status === 401 || response.status === 403) && retryCount < MAX_RETRIES) {
+            console.log(`权限错误，尝试刷新token (重试次数: ${retryCount + 1}/${MAX_RETRIES})`);
             const newToken = await TokenManager.refreshToken();
             if (newToken) {
                 console.log('Token刷新成功，重试请求');
-                return getCourseList(params); // 递归调用，重试请求
+                return getCourseList(params, retryCount + 1); // 增加重试计数
             } else {
                 console.log('Token刷新失败，需要重新登录');
                 TokenManager.clearTokens();
@@ -696,7 +668,16 @@ export async function getCourseList(params = {}) {
             }
         }
 
+        // 如果已经重试过或者是其他错误
         if (!response.ok) {
+            if (response.status === 403) {
+                console.log('没有访问权限，请检查用户角色和权限');
+                return {
+                    code: 1,
+                    msg: '没有访问权限，请检查用户角色和权限',
+                    data: null
+                };
+            }
             return handleHttpError(response, responseData);
         }
 
@@ -1546,6 +1527,153 @@ export async function deleteExercise(exerciseId) {
         return {
             code: 1,
             msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 获取所有角色列表
+export async function getRoles() {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取角色列表成功',
+            data: [
+                { id: 1, name: 'teacher', display_name: '教师' },
+                { id: 2, name: 'student', display_name: '学生' },
+                { id: 3, name: 'admin', display_name: '管理员' }
+            ]
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/roles/`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('获取角色列表响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取角色列表成功',
+            data: responseData.data || []
+        };
+    } catch (error) {
+        console.error('获取角色列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取角色列表失败',
+            data: null
+        };
+    }
+}
+
+// 获取指定角色详情
+export async function getRoleById(roleId) {
+    if (getMockFlag()) {
+        const mockRole = {
+            id: roleId,
+            name: roleId === 1 ? 'teacher' : roleId === 2 ? 'student' : 'admin',
+            display_name: roleId === 1 ? '教师' : roleId === 2 ? '学生' : '管理员',
+            permissions: []
+        };
+        return mockApiResponse({
+            code: 0,
+            msg: '获取角色详情成功',
+            data: mockRole
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/roles/${roleId}/`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('获取角色详情响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取角色详情成功',
+            data: responseData.data || null
+        };
+    } catch (error) {
+        console.error('获取角色详情失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取角色详情失败',
+            data: null
+        };
+    }
+}
+
+// 在登录成功后获取用户角色和权限
+export async function getUserRoleAndPermissions() {
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        // 获取用户信息
+        const userInfo = getUserInfo();
+        if (!userInfo || !userInfo.role) {
+            throw new Error('用户信息或角色不存在');
+        }
+
+        // 获取角色详情
+        const roleResponse = await getRoleById(userInfo.role);
+        if (roleResponse.code !== 0) {
+            throw new Error(roleResponse.msg);
+        }
+
+        // 保存角色和权限信息
+        localStorage.setItem('userRole', roleResponse.data.name);
+        localStorage.setItem('userPermissions', JSON.stringify({
+            permissions: roleResponse.data.permissions || []
+        }));
+
+        return {
+            code: 0,
+            msg: '获取用户角色和权限成功',
+            data: roleResponse.data
+        };
+    } catch (error) {
+        console.error('获取用户角色和权限失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取用户角色和权限失败',
             data: null
         };
     }
