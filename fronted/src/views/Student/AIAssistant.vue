@@ -93,17 +93,23 @@
               </div>
             </div>
             <div class="chat-messages" ref="chatMessages">
-              <div v-for="message in messages" :key="message.id" 
+              <div v-for="message in messages" 
+                   :key="message.id" 
                    :class="['message', message.type]">
-                      <div class="message-content">
-        <template v-if="message.type === 'ai' && isQuestionResponse(message.content)">
-          <QuestionDisplay :content="message.content" />
-        </template>
-        <template v-else>
-          <div class="text-content">{{ message.content }}</div>
-        </template>
-      </div>
-      <div class="message-time">{{ message.time }}</div>
+                <div class="message-content">
+                  <template v-if="message.type === 'ai'">
+                    <div v-if="isQuestionResponse(message.content)" class="question-response">
+                      <QuestionDisplay :content="message.content" />
+                    </div>
+                    <div v-else class="text-content">
+                      {{ message.content.error || message.content }}
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="text-content">{{ message.content }}</div>
+                  </template>
+                </div>
+                <div class="message-time">{{ message.time }}</div>
               </div>
             </div>
             
@@ -195,15 +201,11 @@ const exporting = ref(false)
 
 // 判断是否为题目响应
 const isQuestionResponse = (content) => {
-  try {
-    if (typeof content === 'string') {
-      const data = JSON.parse(content);
-      return data && data.questions && Array.isArray(data.questions);
-    }
-    return false;
-  } catch {
-    return false;
-  }
+  return content && 
+         typeof content === 'object' && 
+         Array.isArray(content.questions) && 
+         content.questions.length > 0 && 
+         !content.error;
 }
 
 // 添加配置选项
@@ -286,26 +288,54 @@ const generateQuestions = async (input) => {
 
 // 修改 generateQuestions 函数的响应处理
 const handleQuestionResponse = (response) => {
-  if (!response || !response.data) return '抱歉，生成题目失败。';
+  if (!response) {
+    console.error('响应为空');
+    return {
+      questions: [],
+      session_key: '',
+      saved_exercises: [],
+      failed_exercises: 0,
+      error: '抱歉，生成题目失败。'
+    };
+  }
   
   try {
-    // 如果response.data已经是对象，直接使用；否则尝试解析JSON字符串
-    const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-    
-    if (!data.questions || !Array.isArray(data.questions)) {
-      return '抱歉，题目格式不正确。';
+    // 检查API响应格式
+    if (!response.success || response.status_code !== 201) {
+      console.error('API响应失败:', response);
+      return {
+        questions: [],
+        session_key: '',
+        saved_exercises: [],
+        failed_exercises: 0,
+        error: response.message || '抱歉，生成题目失败。'
+      };
     }
 
-    // 返回格式化后的数据
-    return {
-      questions: data.questions,
-      session_key: data.session_key,
-      saved_exercises: data.saved_exercises,
-      failed_exercises: data.failed_exercises
-    };
+    // 检查data部分
+    if (!response.data || !Array.isArray(response.data.questions)) {
+      console.error('题目数据格式不正确:', response.data);
+      return {
+        questions: [],
+        session_key: '',
+        saved_exercises: [],
+        failed_exercises: 0,
+        error: '抱歉，题目格式不正确。'
+      };
+    }
+
+    // 直接返回data部分
+    return response.data;
+
   } catch (error) {
     console.error('处理题目响应失败:', error);
-    return '抱歉，处理题目数据时出错。';
+    return {
+      questions: [],
+      session_key: '',
+      saved_exercises: [],
+      failed_exercises: 0,
+      error: '抱歉，处理题目数据时出错。'
+    };
   }
 }
 
@@ -315,8 +345,9 @@ const handleSearch = async () => {
     showChat.value = true;
     try {
       loading.value = true;
+      const messageId = messages.value.length + 1;
       messages.value.push({
-        id: messages.value.length + 1,
+        id: messageId,
         type: 'user',
         content: searchQuery.value,
         time: formatTime(new Date())
@@ -326,7 +357,13 @@ const handleSearch = async () => {
       messages.value.push({
         id: loadingMessageId,
         type: 'ai',
-        content: '正在生成题目...',
+        content: {
+          questions: [],
+          session_key: '',
+          saved_exercises: [],
+          failed_exercises: 0,
+          error: '正在生成题目...'
+        },
         time: formatTime(new Date())
       });
 
@@ -349,7 +386,13 @@ const handleSearch = async () => {
       messages.value.push({
         id: messages.value.length + 1,
         type: 'ai',
-        content: '抱歉，生成题目时发生错误。',
+        content: {
+          questions: [],
+          session_key: '',
+          saved_exercises: [],
+          failed_exercises: 0,
+          error: '抱歉，生成题目时发生错误。'
+        },
         time: formatTime(new Date())
       });
     } finally {
@@ -377,7 +420,13 @@ const messages = ref([
   {
     id: 1,
     type: 'ai',
-    content: '你好！我是你的AI学习助手，有什么我可以帮你的吗？',
+    content: {
+      questions: [],
+      session_key: '',
+      saved_exercises: [],
+      failed_exercises: 0,
+      error: '你好！我是你的AI学习助手，有什么我可以帮你的吗？'
+    },
     time: '刚刚'
   }
 ])
@@ -386,8 +435,9 @@ const sendMessage = async (message = null) => {
   const userInput = message || inputMessage.value;
   if (!userInput.trim()) return;
 
+  const messageId = messages.value.length + 1;
   messages.value.push({
-    id: messages.value.length + 1,
+    id: messageId,
     type: 'user',
     content: userInput,
     time: formatTime(new Date())
@@ -402,7 +452,13 @@ const sendMessage = async (message = null) => {
     messages.value.push({
       id: loadingMessageId,
       type: 'ai',
-      content: '正在生成题目...',
+      content: {
+        questions: [],
+        session_key: '',
+        saved_exercises: [],
+        failed_exercises: 0,
+        error: '正在生成题目...'
+      },
       time: formatTime(new Date())
     });
 
@@ -423,7 +479,13 @@ const sendMessage = async (message = null) => {
     messages.value.push({
       id: messages.value.length + 1,
       type: 'ai',
-      content: '抱歉，生成题目时发生错误。',
+      content: {
+        questions: [],
+        session_key: '',
+        saved_exercises: [],
+        failed_exercises: 0,
+        error: '抱歉，生成题目时发生错误。'
+      },
       time: formatTime(new Date())
     });
   }
@@ -776,9 +838,13 @@ const handleExport = async (format) => {
 }
 
 .chat-card {
-  height: 400px;
+  height: auto;
+  min-height: 400px;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
 }
 
 .chat-header {
@@ -804,6 +870,8 @@ const handleExport = async (format) => {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .message {
@@ -1040,11 +1108,23 @@ const handleExport = async (format) => {
   border-radius: 8px;
   color: #303133;
   white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message.user .text-content {
+  background: #409EFF;
+  color: white;
+}
+
+.question-response {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
 }
 
 .message.ai .message-content {
-  background: transparent;
-  padding: 0;
   width: 100%;
+  max-width: 100%;
+  overflow: visible;
 }
 </style> 
