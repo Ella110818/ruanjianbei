@@ -62,7 +62,7 @@ const routes = [
   {
     path: '/teacher/course',
     name: 'teacherCourse',
-    component: () => import('../views/Teacher/TeacherCourse.vue'),
+    component: () => import(/* webpackChunkName: "teacher-course" */ '../views/Teacher/TeacherCourse.vue'),
     meta: {
       requiresAuth: true,
       keepAlive: true
@@ -83,13 +83,13 @@ const routes = [
   {
     path: '/teacher/manage',
     name: 'teacherManage',
-    component: () => import('../views/Teacher/TeacherManage.vue'),
+    component: () => import(/* webpackChunkName: "teacher-manage" */ '../views/Teacher/TeacherManage.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/teacher/ai',
     name: 'teacherAi',
-    component: () => import('../views/Teacher/TeacherAi.vue'),
+    component: () => import(/* webpackChunkName: "teacher-ai" */ '../views/Teacher/TeacherAi.vue'),
     meta: {
       requiresAuth: true,
       keepAlive: true  // 添加缓存以保持状态
@@ -109,14 +109,14 @@ const routes = [
   {
     path: '/teacher/profile',
     name: 'teacherProfile',
-    component: () => import('../views/Teacher/TeacherProfile.vue'),
+    component: () => import(/* webpackChunkName: "teacher-profile" */ '../views/Teacher/TeacherProfile.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/teacher/exercises',
     name: 'teacherExercises',
-    component: () => import('../views/Teacher/TeacherExercises.vue'),
-    meta: { 
+    component: () => import(/* webpackChunkName: "teacher-exercises" */ '../views/Teacher/TeacherExercises.vue'),
+    meta: {
       requiresAuth: true,
       keepAlive: true
     }
