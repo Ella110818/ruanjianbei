@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: ' https://small-beans-joke.loca.lt',  // 更新为新的ngrok地址
+        API_URL: 'https://ripe-pugs-hug.loca.lt',  // 更新为新的ngrok地址
         API_VERSION: 'api'
     }
 };
