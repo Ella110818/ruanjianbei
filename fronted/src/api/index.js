@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://tangy-mice-appear.loca.lt',  // 更新为新的ngrok地址
+        API_URL: 'https://9a3173bc2b72.ngrok-free.app',  // 更新为新的ngrok地址
         API_VERSION: 'api'
     }
 };
