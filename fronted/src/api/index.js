@@ -233,64 +233,6 @@ const TokenManager = {
             console.error('刷新Token过程出错:', error);
             return null;
         }
-    },
-
-    // 解析JWT token
-    parseJwt(token) {
-        try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload);
-        } catch (e) {
-            console.error('解析token失败:', e);
-            return null;
-        }
-    },
-
-    // 检查token是否即将过期（5分钟内）
-    isTokenExpiringSoon(token) {
-        try {
-            const decoded = this.parseJwt(token);
-            if (!decoded || !decoded.exp) {
-                return true;
-            }
-            const expirationTime = decoded.exp * 1000; // 转换为毫秒
-            const currentTime = Date.now();
-            const timeUntilExpiry = expirationTime - currentTime;
-            const fiveMinutes = 5 * 60 * 1000; // 5分钟（毫秒）
-
-            return timeUntilExpiry < fiveMinutes;
-        } catch (e) {
-            console.error('检查token过期失败:', e);
-            return true;
-        }
-    },
-
-    // 检查是否需要刷新token
-    async refreshTokenIfNeeded() {
-        try {
-            const token = this.getAccessToken();
-            if (!token) {
-                console.log('没有access token，需要刷新');
-                return false;
-            }
-
-            // 如果token即将过期，才刷新
-            if (this.isTokenExpiringSoon(token)) {
-                console.log('Token即将过期，尝试刷新');
-                const newToken = await this.refreshToken();
-                return !!newToken;
-            }
-
-            console.log('Token仍然有效，无需刷新');
-            return true;
-        } catch (error) {
-            console.error('检查token刷新失败:', error);
-            return false;
-        }
     }
 };
 
@@ -600,19 +542,15 @@ export async function refreshToken() {
 // 通用请求处理函数
 async function handleRequest(url, options = {}) {
     try {
-        // 检查并刷新token
-        const tokenValid = await TokenManager.refreshTokenIfNeeded();
-        if (!tokenValid) {
-            console.log('Token无效或刷新失败，重定向到登录页');
-            window.location.href = '/login';
+        const token = TokenManager.getAccessToken();
+        if (!token) {
             return {
                 code: 1,
-                msg: '登录已过期，请重新登录',
+                msg: '未登录或登录已过期',
                 data: null
             };
         }
 
-        const token = TokenManager.getAccessToken();
         const finalOptions = {
             ...API_CONFIG.fetchOptions,
             ...options,
@@ -624,54 +562,34 @@ async function handleRequest(url, options = {}) {
             }
         };
 
-        console.log('发送请求:', url);
-        console.log('请求配置:', finalOptions);
-
         const response = await fetch(url, finalOptions);
-
-        // 添加详细的响应日志
-        console.log('API Response Status:', response.status);
-        console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
-
-        // 获取原始响应文本
-        const responseText = await response.text();
-        console.log('API Raw Response:', responseText);
-
-        // 尝试解析JSON
-        let responseData;
-        try {
-            responseData = JSON.parse(responseText);
-        } catch (e) {
-            console.error('JSON Parse Error:', e);
-            console.log('Non-JSON Response Content:', responseText);
-            throw new Error('服务器返回了非JSON格式的数据');
-        }
+        const responseData = await response.json();
 
         if (!response.ok) {
-            // 如果是401或403，可能是token过期
-            if (response.status === 401 || response.status === 403) {
-                console.log('收到401/403响应，尝试刷新token');
-                const tokenRefreshed = await TokenManager.refreshTokenIfNeeded();
-                if (tokenRefreshed) {
-                    console.log('Token已刷新，重试请求');
-                    return handleRequest(url, options);
-                }
-            }
             return handleHttpError(response, responseData);
         }
 
         return responseData;
     } catch (error) {
         console.error('Request Error:', error);
-        console.log('Request URL:', url);
-        console.log('Request Options:', options);
-
         return {
             code: 1,
             msg: error.message || '请求失败',
             data: null
         };
     }
+}
+
+// 重置用户密码
+export async function resetUserPassword(username) {
+    if (getMockFlag()) {
+        return mockApiResponse({ success: true });
+    }
+
+    const url = `${API_CONFIG.BASE_URL}/users/${username}/reset-password/`;
+    return handleRequest(url, {
+        method: 'POST'
+    });
 }
 
 // 获取课程列表
@@ -1239,4 +1157,357 @@ export async function getExercises(params) {
                 count: 10,
                 results: Array(10).fill().map((_, index) => ({
                     id: index + 1,
-                    title: `
+                    title: `模拟练习题 ${index + 1}`,
+                    content: '这是一道模拟练习题',
+                    type: 'single_choice',
+                    difficulty: 1,
+                    knowledge_point: '基础知识',
+                    options: ['A', 'B', 'C', 'D'],
+                    answer: 'A'
+                }))
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            return {
+                code: 1,
+                msg: '未登录或登录已过期',
+                data: null
+            };
+        }
+
+        const queryString = new URLSearchParams(params).toString();
+        const url = `${API_CONFIG.BASE_URL}/exercises/${queryString ? `?${queryString}` : ''}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        // 添加详细的响应日志
+        console.log('API Response Status:', response.status);
+        console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
+
+        // 获取原始响应文本
+        const responseText = await response.text();
+        console.log('API Raw Response:', responseText);
+
+        // 尝试解析JSON
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('JSON Parse Error:', e);
+            throw new Error('服务器返回了非JSON格式的数据');
+        }
+
+        if (!response.ok) {
+            // 如果是401或403，可能是token过期
+            if (response.status === 401 || response.status === 403) {
+                // 尝试刷新token
+                try {
+                    const newToken = await refreshToken();
+                    if (newToken) {
+                        // 使用新token重试请求
+                        return await getExercises(params);
+                    }
+                } catch (refreshError) {
+                    console.error('Token刷新失败:', refreshError);
+                    // 清除token并重定向到登录页
+                    TokenManager.clearTokens();
+                    window.location.href = '/login';
+                    return {
+                        code: 1,
+                        msg: '登录已过期，请重新登录',
+                        data: null
+                    };
+                }
+            }
+            return handleHttpError(response, data);
+        }
+
+        return {
+            code: 0,
+            msg: '获取练习题成功',
+            data: data.data || []
+        };
+    } catch (error) {
+        console.error('获取练习题失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取练习题失败',
+            data: null
+        };
+    }
+}
+
+// 获取单个练习题详情
+export async function getExerciseDetail(exerciseId) {
+    if (getMockFlag()) {
+        // 返回mock数据
+        const exercise = mockCourses.find(course => course.id === exerciseId);
+        if (!exercise) {
+            return {
+                code: 1,
+                msg: '练习题不存在',
+                data: null
+            };
+        }
+        return mockApiResponse({
+            ...exercise,
+            ...mockCourseDetail
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        // 构建URL并添加bypass参数
+        const exerciseDetailUrl = `${API_CONFIG.BASE_URL}/exercises/${exerciseId}/`;
+
+        const response = await fetch(exerciseDetailUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('练习题详情响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '获取练习题详情成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取练习题详情失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取练习题详情失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 创建新练习题
+export async function createExercise(exerciseData) {
+    if (getMockFlag()) {
+        // 返回mock数据
+        const newExercise = {
+            ...exerciseData,
+            id: mockCourses.length + 1, // 使用课程ID作为练习题ID
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        mockCourses.push(newExercise); // 将新练习题添加到mock课程列表中
+        return Promise.resolve({
+            code: 0,
+            msg: '创建练习题成功',
+            data: newExercise
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${BASE_URL}/exercises/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(exerciseData)
+        });
+
+        const responseData = await response.json();
+        console.log('创建练习题响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '创建练习题成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '创建练习题失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('创建练习题失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 更新练习题信息
+export async function updateExercise(exerciseId, exerciseData) {
+    if (getMockFlag()) {
+        // 返回mock数据
+        const index = mockCourses.findIndex(course => course.id === exerciseId);
+        if (index !== -1) {
+            mockCourses[index] = {
+                ...mockCourses[index],
+                ...exerciseData,
+                updated_at: new Date().toISOString()
+            };
+            return Promise.resolve({
+                code: 0,
+                msg: '更新练习题成功',
+                data: mockCourses[index]
+            });
+        }
+        return Promise.resolve({
+            code: 1,
+            msg: '练习题不存在',
+            data: null
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${BASE_URL}/exercises/${exerciseId}/`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(exerciseData)
+        });
+
+        const responseData = await response.json();
+        console.log('更新练习题响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '更新练习题成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '更新练习题失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('更新练习题失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
+// 删除练习题
+export async function deleteExercise(exerciseId) {
+    if (getMockFlag()) {
+        // 返回mock数据
+        const index = mockCourses.findIndex(course => course.id === exerciseId);
+        if (index !== -1) {
+            mockCourses.splice(index, 1);
+            return Promise.resolve({
+                code: 0,
+                msg: '删除练习题成功',
+                data: null
+            });
+        }
+        return Promise.resolve({
+            code: 1,
+            msg: '练习题不存在',
+            data: null
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${BASE_URL}/exercises/${exerciseId}/`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (response.status === 204) {
+            return {
+                code: 0,
+                msg: '删除练习题成功',
+                data: null
+            };
+        }
+
+        const responseData = await response.json();
+        console.log('删除练习题响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 1,
+            msg: responseData.message || '删除练习题失败',
+            data: null
+        };
+    } catch (error) {
+        console.error('删除练习题失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
