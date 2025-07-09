@@ -82,7 +82,7 @@
         </el-table>
       </div>
 
-      <div class="pagination-container" v-if="total > 0">
+      <div class="pagination-container" v-if="userList && userList.length > 0">
         <el-pagination
           background
           layout="prev, pager, next"
@@ -94,7 +94,7 @@
         </el-pagination>
       </div>
 
-      <el-empty v-else description="暂无数据" />
+      <el-empty v-if="!loading && (!userList || userList.length === 0)" description="暂无数据" />
     </div>
 
     <!-- 用户表单对话框 -->

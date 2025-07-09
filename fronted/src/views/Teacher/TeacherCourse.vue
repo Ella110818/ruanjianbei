@@ -187,6 +187,14 @@ watch(() => router.currentRoute.value.path, (newPath) => {
 // 加载课程数据
 const loadCourses = async () => {
   try {
+    // 检查token
+    const token = localStorage.getItem('token');
+    if (!token) {
+      ElMessage.error('请先登录');
+      router.push('/login');
+      return;
+    }
+
     // 检查并设置Mock环境
     checkAndSetMockEnvironment();
     

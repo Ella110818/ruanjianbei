@@ -395,9 +395,67 @@ export async function getCourseList(params = {}) {
     }
 
     try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            return {
+                code: 1,
+                msg: '未登录或登录已过期',
+                data: null
+            };
+        }
+
         const queryString = new URLSearchParams(params).toString();
-        const url = `${API_CONFIG.BASE_URL}/courses/${queryString ? `?${queryString}` : ''}`;
-        const data = await handleRequest(url);
+        const url = addBypassParam(`${API_CONFIG.BASE_URL}/courses/${queryString ? `?${queryString}` : ''}`);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        // 添加详细的响应日志
+        console.log('API Response Status:', response.status);
+        console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
+
+        // 获取原始响应文本
+        const responseText = await response.text();
+        console.log('API Raw Response:', responseText);
+
+        // 尝试解析JSON
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('JSON Parse Error:', e);
+            throw new Error('服务器返回了非JSON格式的数据');
+        }
+
+        if (!response.ok) {
+            // 如果是401或403，可能是token过期
+            if (response.status === 401 || response.status === 403) {
+                // 尝试刷新token
+                try {
+                    const newToken = await refreshToken();
+                    if (newToken) {
+                        // 使用新token重试请求
+                        return await getCourseList(params);
+                    }
+                } catch (refreshError) {
+                    console.error('Token刷新失败:', refreshError);
+                    // 清除token并重定向到登录页
+                    TokenManager.clearTokens();
+                    window.location.href = '/login';
+                    return {
+                        code: 1,
+                        msg: '登录已过期，请重新登录',
+                        data: null
+                    };
+                }
+            }
+            return handleHttpError(response, data);
+        }
 
         return {
             code: 0,
@@ -405,6 +463,7 @@ export async function getCourseList(params = {}) {
             data: data.data || []
         };
     } catch (error) {
+        console.error('获取课程列表失败:', error);
         return {
             code: 1,
             msg: error.message || '获取课程列表失败',
