@@ -1505,6 +1505,66 @@ export async function getUserList(params = {}) {
     }
 }
 
+// 获取指定用户信息
+export async function getUserById(userId) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            id: userId,
+            username: 'mock_user',
+            email: 'mock@example.com',
+            first_name: '',
+            last_name: '',
+            role: 'admin',
+            created_at: new Date().toISOString()
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            return {
+                code: 1,
+                msg: '未登录',
+                data: null
+            };
+        }
+
+        const url = `${API_CONFIG.BASE_URL}/users/${userId}/`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('获取用户信息响应:', responseData);
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '获取用户信息成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取用户信息失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取用户信息错误:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取用户信息失败',
+            data: null
+        };
+    }
+}
+
 // 验证用户数据
 function validateUserData(userData) {
     const errors = [];
@@ -1681,8 +1741,58 @@ export async function getCurrentUser() {
         });
     }
 
-    const url = `${API_CONFIG.BASE_URL}/users/me/`;
-    return handleRequest(url);
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            return {
+                code: 1,
+                msg: '未登录',
+                data: null
+            };
+        }
+
+        const url = `${API_CONFIG.BASE_URL}/users/me/`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('获取用户信息响应:', responseData);
+
+        // 验证返回的数据
+        if (responseData.success && responseData.status_code === 200) {
+            if (!responseData.data || !responseData.data.id || !responseData.data.username) {
+                return {
+                    code: 1,
+                    msg: '获取用户信息失败：用户数据不完整',
+                    data: null
+                };
+            }
+            return {
+                code: 0,
+                msg: '获取用户信息成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取用户信息失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取用户信息错误:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取用户信息失败',
+            data: null
+        };
+    }
 }
 
 // 获取我的课程列表
