@@ -1660,9 +1660,16 @@ export async function getMyCourses(params = {}) {
         const url = `${API_CONFIG.BASE_URL}/courses/my_courses/${queryString ? `?${queryString}` : ''}`;
 
         console.log('请求我的课程列表URL:', url);
+        console.log('请求Headers:', {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+        });
 
         const response = await fetch(url, {
             method: 'GET',
+            credentials: 'include',  // 添加这个选项以包含cookies
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
@@ -1671,16 +1678,29 @@ export async function getMyCourses(params = {}) {
             }
         });
 
+        // 打印响应头信息，帮助调试
+        console.log('响应状态:', response.status);
+        console.log('响应头:', Object.fromEntries(response.headers.entries()));
+
         const responseData = await response.json();
         console.log('获取我的课程列表响应:', responseData);
 
         if (!response.ok) {
-            if (response.status === 403) {
-                // 如果是403错误，尝试刷新token
+            if (response.status === 403 || response.status === 401) {
+                console.log('尝试刷新token并重试请求');
                 const newToken = await TokenManager.refreshToken();
                 if (newToken) {
-                    // 使用新token重试请求
+                    console.log('token刷新成功，重试请求');
                     return getMyCourses(params);
+                } else {
+                    console.log('token刷新失败');
+                    TokenManager.clearTokens();
+                    window.location.href = '/login';
+                    return {
+                        code: 1,
+                        msg: '认证失败，请重新登录',
+                        data: null
+                    };
                 }
             }
             return handleHttpError(response, responseData);
