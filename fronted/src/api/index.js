@@ -1673,6 +1673,22 @@ export async function getMyCourses(params = {}, retryCount = 0) {
             };
         }
 
+        // 检查用户角色
+        const userInfo = getUserInfo();
+        if (!userInfo || !userInfo.role) {
+            console.log('用户信息不完整，尝试重新获取用户信息');
+            // 尝试重新获取用户信息和权限
+            const roleResponse = await getUserRoleAndPermissions();
+            if (roleResponse.code !== 0) {
+                console.error('获取用户角色和权限失败');
+                return {
+                    code: 1,
+                    msg: '获取用户权限失败',
+                    data: null
+                };
+            }
+        }
+
         // 构建查询参数
         const queryParams = new URLSearchParams();
         if (params.search) queryParams.append('search', params.search);
@@ -1715,26 +1731,32 @@ export async function getMyCourses(params = {}, retryCount = 0) {
                 if (newToken) {
                     console.log('token刷新成功，重试请求');
                     return getMyCourses(params, retryCount + 1);
-                } else {
-                    console.log('token刷新失败，需要重新登录');
-                    TokenManager.clearTokens();
-                    window.location.href = '/login';
-                    return {
-                        code: 1,
-                        msg: '认证失败，请重新登录',
-                        data: null
-                    };
                 }
             }
-            // 如果已经重试过或者是其他错误，直接返回错误信息
+
+            // 如果是权限问题，检查用户角色
             if (response.status === 403) {
-                console.log('没有访问权限，请检查用户角色和权限');
+                const userRole = localStorage.getItem('userRole');
+                console.log('当前用户角色:', userRole);
+
+                // 如果没有角色信息，尝试重新获取
+                if (!userRole) {
+                    console.log('尝试重新获取用户角色和权限');
+                    const roleResponse = await getUserRoleAndPermissions();
+                    if (roleResponse.code === 0) {
+                        // 获取成功后重试请求
+                        return getMyCourses(params, retryCount);
+                    }
+                }
+
+                // 返回具体的权限错误信息
                 return {
                     code: 1,
-                    msg: '没有访问权限，请检查用户角色和权限',
+                    msg: '没有访问权限，请确认您是否具有教师角色',
                     data: null
                 };
             }
+
             return handleHttpError(response, responseData);
         }
 
@@ -2029,6 +2051,127 @@ export async function toggleUserStatus(username) {
         return {
             code: 1,
             msg: error.message || '切换用户状态失败',
+            data: null
+        };
+    }
+}
+
+// 获取当前用户信息
+export async function getCurrentUser() {
+    if (getMockFlag()) {
+        const mockUser = {
+            id: 1,
+            username: 'teacher1',
+            name: '测试教师',
+            role: 'teacher',
+            email: 'teacher@example.com',
+            lastLogin: new Date().toISOString(),
+            status: 'active'
+        };
+        return mockApiResponse({
+            code: 0,
+            msg: '获取用户信息成功',
+            data: mockUser
+        });
+    }
+
+    try {
+        // 先检查并刷新token如果需要
+        await TokenManager.refreshTokenIfNeeded();
+
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            console.log('没有有效的token，重定向到登录页');
+            TokenManager.clearTokens();
+            window.location.href = '/login';
+            return {
+                code: 1,
+                msg: '请重新登录',
+                data: null
+            };
+        }
+
+        // 先尝试从localStorage获取缓存的用户信息
+        const cachedUser = localStorage.getItem('user');
+        if (cachedUser) {
+            try {
+                const userData = JSON.parse(cachedUser);
+                console.log('从缓存获取用户信息:', userData);
+                return {
+                    code: 0,
+                    msg: '获取用户信息成功',
+                    data: userData
+                };
+            } catch (e) {
+                console.error('解析缓存用户信息失败:', e);
+                // 如果解析失败，继续从服务器获取
+            }
+        }
+
+        const url = `${API_CONFIG.BASE_URL}/users/me/`;
+        console.log('请求当前用户信息URL:', url);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        // 打印响应头信息，帮助调试
+        console.log('响应状态:', response.status);
+        console.log('响应头:', Object.fromEntries(response.headers.entries()));
+
+        const responseData = await response.json();
+        console.log('获取当前用户信息响应:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403 || response.status === 401) {
+                console.log('认证失败，尝试刷新token');
+                const newToken = await TokenManager.refreshToken();
+                if (newToken) {
+                    console.log('token刷新成功，重试请求');
+                    return getCurrentUser();
+                } else {
+                    console.log('token刷新失败，需要重新登录');
+                    TokenManager.clearTokens();
+                    window.location.href = '/login';
+                    return {
+                        code: 1,
+                        msg: '认证失败，请重新登录',
+                        data: null
+                    };
+                }
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        // 检查响应格式
+        if (responseData.success && responseData.data) {
+            // 缓存用户信息到localStorage
+            localStorage.setItem('user', JSON.stringify(responseData.data));
+
+            return {
+                code: 0,
+                msg: '获取用户信息成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取用户信息失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取用户信息失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取用户信息失败',
             data: null
         };
     }
