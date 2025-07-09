@@ -1857,20 +1857,25 @@ export async function getMyCourses(params = {}) {
         if (params.ordering) queryParams.append('ordering', params.ordering);
         if (params.page) queryParams.append('page', params.page);
 
-        const url = `${API_CONFIG.BASE_URL}/courses/my_courses/?${queryParams.toString()}`;
+        const url = `${API_CONFIG.BASE_URL}/courses/my_courses/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
         console.log('获取我的课程列表请求URL:', url);
 
         // 4. 构建请求头
         const headers = {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
         };
         console.log('请求头信息:', headers);
 
         const response = await fetch(url, {
             method: 'GET',
-            headers: headers
+            headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${token}`,
+                'ngrok-skip-browser-warning': 'true'
+            }
         });
 
         // 5. 获取响应数据
@@ -1883,7 +1888,7 @@ export async function getMyCourses(params = {}) {
             console.log('我的课程列表响应数据:', responseData);
         } catch (e) {
             console.error('JSON解析错误:', e);
-            throw new Error('服务器返回了非法的JSON数据');
+            throw new Error('服务器返回了非JSON格式的数据');
         }
 
         if (!response.ok) {
