@@ -176,10 +176,6 @@ const handleHttpError = (response, errorData) => {
     }
 };
 
-// 辅助函数：添加bypass参数到URL
-function addBypassParam(url) {
-    return url + (url.includes('?') ? '&' : '?') + 'bypass-tunnel-reminder=true';
-}
 
 // 登录接口
 export async function login(username, password, role) {
@@ -266,7 +262,13 @@ export async function login(username, password, role) {
 
                         // 检查响应状态
                         if (!permissionsResponse.ok) {
-                            throw new Error(`获取权限失败: ${permissionsResponse.status}`);
+                            const errorText = await permissionsResponse.text();
+                            console.error('权限接口详细错误:', {
+                                status: permissionsResponse.status,
+                                statusText: permissionsResponse.statusText,
+                                errorBody: errorText
+                            });
+                            throw new Error(`获取权限失败: ${permissionsResponse.status}, 详细信息: ${errorText}`);
                         }
 
                         // 检查Content-Type
@@ -482,7 +484,7 @@ export async function getCourseList(params = {}) {
         }
 
         const queryString = new URLSearchParams(params).toString();
-        const url = addBypassParam(`${API_CONFIG.BASE_URL}/courses/${queryString ? `?${queryString}` : ''}`);
+        const url = `${API_CONFIG.BASE_URL}/courses/${queryString ? `?${queryString}` : ''}`;
 
         const response = await fetch(url, {
             method: 'GET',
@@ -574,7 +576,7 @@ export async function getCourseDetail(courseId) {
         }
 
         // 构建URL并添加bypass参数
-        const courseDetailUrl = addBypassParam(`${API_CONFIG.BASE_URL}/courses/${courseId}/`);
+        const courseDetailUrl = `${API_CONFIG.BASE_URL}/courses/${courseId}/`;
 
         const response = await fetch(courseDetailUrl, {
             method: 'GET',
@@ -935,7 +937,7 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
         }
 
         // 构建导出URL
-        const exportUrl = addBypassParam(`${API_CONFIG.BASE_URL}/questions-generate/export/?session_key=${sessionKey}&format=${format}&filename=${filename}`);
+        const exportUrl = `${API_CONFIG.BASE_URL}/questions-generate/export/?session_key=${sessionKey}&format=${format}&filename=${filename}`;
         console.log('导出URL:', exportUrl);
 
         const response = await fetch(exportUrl, {
@@ -1194,10 +1196,24 @@ export async function getRolePermissions() {
         const responseData = await response.json();
 
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('获取角色权限详细错误:', {
+                status: response.status,
+                statusText: response.statusText,
+                errorBody: errorText
+            });
+
             if (response.status === 403) {
                 return {
                     code: 1,
                     msg: '没有权限访问',
+                    data: null
+                };
+            }
+            if (response.status === 500) {
+                return {
+                    code: 1,
+                    msg: `服务器内部错误: ${errorText}`,
                     data: null
                 };
             }
@@ -1622,7 +1638,7 @@ export async function resetUserPassword(username) {
         return mockApiResponse({ success: true });
     }
 
-    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/${username}/reset-password/`);
+    const url = `${API_CONFIG.BASE_URL}/users/${username}/reset-password/`;
     return handleRequest(url, {
         method: 'POST'
     });
@@ -1634,7 +1650,7 @@ export async function toggleUserStatus(username) {
         return mockApiResponse({ success: true });
     }
 
-    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/${username}/toggle-status/`);
+    const url = `${API_CONFIG.BASE_URL}/users/${username}/toggle-status/`;
     return handleRequest(url, {
         method: 'POST'
     });
@@ -1665,7 +1681,7 @@ export async function getCurrentUser() {
         });
     }
 
-    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/me/`);
+    const url = `${API_CONFIG.BASE_URL}/users/me/`;
     return handleRequest(url);
 }
 
@@ -1699,12 +1715,27 @@ export async function getMyCourses(params = {}) {
     }
 
     try {
+        // 1. 获取并验证 token
         const token = TokenManager.getAccessToken();
+        console.log('当前 Token 状态:', {
+            exists: !!token,
+            length: token ? token.length : 0,
+            preview: token ? `${token.substring(0, 10)}...` : 'none'
+        });
+
         if (!token) {
             throw new Error('请先登录');
         }
 
-        // 构建查询参数
+        // 2. 检查 token 有效性
+        const isTokenValid = await TokenManager.refreshTokenIfNeeded();
+        console.log('Token 有效性检查结果:', isTokenValid);
+
+        if (!isTokenValid) {
+            throw new Error('Token 已过期或无效');
+        }
+
+        // 3. 构建查询参数
         const queryParams = new URLSearchParams();
         if (params.search) queryParams.append('search', params.search);
         if (params.ordering) queryParams.append('ordering', params.ordering);
@@ -1713,20 +1744,47 @@ export async function getMyCourses(params = {}) {
         const url = `${API_CONFIG.BASE_URL}/courses/my_courses/?${queryParams.toString()}`;
         console.log('获取我的课程列表请求URL:', url);
 
+        // 4. 构建请求头
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
+        console.log('请求头信息:', headers);
+
         const response = await fetch(url, {
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
+            headers: headers
         });
 
-        const responseData = await response.json();
-        console.log('我的课程列表响应数据:', responseData);
+        // 5. 获取响应数据
+        const responseText = await response.text();
+        console.log('原始响应内容:', responseText);
+
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+            console.log('我的课程列表响应数据:', responseData);
+        } catch (e) {
+            console.error('JSON解析错误:', e);
+            throw new Error('服务器返回了非法的JSON数据');
+        }
 
         if (!response.ok) {
+            console.error('请求失败详情:', {
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers.entries()),
+                body: responseData
+            });
+
             if (response.status === 403) {
+                // 尝试刷新token
+                const refreshed = await TokenManager.refreshTokenIfNeeded();
+                if (refreshed) {
+                    console.log('Token已刷新，重试请求');
+                    return getMyCourses(params);
+                }
                 throw new Error('没有权限，请确保已登录');
             }
             return handleHttpError(response, responseData);
