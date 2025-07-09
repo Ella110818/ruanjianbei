@@ -259,7 +259,8 @@ const generateQuestions = async (input) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify({
         knowledge_point_ids: currentConfig.value.knowledgePointIds,
