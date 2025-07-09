@@ -1704,26 +1704,27 @@ export async function getUserRoleAndPermissions() {
         const roleResponse = await getRoleById(userInfo.id);
         console.log('角色详情响应:', roleResponse);
 
-        if (!roleResponse.success || roleResponse.status_code !== 200) {
-            throw new Error(roleResponse.message || '获取角色详情失败');
+        // 检查roleResponse的格式
+        if (roleResponse.code === 0 && roleResponse.data) {
+            const roleData = roleResponse.data;
+            console.log('角色详情数据:', roleData);
+
+            // 保存角色和权限信息
+            localStorage.setItem('userRole', roleData.name);
+            localStorage.setItem('isStaff', 'true'); // 如果是教师角色，设置为staff
+            localStorage.setItem('isSuperuser', roleData.name === 'admin' ? 'true' : 'false');
+            localStorage.setItem('userPermissions', JSON.stringify({
+                permissions: roleData.permissions || []
+            }));
+
+            return {
+                code: 0,
+                msg: '获取用户角色和权限成功',
+                data: roleData
+            };
+        } else {
+            throw new Error(roleResponse.msg || '获取角色详情失败');
         }
-
-        const roleData = roleResponse.data;
-        console.log('角色详情数据:', roleData);
-
-        // 保存角色和权限信息
-        localStorage.setItem('userRole', roleData.name);
-        localStorage.setItem('isStaff', 'true'); // 如果是教师角色，设置为staff
-        localStorage.setItem('isSuperuser', roleData.name === 'admin' ? 'true' : 'false');
-        localStorage.setItem('userPermissions', JSON.stringify({
-            permissions: roleData.permissions || []
-        }));
-
-        return {
-            code: 0,
-            msg: '获取用户角色和权限成功',
-            data: roleData
-        };
     } catch (error) {
         console.error('获取用户角色和权限失败:', error);
         return {
