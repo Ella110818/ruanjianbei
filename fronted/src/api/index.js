@@ -64,7 +64,7 @@ const TokenManager = {
     setTokens(accessToken, refreshToken) {
         if (accessToken) {
             localStorage.setItem('token', accessToken);
-            console.log('Token已保存');
+            console.log('Access Token已保存');
         }
         if (refreshToken) {
             localStorage.setItem('refreshToken', refreshToken);
@@ -81,7 +81,7 @@ const TokenManager = {
 
     getAccessToken() {
         const token = localStorage.getItem('token');
-        console.log('当前Token状态:', token ? '存在' : '不存在');
+        console.log('当前Access Token状态:', token ? '存在' : '不存在');
         return token;
     },
 
@@ -100,8 +100,6 @@ const TokenManager = {
         localStorage.removeItem('isStaff');
         localStorage.removeItem('isSuperuser');
         console.log('所有认证相关数据已清除');
-        // 重定向到登录页
-        window.location.href = '/login';
     },
 
     isValidToken(token) {
@@ -110,33 +108,21 @@ const TokenManager = {
         return valid;
     },
 
-    async verifyToken(token) {
-        try {
-            const response = await fetch(`${API_CONFIG.BASE_URL}/token/verify/`, {
-                method: 'POST',
-                headers: {
-                    ...API_CONFIG.headers,
-                    'ngrok-skip-browser-warning': 'true'
-                },
-                body: JSON.stringify({ token })
-            });
-
-            return response.ok;
-        } catch (error) {
-            console.error('Token验证请求失败:', error);
-            return false;
-        }
-    },
-
     async refreshToken() {
         try {
             const refreshToken = this.getRefreshToken();
+            console.log('准备刷新token，当前refresh token状态:', refreshToken ? '存在' : '不存在');
+
             if (!refreshToken) {
                 console.error('没有可用的Refresh Token');
                 return null;
             }
 
-            const response = await fetch(`${API_CONFIG.BASE_URL}/token/refresh/`, {
+            // 先尝试获取新token
+            const tokenUrl = `${API_CONFIG.BASE_URL}/token/`;
+            console.log('尝试获取新token');
+
+            const tokenResponse = await fetch(tokenUrl, {
                 method: 'POST',
                 headers: {
                     ...API_CONFIG.headers,
@@ -145,58 +131,49 @@ const TokenManager = {
                 body: JSON.stringify({ refresh: refreshToken })
             });
 
-            const responseText = await response.text();
-            console.log('Token刷新响应:', responseText);
+            const tokenData = await tokenResponse.json();
+            console.log('获取新token响应:', tokenData);
 
-            try {
-                const data = JSON.parse(responseText);
-                if (response.ok && data.access) {
-                    this.setAccessToken(data.access);
-                    return data.access;
+            if (tokenResponse.ok && tokenData.success && tokenData.data) {
+                const { access, refresh } = tokenData.data;
+                if (access && refresh) {
+                    this.setTokens(access, refresh);
+                    return access;
                 }
-                console.error('刷新Token失败:', data);
-                return null;
-            } catch (e) {
-                console.error('Token刷新响应解析失败:', e);
-                return null;
             }
-        } catch (error) {
-            console.error('刷新Token请求失败:', error);
+
+            // 如果获取新token失败，尝试刷新token
+            const refreshUrl = `${API_CONFIG.BASE_URL}/token/refresh/`;
+            console.log('尝试刷新token');
+
+            const response = await fetch(refreshUrl, {
+                method: 'POST',
+                headers: {
+                    ...API_CONFIG.headers,
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({ refresh: refreshToken })
+            });
+
+            const responseData = await response.json();
+            console.log('刷新token响应:', responseData);
+
+            if (response.ok && responseData.access) {
+                this.setAccessToken(responseData.access);
+                return responseData.access;
+            }
+
+            if (response.status === 401) {
+                console.error('Refresh Token已失效，需要重新登录');
+                this.clearTokens();
+                window.location.href = '/login';
+            } else {
+                console.error('刷新Token失败:', responseData);
+            }
             return null;
-        }
-    },
-
-    async refreshTokenIfNeeded() {
-        const token = this.getAccessToken();
-        if (!token) {
-            console.log('没有找到token，需要重新登录');
-            return false;
-        }
-
-        try {
-            // 首先验证当前token
-            const isValid = await this.verifyToken(token);
-            if (isValid) {
-                console.log('当前token有效，无需刷新');
-                return true;
-            }
-
-            // token无效，尝试刷新
-            console.log('Token无效，尝试刷新');
-            const newToken = await this.refreshToken();
-            if (newToken) {
-                console.log('Token刷新成功');
-                return true;
-            }
-
-            // 刷新失败，清理token并返回false
-            console.log('Token刷新失败，清理认证信息');
-            this.clearTokens();
-            return false;
         } catch (error) {
-            console.error('Token刷新过程出错:', error);
-            this.clearTokens();
-            return false;
+            console.error('刷新Token过程出错:', error);
+            return null;
         }
     }
 };
@@ -268,9 +245,10 @@ export async function login(username, password, role) {
             });
         }
     } else {
-        // 真实API请求
         try {
             const loginUrl = `${API_CONFIG.BASE_URL}/login/`;
+            console.log('开始登录请求');
+
             const loginData = {
                 username,
                 password,
@@ -289,7 +267,9 @@ export async function login(username, password, role) {
             let responseData;
             try {
                 responseData = await response.json();
+                console.log('登录响应数据:', responseData);
             } catch (e) {
+                console.error('登录响应解析失败:', e);
                 return {
                     code: 1,
                     msg: '服务器响应格式错误',
@@ -304,10 +284,18 @@ export async function login(username, password, role) {
             // 检查响应是否成功
             if (responseData.success && responseData.status_code === 200 && responseData.data) {
                 const { access, refresh, user } = responseData.data;
+                console.log('登录成功，获取到tokens:', {
+                    accessToken: access ? '存在' : '不存在',
+                    refreshToken: refresh ? '存在' : '不存在',
+                    user: user ? '存在' : '不存在'
+                });
 
                 // 验证并保存token
-                if (TokenManager.isValidToken(access) &&
-                    TokenManager.isValidToken(refresh)) {
+                if (TokenManager.isValidToken(access) && TokenManager.isValidToken(refresh)) {
+                    // 先清除旧数据
+                    TokenManager.clearTokens();
+
+                    // 保存新token
                     TokenManager.setTokens(access, refresh);
 
                     // 保存用户信息
@@ -319,7 +307,7 @@ export async function login(username, password, role) {
 
                     // 获取用户权限
                     try {
-                        // 根据用户角色获取权限
+                        // 使用新的access token获取权限
                         const permissionsUrl = `${API_CONFIG.BASE_URL}/users/my_permissions/`;
                         const permissionsResponse = await fetch(permissionsUrl, {
                             method: 'GET',
@@ -331,53 +319,24 @@ export async function login(username, password, role) {
                             }
                         });
 
-                        // 检查响应状态
                         if (!permissionsResponse.ok) {
-                            const errorText = await permissionsResponse.text();
-                            console.error('权限接口详细错误:', {
-                                status: permissionsResponse.status,
-                                statusText: permissionsResponse.statusText,
-                                errorBody: errorText
-                            });
-                            throw new Error(`获取权限失败: ${permissionsResponse.status}, 详细信息: ${errorText}`);
-                        }
-
-                        // 检查Content-Type
-                        const contentType = permissionsResponse.headers.get('content-type');
-                        if (!contentType || !contentType.includes('application/json')) {
-                            throw new Error('服务器返回了非JSON格式的数据');
+                            throw new Error(`获取权限失败: ${permissionsResponse.status}`);
                         }
 
                         const permissionsData = await permissionsResponse.json();
-                        console.log('权限接口返回数据:', permissionsData);
+                        console.log('权限数据:', permissionsData);
 
-                        // 验证并处理权限数据
-                        let processedPermissions = {
-                            permissions: []
-                        };
-
-                        if (permissionsData.success && permissionsData.status_code === 200 && permissionsData.data) {
+                        if (permissionsData.success && permissionsData.status_code === 200) {
                             const data = permissionsData.data;
 
-                            // 保存完整的权限信息
+                            // 保存权限信息
                             localStorage.setItem('userRole', data.role || '');
                             localStorage.setItem('isStaff', String(data.is_staff || false));
                             localStorage.setItem('isSuperuser', String(data.is_superuser || false));
-
-                            // 处理权限列表
-                            if (Array.isArray(data.permissions)) {
-                                processedPermissions.permissions = data.permissions.map(perm => ({
-                                    name: perm,
-                                    app: perm.split('.')[0],
-                                    action: perm.split('.')[1]
-                                }));
-                            }
-                        } else {
-                            console.warn('权限数据格式不正确:', permissionsData);
+                            localStorage.setItem('userPermissions', JSON.stringify({
+                                permissions: Array.isArray(data.permissions) ? data.permissions : []
+                            }));
                         }
-
-                        localStorage.setItem('userPermissions', JSON.stringify(processedPermissions));
-                        console.log('用户权限已保存:', processedPermissions);
                     } catch (error) {
                         console.error('获取权限失败:', error);
                         // 设置默认权限
@@ -396,6 +355,7 @@ export async function login(username, password, role) {
                         }
                     };
                 } else {
+                    console.error('Token格式无效');
                     return {
                         code: 1,
                         msg: 'Token格式无效',
@@ -403,6 +363,7 @@ export async function login(username, password, role) {
                     };
                 }
             } else {
+                console.error('登录响应格式错误:', responseData);
                 return {
                     code: 1,
                     msg: responseData.message || '登录失败',
@@ -410,6 +371,7 @@ export async function login(username, password, role) {
                 };
             }
         } catch (error) {
+            console.error('登录请求失败:', error);
             return {
                 code: 1,
                 msg: error.message || '网络错误，请稍后重试',
@@ -456,41 +418,65 @@ export function getUserInfo() {
 export async function refreshToken() {
     try {
         const refreshToken = TokenManager.getRefreshToken();
+        console.log('准备刷新token，当前refresh token状态:', refreshToken ? '存在' : '不存在');
+
         if (!refreshToken) {
-            console.error('刷新Token不存在');
+            console.error('没有可用的Refresh Token');
             return null;
         }
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}/token/refresh/`, {
-            method: 'POST',
+        // 打印完整请求信息
+        const requestInfo = {
+            url: `${API_CONFIG.BASE_URL}/token/refresh/`,
             headers: {
                 ...API_CONFIG.headers,
                 'ngrok-skip-browser-warning': 'true'
             },
-            body: JSON.stringify({ refresh: refreshToken })
+            body: { refresh: refreshToken }
+        };
+        console.log('Token刷新请求信息:', requestInfo);
+
+        const response = await fetch(requestInfo.url, {
+            method: 'POST',
+            headers: requestInfo.headers,
+            body: JSON.stringify(requestInfo.body)
         });
 
-        // 获取原始响应文本
-        const responseText = await response.text();
-        console.log('Token刷新响应:', responseText);
+        // 打印响应头信息
+        console.log('Token刷新响应状态:', response.status);
+        console.log('Token刷新响应头:', Object.fromEntries(response.headers.entries()));
 
-        let data;
+        const responseText = await response.text();
+        console.log('Token刷新原始响应:', responseText);
+
         try {
-            data = JSON.parse(responseText);
+            const data = JSON.parse(responseText);
+            console.log('Token刷新解析后响应:', data);
+
+            if (response.ok && data.access) {
+                TokenManager.setTokens(data.access, refreshToken);
+                return data.access;
+            }
+
+            // 详细的错误信息
+            if (response.status === 401) {
+                console.error('Refresh Token已失效，需要重新登录');
+                TokenManager.clearTokens();
+            } else {
+                console.error('刷新Token失败:', {
+                    status: response.status,
+                    data: data,
+                    error: data.error_code || data.message
+                });
+            }
+            return null;
         } catch (e) {
             console.error('Token刷新响应解析失败:', e);
+            console.error('原始响应内容:', responseText);
             return null;
         }
-
-        if (response.ok && data.access) {
-            TokenManager.setTokens(data.access, refreshToken);
-            return data.access;
-        }
-
-        console.error('刷新Token失败:', data);
-        return null;
     } catch (error) {
-        console.error('刷新Token过程出错:', error);
+        console.error('刷新Token请求失败:', error);
         return null;
     }
 }
