@@ -1741,45 +1741,69 @@ export async function getUserRoleAndPermissions() {
         // 获取用户信息
         const userInfo = getUserInfo();
         console.log('当前用户信息:', userInfo);
-        if (!userInfo) {
-            throw new Error('用户信息不存在');
+        if (!userInfo || !userInfo.role) {
+            throw new Error('用户信息或角色不存在');
         }
 
-        // 直接使用用户信息中的role
-        const userRole = userInfo.role;
-        console.log('用户角色:', userRole);
+        // 获取所有角色列表
+        const rolesResponse = await fetch(`${API_CONFIG.BASE_URL}/roles/`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const rolesData = await rolesResponse.json();
+        console.log('所有角色列表:', rolesData);
+
+        if (!rolesResponse.ok || !rolesData.success) {
+            throw new Error('获取角色列表失败');
+        }
+
+        // 在角色列表中找到用户的角色
+        const userRole = rolesData.data.find(role => role.name === userInfo.role);
+        console.log('找到用户角色:', userRole);
 
         if (!userRole) {
-            throw new Error('用户角色信息不存在');
+            throw new Error('未找到用户对应的角色信息');
         }
 
-        // 根据角色名称获取角色详情
-        const roleResponse = await getRoles();
-        console.log('获取角色列表响应:', roleResponse);
-
-        if (roleResponse.code === 0 && roleResponse.data) {
-            // 在角色列表中找到用户的角色
-            const roleData = roleResponse.data.find(role => role.name === userRole);
-            console.log('用户角色详情:', roleData);
-
-            if (roleData) {
-                // 保存角色和权限信息
-                localStorage.setItem('userRole', roleData.name);
-                localStorage.setItem('isStaff', roleData.name === 'teacher' ? 'true' : 'false');
-                localStorage.setItem('isSuperuser', roleData.name === 'admin' ? 'true' : 'false');
-                localStorage.setItem('userPermissions', JSON.stringify({
-                    permissions: roleData.permissions || []
-                }));
-
-                return {
-                    code: 0,
-                    msg: '获取用户角色和权限成功',
-                    data: roleData
-                };
+        // 获取该角色的详细权限信息
+        const roleDetailResponse = await fetch(`${API_CONFIG.BASE_URL}/roles/${userRole.id}/`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
             }
+        });
+
+        const roleDetailData = await roleDetailResponse.json();
+        console.log('角色详细信息:', roleDetailData);
+
+        if (!roleDetailResponse.ok || !roleDetailData.success) {
+            throw new Error('获取角色详情失败');
         }
 
-        throw new Error('获取角色详情失败');
+        const roleData = roleDetailData.data;
+
+        // 保存角色和权限信息
+        localStorage.setItem('userRole', roleData.name);
+        localStorage.setItem('isStaff', roleData.name === 'teacher' ? 'true' : 'false');
+        localStorage.setItem('isSuperuser', roleData.name === 'admin' ? 'true' : 'false');
+        localStorage.setItem('userPermissions', JSON.stringify({
+            permissions: roleData.permissions || []
+        }));
+
+        return {
+            code: 0,
+            msg: '获取用户角色和权限成功',
+            data: roleData
+        };
     } catch (error) {
         console.error('获取用户角色和权限失败:', error);
         return {
