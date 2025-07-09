@@ -128,6 +128,27 @@ const handleCourseGeneration = () => {
   }]
 }
 
+// 格式化题目数据
+const formatQuestionData = (data) => {
+  if (!data || !data.questions || !Array.isArray(data.questions)) {
+    return '生成的题目数据格式不正确';
+  }
+
+  return data.questions.map((question, index) => {
+    let formattedQuestion = `
+题目${index + 1}：${question.title}
+
+问题：${question.content}
+
+选项：
+${question.answer_template.map((option, idx) => `${String.fromCharCode(65 + idx)}. ${option}`).join('\n')}
+
+难度：${'⭐'.repeat(question.difficulty)}
+`;
+    return formattedQuestion;
+  }).join('\n\n----------------------------------------\n\n');
+}
+
 const handleSend = async () => {
   if (currentMode.value === 'course') {
     loading.value = true
@@ -152,9 +173,11 @@ const handleSend = async () => {
       const response = await generateCourseContent(courseInfo)
       
       if (response.code === 0) {
+        // 格式化题目数据
+        const formattedQuestions = formatQuestionData(response.data);
         messages.value.push({
           type: 'ai',
-          content: `课程内容生成成功：<br><pre>${JSON.stringify(response.data, null, 2)}</pre>`,
+          content: `<div class="generated-questions">${formattedQuestions.replace(/\n/g, '<br>')}</div>`,
           time: new Date().toLocaleTimeString()
         })
       } else {
@@ -442,5 +465,19 @@ pre {
   border-radius: 8px;
   overflow-x: auto;
   margin: 8px 0;
+}
+
+.generated-questions {
+  background-color: #f5f7fa;
+  padding: 15px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-family: "Microsoft YaHei", sans-serif;
+  line-height: 1.6;
+}
+
+.generated-questions br {
+  display: block;
+  margin: 5px 0;
 }
 </style> 
