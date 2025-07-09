@@ -314,18 +314,35 @@ export async function login(username, password, role) {
                         }
 
                         const permissionsData = await permissionsResponse.json();
+                        console.log('权限接口返回数据:', permissionsData);
 
-                        // 验证权限数据格式
-                        if (permissionsData && Array.isArray(permissionsData.permissions)) {
-                            localStorage.setItem('userPermissions', JSON.stringify(permissionsData));
-                            console.log('用户权限已保存:', permissionsData);
+                        // 验证并处理权限数据
+                        let processedPermissions = {
+                            permissions: []
+                        };
+
+                        if (permissionsData.success && permissionsData.status_code === 200 && permissionsData.data) {
+                            const data = permissionsData.data;
+
+                            // 保存完整的权限信息
+                            localStorage.setItem('userRole', data.role || '');
+                            localStorage.setItem('isStaff', String(data.is_staff || false));
+                            localStorage.setItem('isSuperuser', String(data.is_superuser || false));
+
+                            // 处理权限列表
+                            if (Array.isArray(data.permissions)) {
+                                processedPermissions.permissions = data.permissions.map(perm => ({
+                                    name: perm,
+                                    app: perm.split('.')[0],
+                                    action: perm.split('.')[1]
+                                }));
+                            }
                         } else {
                             console.warn('权限数据格式不正确:', permissionsData);
-                            // 设置默认权限
-                            localStorage.setItem('userPermissions', JSON.stringify({
-                                permissions: []
-                            }));
                         }
+
+                        localStorage.setItem('userPermissions', JSON.stringify(processedPermissions));
+                        console.log('用户权限已保存:', processedPermissions);
                     } catch (error) {
                         console.error('获取权限失败:', error);
                         // 设置默认权限
@@ -870,14 +887,44 @@ export async function deleteCourse(courseId) {
 }
 
 // 检查用户是否有特定权限
-function hasPermission(permissionName) {
+export function hasPermission(permissionName) {
     try {
+        // 检查是否是超级用户
+        const isSuperuser = localStorage.getItem('isSuperuser') === 'true';
+        if (isSuperuser) {
+            return true;  // 超级用户拥有所有权限
+        }
+
+        // 获取权限数据
         const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{}');
+
+        // 检查具体权限
         return permissions.permissions?.some(p => p.name === permissionName) || false;
     } catch (error) {
         console.error('检查权限失败:', error);
         return false;
     }
+}
+
+// 检查用户是否有特定角色
+export function hasRole(roleName) {
+    try {
+        const userRole = localStorage.getItem('userRole');
+        return userRole === roleName;
+    } catch (error) {
+        console.error('检查角色失败:', error);
+        return false;
+    }
+}
+
+// 检查用户是否是工作人员
+export function isStaff() {
+    return localStorage.getItem('isStaff') === 'true';
+}
+
+// 检查用户是否是超级用户
+export function isSuperuser() {
+    return localStorage.getItem('isSuperuser') === 'true';
 }
 
 // 课程内容生成
@@ -1239,7 +1286,8 @@ export async function getRolePermissions() {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
             }
         });
 
