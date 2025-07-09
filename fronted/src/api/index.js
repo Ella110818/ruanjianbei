@@ -23,7 +23,8 @@ export const API_CONFIG = {
     withCredentials: false,  // 不需要跨域凭证
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'ngrok-skip-browser-warning': 'true'
     },
     fetchOptions: {
         cache: 'no-store',  // 禁用缓存
@@ -256,7 +257,8 @@ export async function login(username, password, role) {
                             headers: {
                                 'Authorization': `Bearer ${access}`,
                                 'Content-Type': 'application/json',
-                                'Accept': 'application/json'
+                                'Accept': 'application/json',
+                                'ngrok-skip-browser-warning': 'true'
                             }
                         });
 
@@ -413,6 +415,7 @@ async function handleRequest(url, options = {}) {
             headers: {
                 ...API_CONFIG.headers,
                 'Authorization': `Bearer ${token}`,
+                'ngrok-skip-browser-warning': 'true',
                 ...(options.headers || {})
             }
         };
