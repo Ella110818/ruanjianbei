@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: ' https://12e11e70c836.ngrok-free.app',  // 更新为新的ngrok地址
+        API_URL: ' https://small-beans-joke.loca.lt',  // 更新为新的ngrok地址
         API_VERSION: 'api'
     }
 };
@@ -1612,43 +1612,4 @@ export async function getMyCourses(params = {}) {
 }
 
 // 你可以继续添加其他接口方法，按需mock或真实请求
-
-// API请求拦截器
-async function interceptedFetch(url, options = {}) {
-    console.log(`🚀 发起请求: ${url}`);
-    console.log('请求参数:', options);
-
-    try {
-        const response = await fetch(url, options);
-
-        console.log(`📥 收到响应: ${url}`);
-        console.log('状态码:', response.status);
-        console.log('响应头:', Object.fromEntries(response.headers.entries()));
-
-        // 克隆响应以便多次读取
-        const clonedResponse = response.clone();
-
-        // 获取原始响应文本
-        const rawText = await clonedResponse.text();
-        console.log('原始响应内容:', rawText);
-
-        try {
-            // 尝试解析为JSON
-            const data = JSON.parse(rawText);
-            console.log('解析后的数据:', data);
-            return response;
-        } catch (e) {
-            console.error('响应不是JSON格式:', rawText);
-            console.error('解析错误:', e);
-            return response;
-        }
-    } catch (error) {
-        console.error(`❌ 请求失败: ${url}`, error);
-        throw error;
-    }
-}
-
-// 替换原有的fetch
-const originalFetch = window.fetch;
-window.fetch = interceptedFetch;
 
