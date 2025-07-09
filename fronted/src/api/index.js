@@ -61,25 +61,74 @@ const BASE_URL = getBaseUrl();
 // Token管理
 const TokenManager = {
     setTokens(accessToken, refreshToken) {
-        if (accessToken) localStorage.setItem('token', accessToken);
-        if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+        if (accessToken) {
+            localStorage.setItem('token', accessToken);
+            console.log('Token已保存');
+        }
+        if (refreshToken) {
+            localStorage.setItem('refreshToken', refreshToken);
+            console.log('Refresh Token已保存');
+        }
     },
 
     getAccessToken() {
-        return localStorage.getItem('token');
+        const token = localStorage.getItem('token');
+        console.log('当前Token状态:', token ? '存在' : '不存在');
+        return token;
     },
 
     getRefreshToken() {
-        return localStorage.getItem('refreshToken');
+        const refreshToken = localStorage.getItem('refreshToken');
+        console.log('当前Refresh Token状态:', refreshToken ? '存在' : '不存在');
+        return refreshToken;
     },
 
     clearTokens() {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
+        console.log('Tokens已清除');
     },
 
     isValidToken(token) {
-        return token && typeof token === 'string' && token.length > 0;
+        const valid = token && typeof token === 'string' && token.length > 0;
+        console.log('Token有效性检查:', valid);
+        return valid;
+    },
+
+    async refreshTokenIfNeeded() {
+        const token = this.getAccessToken();
+        if (!token) {
+            console.log('没有找到token，需要重新登录');
+            return false;
+        }
+
+        try {
+            // 这里可以添加token过期检查逻辑
+            const response = await fetch(`${API_CONFIG.BASE_URL}/token/verify/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ token })
+            });
+
+            if (!response.ok) {
+                console.log('Token已过期，尝试刷新');
+                const newToken = await refreshToken();
+                if (newToken) {
+                    console.log('Token刷新成功');
+                    return true;
+                }
+                console.log('Token刷新失败');
+                return false;
+            }
+
+            console.log('Token仍然有效');
+            return true;
+        } catch (error) {
+            console.error('Token验证失败:', error);
+            return false;
+        }
     }
 };
 
@@ -343,14 +392,33 @@ export async function refreshToken() {
 // 通用请求处理函数
 async function handleRequest(url, options = {}) {
     try {
-        const response = await fetch(url, {
+        // 检查并刷新token
+        const tokenValid = await TokenManager.refreshTokenIfNeeded();
+        if (!tokenValid) {
+            console.log('Token无效或刷新失败，重定向到登录页');
+            window.location.href = '/login';
+            return {
+                code: 1,
+                msg: '登录已过期，请重新登录',
+                data: null
+            };
+        }
+
+        const token = TokenManager.getAccessToken();
+        const finalOptions = {
             ...API_CONFIG.fetchOptions,
             ...options,
             headers: {
                 ...API_CONFIG.headers,
-                ...(options.headers || {}),
+                'Authorization': `Bearer ${token}`,
+                ...(options.headers || {})
             }
-        });
+        };
+
+        console.log('发送请求:', url);
+        console.log('请求配置:', finalOptions);
+
+        const response = await fetch(url, finalOptions);
 
         // 添加详细的响应日志
         console.log('API Response Status:', response.status);
@@ -371,6 +439,15 @@ async function handleRequest(url, options = {}) {
         }
 
         if (!response.ok) {
+            // 如果是401或403，可能是token过期
+            if (response.status === 401 || response.status === 403) {
+                console.log('收到401/403响应，尝试刷新token');
+                const tokenRefreshed = await TokenManager.refreshTokenIfNeeded();
+                if (tokenRefreshed) {
+                    console.log('Token已刷新，重试请求');
+                    return handleRequest(url, options);
+                }
+            }
             return handleHttpError(response, responseData);
         }
 
