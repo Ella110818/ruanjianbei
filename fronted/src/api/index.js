@@ -1650,8 +1650,16 @@ export async function getMyCourses(params = {}) {
             throw new Error('No access token available');
         }
 
-        const queryString = new URLSearchParams(params).toString();
-        const url = `${API_CONFIG.BASE_URL}/courses/my/${queryString ? `?${queryString}` : ''}`;
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.ordering) queryParams.append('ordering', params.ordering);
+        if (params.page) queryParams.append('page', params.page);
+
+        const queryString = queryParams.toString();
+        const url = `${API_CONFIG.BASE_URL}/courses/my_courses/${queryString ? `?${queryString}` : ''}`;
+
+        console.log('请求我的课程列表URL:', url);
 
         const response = await fetch(url, {
             method: 'GET',
@@ -1667,14 +1675,31 @@ export async function getMyCourses(params = {}) {
         console.log('获取我的课程列表响应:', responseData);
 
         if (!response.ok) {
+            if (response.status === 403) {
+                // 如果是403错误，尝试刷新token
+                const newToken = await TokenManager.refreshToken();
+                if (newToken) {
+                    // 使用新token重试请求
+                    return getMyCourses(params);
+                }
+            }
             return handleHttpError(response, responseData);
         }
 
-        return {
-            code: 0,
-            msg: '获取我的课程列表成功',
-            data: responseData.data || []
-        };
+        // 检查响应格式
+        if (responseData.success && responseData.data) {
+            return {
+                code: 0,
+                msg: '获取我的课程列表成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取我的课程列表失败',
+                data: null
+            };
+        }
     } catch (error) {
         console.error('获取我的课程列表失败:', error);
         return {
