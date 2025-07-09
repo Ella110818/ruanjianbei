@@ -149,6 +149,14 @@
                   >
                     查看详情
                   </el-button>
+                  <el-button
+                    v-if="!scope.row.submitted_at"
+                    link
+                    type="success"
+                    @click="submitAnswer(scope.row.exercise_id, scope.row.answer_content)"
+                  >
+                    提交答案
+                  </el-button>
                 </template>
               </el-table-column>
             </el-table>
