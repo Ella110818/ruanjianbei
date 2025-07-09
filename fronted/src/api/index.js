@@ -1650,7 +1650,9 @@ export async function getRoleById(roleId) {
 }
 
 // 获取我的课程列表
-export async function getMyCourses(params = {}) {
+export async function getMyCourses(params = {}, retryCount = 0) {
+    const MAX_RETRIES = 1; // 最多只重试一次
+
     if (getMockFlag()) {
         return mockApiResponse(mockCourseList);
     }
@@ -1707,12 +1709,12 @@ export async function getMyCourses(params = {}) {
         console.log('获取我的课程列表响应:', responseData);
 
         if (!response.ok) {
-            if (response.status === 403 || response.status === 401) {
-                console.log('认证失败，尝试刷新token');
+            if ((response.status === 403 || response.status === 401) && retryCount < MAX_RETRIES) {
+                console.log(`认证失败，尝试刷新token (重试次数: ${retryCount + 1}/${MAX_RETRIES})`);
                 const newToken = await TokenManager.refreshToken();
                 if (newToken) {
                     console.log('token刷新成功，重试请求');
-                    return getMyCourses(params);
+                    return getMyCourses(params, retryCount + 1);
                 } else {
                     console.log('token刷新失败，需要重新登录');
                     TokenManager.clearTokens();
@@ -1723,6 +1725,15 @@ export async function getMyCourses(params = {}) {
                         data: null
                     };
                 }
+            }
+            // 如果已经重试过或者是其他错误，直接返回错误信息
+            if (response.status === 403) {
+                console.log('没有访问权限，请检查用户角色和权限');
+                return {
+                    code: 1,
+                    msg: '没有访问权限，请检查用户角色和权限',
+                    data: null
+                };
             }
             return handleHttpError(response, responseData);
         }
