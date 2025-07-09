@@ -61,6 +61,64 @@ const BASE_URL = getBaseUrl();
 
 // Token管理
 const TokenManager = {
+    // 解析JWT token
+    parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            console.error('解析token失败:', e);
+            return null;
+        }
+    },
+
+    // 检查token是否即将过期（5分钟内）
+    isTokenExpiringSoon(token) {
+        try {
+            const decoded = this.parseJwt(token);
+            if (!decoded || !decoded.exp) {
+                return true;
+            }
+            const expirationTime = decoded.exp * 1000; // 转换为毫秒
+            const currentTime = Date.now();
+            const timeUntilExpiry = expirationTime - currentTime;
+            const fiveMinutes = 5 * 60 * 1000; // 5分钟（毫秒）
+
+            return timeUntilExpiry < fiveMinutes;
+        } catch (e) {
+            console.error('检查token过期失败:', e);
+            return true;
+        }
+    },
+
+    // 检查是否需要刷新token
+    async refreshTokenIfNeeded() {
+        try {
+            const token = this.getAccessToken();
+            if (!token) {
+                console.log('没有access token，需要刷新');
+                return false;
+            }
+
+            // 如果token即将过期，才刷新
+            if (this.isTokenExpiringSoon(token)) {
+                console.log('Token即将过期，尝试刷新');
+                const newToken = await this.refreshToken();
+                return !!newToken;
+            }
+
+            console.log('Token仍然有效，无需刷新');
+            return true;
+        } catch (error) {
+            console.error('检查token刷新失败:', error);
+            return false;
+        }
+    },
+
     setTokens(accessToken, refreshToken) {
         if (accessToken) {
             localStorage.setItem('token', accessToken);
@@ -174,6 +232,64 @@ const TokenManager = {
         } catch (error) {
             console.error('刷新Token过程出错:', error);
             return null;
+        }
+    },
+
+    // 解析JWT token
+    parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            console.error('解析token失败:', e);
+            return null;
+        }
+    },
+
+    // 检查token是否即将过期（5分钟内）
+    isTokenExpiringSoon(token) {
+        try {
+            const decoded = this.parseJwt(token);
+            if (!decoded || !decoded.exp) {
+                return true;
+            }
+            const expirationTime = decoded.exp * 1000; // 转换为毫秒
+            const currentTime = Date.now();
+            const timeUntilExpiry = expirationTime - currentTime;
+            const fiveMinutes = 5 * 60 * 1000; // 5分钟（毫秒）
+
+            return timeUntilExpiry < fiveMinutes;
+        } catch (e) {
+            console.error('检查token过期失败:', e);
+            return true;
+        }
+    },
+
+    // 检查是否需要刷新token
+    async refreshTokenIfNeeded() {
+        try {
+            const token = this.getAccessToken();
+            if (!token) {
+                console.log('没有access token，需要刷新');
+                return false;
+            }
+
+            // 如果token即将过期，才刷新
+            if (this.isTokenExpiringSoon(token)) {
+                console.log('Token即将过期，尝试刷新');
+                const newToken = await this.refreshToken();
+                return !!newToken;
+            }
+
+            console.log('Token仍然有效，无需刷新');
+            return true;
+        } catch (error) {
+            console.error('检查token刷新失败:', error);
+            return false;
         }
     }
 };
@@ -453,9 +569,9 @@ export async function refreshToken() {
             const data = JSON.parse(responseText);
             console.log('Token刷新解析后响应:', data);
 
-            if (response.ok && data.access) {
-                TokenManager.setTokens(data.access, refreshToken);
-                return data.access;
+            if (response.ok && data.success && data.data && data.data.access) {
+                TokenManager.setTokens(data.data.access, data.data.refresh);
+                return data.data.access;
             }
 
             // 详细的错误信息
@@ -1123,1002 +1239,4 @@ export async function getExercises(params) {
                 count: 10,
                 results: Array(10).fill().map((_, index) => ({
                     id: index + 1,
-                    title: `模拟练习题 ${index + 1}`,
-                    content: '这是一道模拟练习题',
-                    type: 'single_choice',
-                    difficulty: 1,
-                    knowledge_point: '基础知识',
-                    options: ['A', 'B', 'C', 'D'],
-                    answer: 'A'
-                }))
-            }
-        });
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            throw new Error('请先登录');
-        }
-
-        // 构建查询参数
-        const queryParams = new URLSearchParams();
-        if (params.search) queryParams.append('search', params.search);
-        if (params.ordering) queryParams.append('ordering', params.ordering);
-        if (params.knowledge_point) queryParams.append('knowledge_point', params.knowledge_point);
-        if (params.type) queryParams.append('type', params.type);
-        if (params.difficulty) queryParams.append('difficulty', params.difficulty);
-        if (params.page) queryParams.append('page', params.page);
-
-        const exercisesUrl = `${API_CONFIG.BASE_URL}/exercises/?${queryParams.toString()}`;
-        console.log('获取练习题请求URL:', exercisesUrl);
-
-        const response = await fetch(exercisesUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        const responseData = await response.json();
-        console.log('练习题响应数据:', responseData);
-
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('没有权限，请确保已登录');
-            }
-            return handleHttpError(response, responseData);
-        }
-
-        return {
-            code: 0,
-            msg: '获取练习题成功',
-            data: responseData
-        };
-    } catch (error) {
-        console.error('获取练习题失败:', error);
-        return {
-            code: 1,
-            msg: error.message || '网络错误，请稍后重试',
-            data: null
-        };
-    }
-}
-
-// 获取知识点列表
-export async function getKnowledgePoints(params) {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            code: 0,
-            msg: '获取知识点成功',
-            data: {
-                count: 10,
-                results: Array(10).fill().map((_, index) => ({
-                    id: index + 1,
-                    title: `知识点 ${index + 1}`,
-                    description: '这是一个知识点的描述',
-                    subject: '计算机科学',
-                    grade_level: '大学一年级',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }))
-            }
-        });
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            throw new Error('请先登录');
-        }
-
-        // 构建查询参数
-        const queryParams = new URLSearchParams();
-        if (params.search) queryParams.append('search', params.search);
-        if (params.ordering) queryParams.append('ordering', params.ordering);
-        if (params.page) queryParams.append('page', params.page);
-
-        const knowledgePointsUrl = `${API_CONFIG.BASE_URL}/knowledge-points/?${queryParams.toString()}`;
-        console.log('获取知识点请求URL:', knowledgePointsUrl);
-
-        const response = await fetch(knowledgePointsUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        const responseData = await response.json();
-        console.log('知识点响应数据:', responseData);
-
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('没有权限，请确保已登录');
-            }
-            return handleHttpError(response, responseData);
-        }
-
-        return {
-            code: 0,
-            msg: '获取知识点成功',
-            data: responseData
-        };
-    } catch (error) {
-        console.error('获取知识点失败:', error);
-        return {
-            code: 1,
-            msg: error.message || '网络错误，请稍后重试',
-            data: null
-        };
-    }
-}
-
-// 获取用户权限列表
-export async function getRolePermissions() {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            code: 0,
-            msg: '获取角色权限成功',
-            data: {
-                permissions: [
-                    {
-                        id: 1,
-                        name: 'create_course',
-                        description: '创建课程'
-                    },
-                    {
-                        id: 2,
-                        name: 'edit_course',
-                        description: '编辑课程'
-                    },
-                    {
-                        id: 3,
-                        name: 'delete_course',
-                        description: '删除课程'
-                    },
-                    {
-                        id: 4,
-                        name: 'view_students',
-                        description: '查看学生列表'
-                    }
-                ]
-            }
-        });
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            return {
-                code: 1,
-                msg: '请先登录',
-                data: null
-            };
-        }
-
-        const response = await fetch(`${API_CONFIG.BASE_URL}/users/my_permissions/`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        // 检查Content-Type
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            throw new Error('服务器返回了非JSON格式的数据');
-        }
-
-        const responseData = await response.json();
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('获取角色权限详细错误:', {
-                status: response.status,
-                statusText: response.statusText,
-                errorBody: errorText
-            });
-
-            if (response.status === 403) {
-                return {
-                    code: 1,
-                    msg: '没有权限访问',
-                    data: null
-                };
-            }
-            if (response.status === 500) {
-                return {
-                    code: 1,
-                    msg: `服务器内部错误: ${errorText}`,
-                    data: null
-                };
-            }
-            return handleHttpError(response, responseData);
-        }
-
-        // 验证权限数据格式
-        if (!responseData || !Array.isArray(responseData.permissions)) {
-            return {
-                code: 1,
-                msg: '权限数据格式不正确',
-                data: null
-            };
-        }
-
-        return {
-            code: 0,
-            msg: '获取角色权限成功',
-            data: responseData
-        };
-    } catch (error) {
-        console.error('获取权限失败:', error);
-        return {
-            code: 1,
-            msg: error.message || '获取权限失败',
-            data: null
-        };
-    }
-}
-
-// 获取课件列表
-export async function getCoursewareList(params = {}) {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            code: 0,
-            msg: '获取课件列表成功',
-            data: {
-                count: 10,
-                results: Array(10).fill().map((_, index) => ({
-                    id: index + 1,
-                    title: `示例课件 ${index + 1}`,
-                    description: '这是一个示例课件',
-                    file_url: 'https://example.com/file.pdf',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }))
-            }
-        });
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            throw new Error('请先登录');
-        }
-
-        // 构建查询参数
-        const queryParams = new URLSearchParams();
-        if (params.search) queryParams.append('search', params.search);
-        if (params.ordering) queryParams.append('ordering', params.ordering);
-        if (params.page) queryParams.append('page', params.page);
-
-        const coursewareUrl = `${API_CONFIG.BASE_URL}/courseware/by_course/?${queryParams.toString()}`;
-        console.log('获取课件列表请求URL:', coursewareUrl);
-
-        const response = await fetch(coursewareUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        const responseData = await response.json();
-        console.log('课件列表响应数据:', responseData);
-
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('没有权限，请确保已登录');
-            }
-            return handleHttpError(response, responseData);
-        }
-
-        return {
-            code: 0,
-            msg: '获取课件列表成功',
-            data: responseData
-        };
-    } catch (error) {
-        console.error('获取课件列表失败:', error);
-        return {
-            code: 1,
-            msg: error.message || '网络错误，请稍后重试',
-            data: null
-        };
-    }
-}
-
-// 获取学生答案列表
-export async function getStudentAnswers(params = {}) {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            code: 0,
-            msg: '获取学生答案成功',
-            data: {
-                count: 10,
-                results: Array(10).fill().map((_, index) => ({
-                    id: index + 1,
-                    student_id: 1,
-                    exercise_id: index + 1,
-                    answer_content: '示例答案内容',
-                    score: Math.floor(Math.random() * 100),
-                    feedback: '答案反馈',
-                    submitted_at: new Date().toISOString(),
-                    is_correct: Math.random() > 0.5
-                }))
-            }
-        });
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            throw new Error('请先登录');
-        }
-
-        // 构建查询参数
-        const queryParams = new URLSearchParams();
-        if (params.student_id) queryParams.append('student_id', params.student_id);
-        if (params.exercise_id) queryParams.append('exercise_id', params.exercise_id);
-        if (params.page) queryParams.append('page', params.page);
-        if (params.page_size) queryParams.append('page_size', params.page_size);
-
-        const answersUrl = `${API_CONFIG.BASE_URL}/student-answers/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-        console.log('获取学生答案请求URL:', answersUrl);
-
-        const response = await fetch(answersUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
-
-        const responseData = await response.json();
-        console.log('学生答案响应数据:', responseData);
-
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('没有权限，请确保已登录');
-            }
-            return handleHttpError(response, responseData);
-        }
-
-        return {
-            code: 0,
-            msg: '获取学生答案成功',
-            data: responseData
-        };
-    } catch (error) {
-        console.error('获取学生答案失败:', error);
-        return {
-            code: 1,
-            msg: error.message || '网络错误，请稍后重试',
-            data: null
-        };
-    }
-}
-
-// 提交学生答案
-export async function submitStudentAnswer(data) {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            code: 0,
-            msg: '提交答案成功',
-            data: {
-                id: Date.now(),
-                ...data,
-                submitted_at: new Date().toISOString()
-            }
-        });
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            throw new Error('请先登录');
-        }
-
-        const response = await fetch(`${API_CONFIG.BASE_URL}/student-answers/`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            },
-            body: JSON.stringify(data)
-        });
-
-        const responseData = await response.json();
-        console.log('提交答案响应:', responseData);
-
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('没有权限，请确保已登录');
-            }
-            return handleHttpError(response, responseData);
-        }
-
-        return {
-            code: 0,
-            msg: '提交答案成功',
-            data: responseData
-        };
-    } catch (error) {
-        console.error('提交答案失败:', error);
-        return {
-            code: 1,
-            msg: error.message || '网络错误，请稍后重试',
-            data: null
-        };
-    }
-}
-
-// 获取用户列表
-export async function getUserList(params = {}) {
-    const retryCount = 3; // 最大重试次数
-    let attempt = 0;
-
-    while (attempt < retryCount) {
-        try {
-            const token = TokenManager.getAccessToken();
-            if (!token) {
-                return {
-                    code: 1,
-                    msg: '未登录或登录已过期',
-                    data: null
-                };
-            }
-
-            const queryString = new URLSearchParams(params).toString();
-            const url = `${API_CONFIG.BASE_URL}/users/${queryString ? `?${queryString}` : ''}`;
-
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    ...API_CONFIG.headers,
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                // 处理数据，添加默认值和格式化
-                const processedResults = data.data.results.map(user => ({
-                    ...user,
-                    email: user.email || '未设置',
-                    first_name: user.first_name || '未设置',
-                    last_name: user.last_name || '未设置',
-                    created_at: new Date(user.created_at).toLocaleString('zh-CN')
-                }));
-
-                return {
-                    code: 0,
-                    msg: '获取用户列表成功',
-                    data: {
-                        ...data.data,
-                        results: processedResults
-                    }
-                };
-            } else {
-                throw new Error(data.message || '获取用户列表失败');
-            }
-        } catch (error) {
-            attempt++;
-            if (attempt === retryCount) {
-                return {
-                    code: 1,
-                    msg: `获取用户列表失败: ${error.message}`,
-                    data: null
-                };
-            }
-            // 等待一段时间后重试
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-    }
-}
-
-// 获取指定用户信息
-export async function getUserById(userId) {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            id: userId,
-            username: 'mock_user',
-            email: 'mock@example.com',
-            first_name: '',
-            last_name: '',
-            role: 'admin',
-            created_at: new Date().toISOString()
-        });
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            return {
-                code: 1,
-                msg: '未登录',
-                data: null
-            };
-        }
-
-        const url = `${API_CONFIG.BASE_URL}/users/${userId}/`;
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        const responseData = await response.json();
-        console.log('获取用户信息响应:', responseData);
-
-        if (responseData.success && responseData.status_code === 200) {
-            return {
-                code: 0,
-                msg: '获取用户信息成功',
-                data: responseData.data
-            };
-        } else {
-            return {
-                code: 1,
-                msg: responseData.message || '获取用户信息失败',
-                data: null
-            };
-        }
-    } catch (error) {
-        console.error('获取用户信息错误:', error);
-        return {
-            code: 1,
-            msg: error.message || '获取用户信息失败',
-            data: null
-        };
-    }
-}
-
-// 验证用户数据
-function validateUserData(userData) {
-    const errors = [];
-
-    // 验证用户名
-    if (!userData.username || userData.username.length < 3) {
-        errors.push('用户名至少需要3个字符');
-    }
-
-    // 验证邮箱格式
-    if (userData.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(userData.email)) {
-            errors.push('邮箱格式不正确');
-        }
-    }
-
-    // 教师角色特殊验证
-    if (userData.role === 'teacher') {
-        if (!userData.first_name || !userData.last_name) {
-            errors.push('教师用户必须填写姓名');
-        }
-    }
-
-    return errors;
-}
-
-export async function createUser(userData) {
-    // 数据验证
-    const validationErrors = validateUserData(userData);
-    if (validationErrors.length > 0) {
-        return {
-            code: 1,
-            msg: validationErrors.join('; '),
-            data: null
-        };
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            return {
-                code: 1,
-                msg: '未登录或登录已过期',
-                data: null
-            };
-        }
-
-        const response = await fetch(`${API_CONFIG.BASE_URL}/users/`, {
-            method: 'POST',
-            headers: {
-                ...API_CONFIG.headers,
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(userData)
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            return {
-                code: 0,
-                msg: '创建用户成功',
-                data: data.data
-            };
-        } else {
-            throw new Error(data.message || '创建用户失败');
-        }
-    } catch (error) {
-        return {
-            code: 1,
-            msg: `创建用户失败: ${error.message}`,
-            data: null
-        };
-    }
-}
-
-export async function updateUser(username, userData) {
-    // 数据验证
-    const validationErrors = validateUserData(userData);
-    if (validationErrors.length > 0) {
-        return {
-            code: 1,
-            msg: validationErrors.join('; '),
-            data: null
-        };
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            return {
-                code: 1,
-                msg: '未登录或登录已过期',
-                data: null
-            };
-        }
-
-        const response = await fetch(`${API_CONFIG.BASE_URL}/users/${username}/`, {
-            method: 'PUT',
-            headers: {
-                ...API_CONFIG.headers,
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(userData)
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            return {
-                code: 0,
-                msg: '更新用户成功',
-                data: data.data
-            };
-        } else {
-            throw new Error(data.message || '更新用户失败');
-        }
-    } catch (error) {
-        return {
-            code: 1,
-            msg: `更新用户失败: ${error.message}`,
-            data: null
-        };
-    }
-}
-
-// 重置用户密码
-export async function resetUserPassword(username) {
-    if (getMockFlag()) {
-        return mockApiResponse({ success: true });
-    }
-
-    const url = `${API_CONFIG.BASE_URL}/users/${username}/reset-password/`;
-    return handleRequest(url, {
-        method: 'POST'
-    });
-}
-
-// 切换用户状态
-export async function toggleUserStatus(username) {
-    if (getMockFlag()) {
-        return mockApiResponse({ success: true });
-    }
-
-    const url = `${API_CONFIG.BASE_URL}/users/${username}/toggle-status/`;
-    return handleRequest(url, {
-        method: 'POST'
-    });
-}
-
-// 获取当前用户信息
-export async function getCurrentUser(retryCount = 0) {
-    const MAX_RETRIES = 2;
-
-    if (getMockFlag()) {
-        const userInfo = getUserInfo();
-        if (!userInfo) {
-            return {
-                code: 1,
-                msg: '未登录',
-                data: null
-            };
-        }
-        return mockApiResponse({
-            id: 1,
-            username: userInfo.username,
-            name: userInfo.name,
-            email: userInfo.email,
-            role: userInfo.role,
-            avatar: userInfo.avatar,
-            department: userInfo.department,
-            position: userInfo.position,
-            phone: userInfo.phone,
-            lastLogin: new Date().toISOString()
-        });
-    }
-
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            return {
-                code: 1,
-                msg: '未登录',
-                data: null
-            };
-        }
-
-        const url = `${API_CONFIG.BASE_URL}/users/me/`;
-        console.log(`尝试获取用户信息 (重试次数: ${retryCount})`);
-
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        // 获取响应文本
-        const responseText = await response.text();
-        console.log('用户信息原始响应:', responseText);
-
-        // 尝试解析JSON
-        let responseData;
-        try {
-            responseData = JSON.parse(responseText);
-        } catch (e) {
-            console.error('响应解析失败:', e);
-            throw new Error('服务器返回了非JSON格式的数据');
-        }
-
-        // 处理401/403错误
-        if ((response.status === 401 || response.status === 403) && retryCount < MAX_RETRIES) {
-            console.log(`收到${response.status}响应，尝试刷新token`);
-            const tokenRefreshed = await TokenManager.refreshTokenIfNeeded();
-            if (tokenRefreshed) {
-                console.log('Token已刷新，重试请求');
-                return getCurrentUser(retryCount + 1);
-            } else {
-                console.log('Token刷新失败，需要重新登录');
-                TokenManager.clearTokens();
-                return {
-                    code: 1,
-                    msg: '登录已过期，请重新登录',
-                    data: null
-                };
-            }
-        }
-
-        // 处理其他错误
-        if (!response.ok) {
-            return handleHttpError(response, responseData);
-        }
-
-        // 验证响应数据
-        if (responseData.success && responseData.status_code === 200) {
-            if (!responseData.data || !responseData.data.username) {
-                console.error('用户数据不完整:', responseData.data);
-                return {
-                    code: 1,
-                    msg: '获取用户信息失败：用户数据不完整',
-                    data: null
-                };
-            }
-            return {
-                code: 0,
-                msg: '获取用户信息成功',
-                data: responseData.data
-            };
-        } else {
-            return {
-                code: 1,
-                msg: responseData.message || '获取用户信息失败',
-                data: null
-            };
-        }
-    } catch (error) {
-        console.error('获取用户信息错误:', error);
-        // 如果是网络错误且未超过重试次数，则重试
-        if (error.name === 'TypeError' && retryCount < MAX_RETRIES) {
-            console.log('网络错误，准备重试');
-            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-            return getCurrentUser(retryCount + 1);
-        }
-        return {
-            code: 1,
-            msg: error.message || '获取用户信息失败',
-            data: null
-        };
-    }
-}
-
-// 获取我的课程列表
-export async function getMyCourses(params = {}) {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            code: 0,
-            msg: '获取我的课程列表成功',
-            data: {
-                count: 3,
-                results: [
-                    {
-                        id: 1,
-                        name: '高等数学',
-                        location: '教学楼A 101'
-                    },
-                    {
-                        id: 2,
-                        name: '大学物理',
-                        location: '教学楼B 202'
-                    },
-                    {
-                        id: 3,
-                        name: '程序设计',
-                        location: '实验楼 304'
-                    }
-                ]
-            }
-        });
-    }
-
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (retryCount < maxRetries) {
-        try {
-            // 1. 获取并验证 token
-            const token = TokenManager.getAccessToken();
-            console.log('当前 Token 状态:', {
-                exists: !!token,
-                length: token ? token.length : 0,
-                preview: token ? `${token.substring(0, 10)}...` : 'none'
-            });
-
-            if (!token) {
-                throw new Error('请先登录');
-            }
-
-            // 2. 检查 token 有效性
-            const isTokenValid = await TokenManager.refreshTokenIfNeeded();
-            console.log('Token 有效性检查结果:', isTokenValid);
-
-            if (!isTokenValid) {
-                throw new Error('Token 已过期或无效');
-            }
-
-            // 3. 构建查询参数
-            const queryParams = new URLSearchParams();
-            if (params.search) queryParams.append('search', params.search);
-            if (params.ordering) queryParams.append('ordering', params.ordering);
-            if (params.page) queryParams.append('page', params.page);
-
-            const url = `${API_CONFIG.BASE_URL}/courses/my_courses/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-            console.log('获取我的课程列表请求URL:', url);
-
-            // 4. 构建请求头
-            const headers = {
-                ...API_CONFIG.headers,
-                'Authorization': `Bearer ${token}`,
-                'ngrok-skip-browser-warning': 'true'
-            };
-            console.log('请求头信息:', headers);
-
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: headers
-            });
-
-            // 5. 获取响应数据
-            const responseText = await response.text();
-            console.log('原始响应内容:', responseText);
-
-            let responseData;
-            try {
-                responseData = JSON.parse(responseText);
-                console.log('我的课程列表响应数据:', responseData);
-            } catch (e) {
-                console.error('JSON解析错误:', e);
-                console.log('非JSON响应内容:', responseText);
-
-                // 如果是HTML响应，可能是临时性问题，尝试重试
-                if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-                    console.log('收到HTML响应，准备重试');
-                    retryCount++;
-                    await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // 递增延迟
-                    continue;
-                }
-
-                throw new Error('服务器返回了非JSON格式的数据');
-            }
-
-            if (!response.ok) {
-                console.error('请求失败详情:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: Object.fromEntries(response.headers.entries()),
-                    body: responseData
-                });
-
-                if (response.status === 403) {
-                    // 如果是认证问题，尝试刷新token
-                    const refreshed = await TokenManager.refreshTokenIfNeeded();
-                    if (refreshed) {
-                        console.log('Token已刷新，重试请求');
-                        retryCount++;
-                        continue;
-                    }
-                    throw new Error('没有权限，请确保已登录');
-                }
-
-                // 如果是其他错误，直接返回错误信息
-                return handleHttpError(response, responseData);
-            }
-
-            return {
-                code: 0,
-                msg: '获取我的课程列表成功',
-                data: responseData
-            };
-        } catch (error) {
-            console.error('获取我的课程列表失败:', error);
-
-            // 如果已经重试了最大次数，则返回错误
-            if (retryCount >= maxRetries - 1) {
-                return {
-                    code: 1,
-                    msg: error.message || '网络错误，请稍后重试',
-                    data: null
-                };
-            }
-
-            // 否则继续重试
-            retryCount++;
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-        }
-    }
-
-    return {
-        code: 1,
-        msg: '多次请求失败，请稍后重试',
-        data: null
-    };
-}
-
-// 你可以继续添加其他接口方法，按需mock或真实请求
-
+                    title: `
