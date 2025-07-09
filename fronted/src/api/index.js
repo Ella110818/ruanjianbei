@@ -94,13 +94,76 @@ const TokenManager = {
     clearTokens() {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
-        console.log('Tokens已清除');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userPermissions');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('isStaff');
+        localStorage.removeItem('isSuperuser');
+        console.log('所有认证相关数据已清除');
+        // 重定向到登录页
+        window.location.href = '/login';
     },
 
     isValidToken(token) {
         const valid = token && typeof token === 'string' && token.length > 0;
         console.log('Token有效性检查:', valid);
         return valid;
+    },
+
+    async verifyToken(token) {
+        try {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/token/verify/`, {
+                method: 'POST',
+                headers: {
+                    ...API_CONFIG.headers,
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({ token })
+            });
+
+            return response.ok;
+        } catch (error) {
+            console.error('Token验证请求失败:', error);
+            return false;
+        }
+    },
+
+    async refreshToken() {
+        try {
+            const refreshToken = this.getRefreshToken();
+            if (!refreshToken) {
+                console.error('没有可用的Refresh Token');
+                return null;
+            }
+
+            const response = await fetch(`${API_CONFIG.BASE_URL}/token/refresh/`, {
+                method: 'POST',
+                headers: {
+                    ...API_CONFIG.headers,
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({ refresh: refreshToken })
+            });
+
+            const responseText = await response.text();
+            console.log('Token刷新响应:', responseText);
+
+            try {
+                const data = JSON.parse(responseText);
+                if (response.ok && data.access) {
+                    this.setAccessToken(data.access);
+                    return data.access;
+                }
+                console.error('刷新Token失败:', data);
+                return null;
+            } catch (e) {
+                console.error('Token刷新响应解析失败:', e);
+                return null;
+            }
+        } catch (error) {
+            console.error('刷新Token请求失败:', error);
+            return null;
+        }
     },
 
     async refreshTokenIfNeeded() {
@@ -111,57 +174,29 @@ const TokenManager = {
         }
 
         try {
-            // 验证当前token
-            const response = await fetch(`${API_CONFIG.BASE_URL}/token/verify/`, {
-                method: 'POST',
-                headers: {
-                    ...API_CONFIG.headers,
-                    'ngrok-skip-browser-warning': 'true'
-                },
-                body: JSON.stringify({ token })
-            });
-
-            // 获取原始响应文本
-            const responseText = await response.text();
-            console.log('Token验证响应:', responseText);
-
-            try {
-                JSON.parse(responseText);
-            } catch (e) {
-                console.error('Token验证响应解析失败:', e);
-                // 如果无法解析响应，尝试刷新Token
-                const newToken = await refreshToken();
-                if (newToken) {
-                    console.log('Token刷新成功');
-                    return true;
-                }
-                return false;
+            // 首先验证当前token
+            const isValid = await this.verifyToken(token);
+            if (isValid) {
+                console.log('当前token有效，无需刷新');
+                return true;
             }
 
-            if (!response.ok) {
-                console.log('Token验证失败，尝试刷新');
-                const newToken = await refreshToken();
-                if (newToken) {
-                    console.log('Token刷新成功');
-                    return true;
-                }
-
-                // 如果刷新失败，但还有其他错误（不是401/403），可能是临时性问题
-                if (response.status !== 401 && response.status !== 403) {
-                    console.log('服务器临时性错误，保持当前登录状态');
-                    return true;
-                }
-
-                console.log('Token刷新失败，需要重新登录');
-                return false;
+            // token无效，尝试刷新
+            console.log('Token无效，尝试刷新');
+            const newToken = await this.refreshToken();
+            if (newToken) {
+                console.log('Token刷新成功');
+                return true;
             }
 
-            console.log('Token仍然有效');
-            return true;
+            // 刷新失败，清理token并返回false
+            console.log('Token刷新失败，清理认证信息');
+            this.clearTokens();
+            return false;
         } catch (error) {
-            console.error('Token验证过程出错:', error);
-            // 网络错误等情况下，保持当前登录状态
-            return true;
+            console.error('Token刷新过程出错:', error);
+            this.clearTokens();
+            return false;
         }
     }
 };
@@ -1824,7 +1859,9 @@ export async function toggleUserStatus(username) {
 }
 
 // 获取当前用户信息
-export async function getCurrentUser() {
+export async function getCurrentUser(retryCount = 0) {
+    const MAX_RETRIES = 2;
+
     if (getMockFlag()) {
         const userInfo = getUserInfo();
         if (!userInfo) {
@@ -1859,6 +1896,8 @@ export async function getCurrentUser() {
         }
 
         const url = `${API_CONFIG.BASE_URL}/users/me/`;
+        console.log(`尝试获取用户信息 (重试次数: ${retryCount})`);
+
         const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -1869,12 +1908,46 @@ export async function getCurrentUser() {
             }
         });
 
-        const responseData = await response.json();
-        console.log('获取用户信息响应:', responseData);
+        // 获取响应文本
+        const responseText = await response.text();
+        console.log('用户信息原始响应:', responseText);
 
-        // 验证返回的数据
+        // 尝试解析JSON
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (e) {
+            console.error('响应解析失败:', e);
+            throw new Error('服务器返回了非JSON格式的数据');
+        }
+
+        // 处理401/403错误
+        if ((response.status === 401 || response.status === 403) && retryCount < MAX_RETRIES) {
+            console.log(`收到${response.status}响应，尝试刷新token`);
+            const tokenRefreshed = await TokenManager.refreshTokenIfNeeded();
+            if (tokenRefreshed) {
+                console.log('Token已刷新，重试请求');
+                return getCurrentUser(retryCount + 1);
+            } else {
+                console.log('Token刷新失败，需要重新登录');
+                TokenManager.clearTokens();
+                return {
+                    code: 1,
+                    msg: '登录已过期，请重新登录',
+                    data: null
+                };
+            }
+        }
+
+        // 处理其他错误
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        // 验证响应数据
         if (responseData.success && responseData.status_code === 200) {
-            if (!responseData.data || !responseData.data.id || !responseData.data.username) {
+            if (!responseData.data || !responseData.data.username) {
+                console.error('用户数据不完整:', responseData.data);
                 return {
                     code: 1,
                     msg: '获取用户信息失败：用户数据不完整',
@@ -1895,6 +1968,12 @@ export async function getCurrentUser() {
         }
     } catch (error) {
         console.error('获取用户信息错误:', error);
+        // 如果是网络错误且未超过重试次数，则重试
+        if (error.name === 'TypeError' && retryCount < MAX_RETRIES) {
+            console.log('网络错误，准备重试');
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            return getCurrentUser(retryCount + 1);
+        }
         return {
             code: 1,
             msg: error.message || '获取用户信息失败',
