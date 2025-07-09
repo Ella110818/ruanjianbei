@@ -254,7 +254,7 @@ export async function login(username, password, role) {
                     // 获取用户权限
                     try {
                         // 根据用户角色获取权限
-                        const permissionsUrl = `${API_CONFIG.BASE_URL}/users/permissions/`;
+                        const permissionsUrl = `${API_CONFIG.BASE_URL}/users/my_permissions/`;
                         const permissionsResponse = await fetch(permissionsUrl, {
                             method: 'GET',
                             headers: {
@@ -1176,7 +1176,7 @@ export async function getRolePermissions() {
             };
         }
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}/users/permissions/`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/my_permissions/`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
