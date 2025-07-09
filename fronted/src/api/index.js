@@ -1234,68 +1234,194 @@ export async function submitStudentAnswer(data) {
 
 // 获取用户列表
 export async function getUserList(params = {}) {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            total: 2,
-            results: [
-                {
-                    username: 'teacher1',
-                    name: '张老师',
-                    role: 'teacher',
-                    email: 'teacher1@example.com',
-                    lastLogin: '2024-03-15 10:30:00',
-                    status: 'active'
-                },
-                {
-                    username: 'student1',
-                    name: '李同学',
-                    role: 'student',
-                    email: 'student1@example.com',
-                    lastLogin: '2024-03-14 15:20:00',
-                    status: 'active'
+    const retryCount = 3; // 最大重试次数
+    let attempt = 0;
+
+    while (attempt < retryCount) {
+        try {
+            const token = TokenManager.getAccessToken();
+            if (!token) {
+                return {
+                    code: 1,
+                    msg: '未登录或登录已过期',
+                    data: null
+                };
+            }
+
+            const queryString = new URLSearchParams(params).toString();
+            const url = `${API_CONFIG.BASE_URL}/users/${queryString ? `?${queryString}` : ''}`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    ...API_CONFIG.headers,
+                    'Authorization': `Bearer ${token}`
                 }
-            ]
-        });
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // 处理数据，添加默认值和格式化
+                const processedResults = data.data.results.map(user => ({
+                    ...user,
+                    email: user.email || '未设置',
+                    first_name: user.first_name || '未设置',
+                    last_name: user.last_name || '未设置',
+                    created_at: new Date(user.created_at).toLocaleString('zh-CN')
+                }));
+
+                return {
+                    code: 0,
+                    msg: '获取用户列表成功',
+                    data: {
+                        ...data.data,
+                        results: processedResults
+                    }
+                };
+            } else {
+                throw new Error(data.message || '获取用户列表失败');
+            }
+        } catch (error) {
+            attempt++;
+            if (attempt === retryCount) {
+                return {
+                    code: 1,
+                    msg: `获取用户列表失败: ${error.message}`,
+                    data: null
+                };
+            }
+            // 等待一段时间后重试
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
     }
-
-    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/`);
-    const queryParams = new URLSearchParams();
-
-    if (params.search) queryParams.append('search', params.search);
-    if (params.role) queryParams.append('role', params.role);
-    if (params.status) queryParams.append('status', params.status);
-    if (params.page) queryParams.append('page', params.page);
-    if (params.ordering) queryParams.append('ordering', params.ordering);
-
-    const finalUrl = `${url}${queryParams.toString() ? '&' + queryParams.toString() : ''}`;
-
-    return handleRequest(finalUrl);
 }
 
-// 创建用户
+// 验证用户数据
+function validateUserData(userData) {
+    const errors = [];
+
+    // 验证用户名
+    if (!userData.username || userData.username.length < 3) {
+        errors.push('用户名至少需要3个字符');
+    }
+
+    // 验证邮箱格式
+    if (userData.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(userData.email)) {
+            errors.push('邮箱格式不正确');
+        }
+    }
+
+    // 教师角色特殊验证
+    if (userData.role === 'teacher') {
+        if (!userData.first_name || !userData.last_name) {
+            errors.push('教师用户必须填写姓名');
+        }
+    }
+
+    return errors;
+}
+
 export async function createUser(userData) {
-    if (getMockFlag()) {
-        return mockApiResponse({ success: true });
+    // 数据验证
+    const validationErrors = validateUserData(userData);
+    if (validationErrors.length > 0) {
+        return {
+            code: 1,
+            msg: validationErrors.join('; '),
+            data: null
+        };
     }
 
-    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/`);
-    return handleRequest(url, {
-        method: 'POST',
-        body: JSON.stringify(userData)
-    });
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            return {
+                code: 1,
+                msg: '未登录或登录已过期',
+                data: null
+            };
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/`, {
+            method: 'POST',
+            headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(userData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            return {
+                code: 0,
+                msg: '创建用户成功',
+                data: data.data
+            };
+        } else {
+            throw new Error(data.message || '创建用户失败');
+        }
+    } catch (error) {
+        return {
+            code: 1,
+            msg: `创建用户失败: ${error.message}`,
+            data: null
+        };
+    }
 }
 
-// 更新用户
 export async function updateUser(username, userData) {
-    if (getMockFlag()) {
-        return mockApiResponse({ success: true });
+    // 数据验证
+    const validationErrors = validateUserData(userData);
+    if (validationErrors.length > 0) {
+        return {
+            code: 1,
+            msg: validationErrors.join('; '),
+            data: null
+        };
     }
 
-    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/${username}/`);
-    return handleRequest(url, {
-        method: 'PATCH',
-        body: JSON.stringify(userData)
-    });
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            return {
+                code: 1,
+                msg: '未登录或登录已过期',
+                data: null
+            };
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/${username}/`, {
+            method: 'PUT',
+            headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(userData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            return {
+                code: 0,
+                msg: '更新用户成功',
+                data: data.data
+            };
+        } else {
+            throw new Error(data.message || '更新用户失败');
+        }
+    } catch (error) {
+        return {
+            code: 1,
+            msg: `更新用户失败: ${error.message}`,
+            data: null
+        };
+    }
 }
 
 // 重置用户密码
@@ -1320,6 +1446,35 @@ export async function toggleUserStatus(username) {
     return handleRequest(url, {
         method: 'POST'
     });
+}
+
+// 获取当前用户信息
+export async function getCurrentUser() {
+    if (getMockFlag()) {
+        const userInfo = getUserInfo();
+        if (!userInfo) {
+            return {
+                code: 1,
+                msg: '未登录',
+                data: null
+            };
+        }
+        return mockApiResponse({
+            id: 1,
+            username: userInfo.username,
+            name: userInfo.name,
+            email: userInfo.email,
+            role: userInfo.role,
+            avatar: userInfo.avatar,
+            department: userInfo.department,
+            position: userInfo.position,
+            phone: userInfo.phone,
+            lastLogin: new Date().toISOString()
+        });
+    }
+
+    const url = addBypassParam(`${API_CONFIG.BASE_URL}/users/me/`);
+    return handleRequest(url);
 }
 
 // 你可以继续添加其他接口方法，按需mock或真实请求

@@ -130,9 +130,10 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage } from 'element-plus'
+import { getCurrentUser } from '@/api'
 
 export default {
   name: 'AdminProfile',
@@ -142,16 +143,17 @@ export default {
   setup() {
     const isEditing = ref(false)
     const passwordDialogVisible = ref(false)
+    const loading = ref(false)
 
     const adminInfo = reactive({
-      username: 'admin',
-      name: '张三',
-      email: 'admin@example.com',
-      phone: '13800138000',
-      department: '教务处',
-      position: '系统管理员',
-      joinDate: '2023-09-01',
-      bio: '负责系统的日常维护和用户管理工作。',
+      username: '',
+      name: '',
+      email: '',
+      phone: '',
+      department: '',
+      position: '',
+      joinDate: '',
+      bio: '',
       avatar: ''
     })
 
@@ -199,19 +201,55 @@ export default {
       ]
     }
 
+    const fetchUserInfo = async () => {
+      loading.value = true
+      try {
+        const response = await getCurrentUser()
+        if (response.code === 0 && response.data) {
+          const data = response.data
+          Object.assign(adminInfo, {
+            username: data.username || '',
+            name: data.name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            department: data.department || '',
+            position: data.position || '',
+            joinDate: data.joinDate || '',
+            bio: data.bio || '',
+            avatar: data.avatar || ''
+          })
+        } else {
+          ElMessage.error(response.msg || '获取用户信息失败')
+        }
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+        ElMessage.error('获取用户信息失败')
+      } finally {
+        loading.value = false
+      }
+    }
+
+    onMounted(() => {
+      fetchUserInfo()
+    })
+
     const startEdit = () => {
       isEditing.value = true
     }
 
     const cancelEdit = () => {
       isEditing.value = false
-      // 可以在这里重置表单
+      fetchUserInfo() // 重新加载数据
     }
 
-    const saveChanges = () => {
-      // 这里添加保存逻辑
-      ElMessage.success('保存成功')
-      isEditing.value = false
+    const saveChanges = async () => {
+      try {
+        // TODO: 实现保存逻辑
+        ElMessage.success('保存成功')
+        isEditing.value = false
+      } catch (error) {
+        ElMessage.error('保存失败')
+      }
     }
 
     const showPasswordDialog = () => {
@@ -219,13 +257,13 @@ export default {
     }
 
     const changePassword = () => {
-      // 这里添加修改密码逻辑
+      // TODO: 实现修改密码逻辑
       ElMessage.success('密码修改成功')
       passwordDialogVisible.value = false
     }
 
     const handleAvatarUpload = () => {
-      // 这里添加头像上传逻辑
+      // TODO: 实现头像上传逻辑
     }
 
     return {
@@ -235,6 +273,7 @@ export default {
       passwordDialogVisible,
       passwordForm,
       passwordRules,
+      loading,
       startEdit,
       cancelEdit,
       saveChanges,
