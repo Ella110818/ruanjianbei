@@ -989,8 +989,8 @@ export async function getKnowledgePoints(params) {
     }
 }
 
-// 获取角色权限列表
-export async function getRolePermissions(roleId) {
+// 获取用户权限列表
+export async function getRolePermissions() {
     if (getMockFlag()) {
         return mockApiResponse({
             code: 0,
