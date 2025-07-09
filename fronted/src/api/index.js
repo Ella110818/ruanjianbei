@@ -1700,33 +1700,8 @@ export async function getUserRoleAndPermissions() {
             throw new Error('用户信息不存在');
         }
 
-        // 获取所有角色列表
-        const rolesResponse = await getRoles();
-        console.log('角色列表响应:', rolesResponse);
-
-        if (!rolesResponse.success || rolesResponse.status_code !== 200) {
-            throw new Error(rolesResponse.message || '获取角色列表失败');
-        }
-
-        // 从results中获取角色列表
-        const rolesList = rolesResponse.data.results;
-        if (!Array.isArray(rolesList)) {
-            throw new Error('角色列表格式错误');
-        }
-
-        console.log('用户角色:', userInfo.role);
-        console.log('可用角色列表:', rolesList.map(r => r.name));
-
-        // 根据用户的role名称找到对应的角色
-        const userRole = rolesList.find(role => role.name === userInfo.role);
-        console.log('找到的用户角色:', userRole);
-
-        if (!userRole) {
-            throw new Error(`未找到用户角色: ${userInfo.role}`);
-        }
-
-        // 获取角色详情
-        const roleResponse = await getRoleById(userRole.id);
+        // 直接获取用户的角色详情
+        const roleResponse = await getRoleById(userInfo.id);
         console.log('角色详情响应:', roleResponse);
 
         if (!roleResponse.success || roleResponse.status_code !== 200) {
