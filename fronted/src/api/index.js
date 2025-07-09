@@ -1525,5 +1525,83 @@ export async function getCurrentUser() {
     return handleRequest(url);
 }
 
+// 获取我的课程列表
+export async function getMyCourses(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取我的课程列表成功',
+            data: {
+                count: 3,
+                results: [
+                    {
+                        id: 1,
+                        name: '高等数学',
+                        location: '教学楼A 101'
+                    },
+                    {
+                        id: 2,
+                        name: '大学物理',
+                        location: '教学楼B 202'
+                    },
+                    {
+                        id: 3,
+                        name: '程序设计',
+                        location: '实验楼 304'
+                    }
+                ]
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('请先登录');
+        }
+
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.ordering) queryParams.append('ordering', params.ordering);
+        if (params.page) queryParams.append('page', params.page);
+
+        const url = `${API_CONFIG.BASE_URL}/courses/my_courses/?${queryParams.toString()}`;
+        console.log('获取我的课程列表请求URL:', url);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('我的课程列表响应数据:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('没有权限，请确保已登录');
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取我的课程列表成功',
+            data: responseData
+        };
+    } catch (error) {
+        console.error('获取我的课程列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '网络错误，请稍后重试',
+            data: null
+        };
+    }
+}
+
 // 你可以继续添加其他接口方法，按需mock或真实请求
 

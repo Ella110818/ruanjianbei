@@ -10,8 +10,15 @@
 
     <!-- 主要内容区域 -->
     <div class="main-content">
+      <!-- 加载状态和错误提示 -->
+      <div v-if="loading" class="loading-state">
+        正在加载课程列表...
+      </div>
+      <div v-else-if="error" class="error-state">
+        {{ error }}
+      </div>
       <!-- 课程卡片网格 -->
-      <div class="course-grid">
+      <div v-else class="course-grid">
         <course-card2
           v-for="course in courses"
           :key="course.id"
@@ -28,31 +35,46 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import StudentHeader from '@/components/StudentHeader.vue'
 import CourseCard2 from '@/components/CourseCard2.vue'
+import { getMyCourses } from '@/api'
 
 const router = useRouter()
 
-// 模拟课程数据
-const courses = ref([
-  {
-    id: 1,
-    name: '高等数学',
-    location: '教学楼A 101'
-  },
-  {
-    id: 2,
-    name: '大学物理',
-    location: '教学楼B 202'
-  },
-  {
-    id: 3,
-    name: '程序设计',
-    location: '实验楼 304'
+// 课程列表数据
+const courses = ref([])
+const loading = ref(false)
+const error = ref('')
+
+// 获取课程列表
+const fetchCourses = async () => {
+  loading.value = true
+  error.value = ''
+  try {
+    const params = {
+      page: 1,
+      ordering: 1
+    }
+    const response = await getMyCourses(params)
+    if (response.code === 0 && response.data) {
+      courses.value = response.data.results || []
+    } else {
+      error.value = response.msg || '获取课程列表失败'
+    }
+  } catch (err) {
+    console.error('获取课程列表出错:', err)
+    error.value = '获取课程列表失败，请稍后重试'
+  } finally {
+    loading.value = false
   }
-])
+}
+
+// 页面加载时获取课程列表
+onMounted(() => {
+  fetchCourses()
+})
 
 // 进入课程详情
 const enterCourse = (courseId) => {
@@ -129,5 +151,17 @@ const enterCourse = (courseId) => {
   .main-content {
     margin-top: 60px;
   }
+}
+
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 20px;
+  font-size: 16px;
+  color: #666;
+}
+
+.error-state {
+  color: #ff4d4f;
 }
 </style> 
