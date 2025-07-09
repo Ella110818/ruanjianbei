@@ -3,7 +3,7 @@
     <AdminHeader />
     <animated-background />
     <div class="gray-space"></div>
-    <div class="content-wrapper">
+    <div class="content-wrapper" v-loading="loading">
       <div class="search-section">
         <el-button type="primary" @click="handleAddUser">添加用户</el-button>
         <el-input
@@ -82,7 +82,7 @@
         </el-table>
       </div>
 
-      <div class="pagination-container">
+      <div class="pagination-container" v-if="total > 0">
         <el-pagination
           background
           layout="prev, pager, next"
@@ -93,6 +93,8 @@
         >
         </el-pagination>
       </div>
+
+      <el-empty v-else description="暂无数据" />
     </div>
 
     <!-- 用户表单对话框 -->
@@ -101,7 +103,13 @@
       v-model="dialogVisible"
       width="500px"
     >
-      <el-form :model="userForm" :rules="rules" ref="userForm" label-width="100px">
+      <el-form 
+        ref="userForm"
+        :model="userForm"
+        :rules="rules"
+        label-width="100px"
+        class="info-form"
+      >
         <el-form-item label="用户名" prop="username">
           <el-input v-model="userForm.username" :disabled="dialogType === 'edit'"></el-input>
         </el-form-item>
@@ -124,7 +132,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmitForm">确定</el-button>
+          <el-button type="primary" @click="handleSubmitForm" :loading="submitting">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -152,6 +160,7 @@ export default {
   data() {
     return {
       loading: false,
+      submitting: false,
       searchQuery: '',
       roleFilter: '',
       statusFilter: '',
@@ -206,9 +215,9 @@ export default {
         }
         
         const response = await getUserList(params)
-        if (response.code === 0) {
-          this.userList = response.data.results
-          this.total = response.data.total
+        if (response.code === 0 && response.data) {
+          this.userList = response.data.results || []
+          this.total = response.data.total || 0
         } else {
           ElMessage.error(response.msg || '获取用户列表失败')
         }
@@ -301,8 +310,11 @@ export default {
       this.fetchUserList()
     },
     async handleSubmitForm() {
+      if (!this.$refs.userForm) return
+      
       try {
         await this.$refs.userForm.validate()
+        this.submitting = true
         
         const apiMethod = this.dialogType === 'add' ? createUser : updateUser
         const response = await apiMethod(
@@ -322,6 +334,8 @@ export default {
           console.error(this.dialogType === 'add' ? '添加用户失败:' : '修改用户失败:', error)
           ElMessage.error(this.dialogType === 'add' ? '添加失败' : '修改失败')
         }
+      } finally {
+        this.submitting = false
       }
     }
   }

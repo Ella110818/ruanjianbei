@@ -90,26 +90,28 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import StudentHeader from '@/components/StudentHeader.vue'
+import { getCurrentUser } from '@/api'
 
 const activeTab = ref('basic')
 const isEditing = ref(false)
 const formRef = ref(null)
+const loading = ref(false)
 
 const studentInfo = reactive({
-  name: '李小明',
-  studentId: 'S2024001',
-  className: '计算机2024级1班',
-  department: '计算机科学与技术学院',
-  email: 'lixm@example.com',
-  phone: '13900139001',
-  dormitory: '6号楼305',
-  avatar: 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png',
-  courseCount: 6,
-  creditCount: 85,
-  gpa: '3.8'
+  name: '',
+  studentId: '',
+  className: '',
+  department: '',
+  email: '',
+  phone: '',
+  dormitory: '',
+  avatar: '',
+  courseCount: 0,
+  creditCount: 0,
+  gpa: '0.0'
 })
 
 const rules = {
@@ -124,13 +126,47 @@ const rules = {
   dormitory: [{ required: true, message: '请输入宿舍', trigger: 'blur' }]
 }
 
+const fetchUserInfo = async () => {
+  loading.value = true
+  try {
+    const response = await getCurrentUser()
+    if (response.code === 0 && response.data) {
+      const data = response.data
+      Object.assign(studentInfo, {
+        name: data.name || '',
+        studentId: data.username || '',
+        className: data.class_name || '',
+        department: data.department || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        dormitory: data.dormitory || '',
+        avatar: data.avatar || '',
+        courseCount: data.course_count || 0,
+        creditCount: data.credit_count || 0,
+        gpa: data.gpa || '0.0'
+      })
+    } else {
+      ElMessage.error(response.msg || '获取用户信息失败')
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+    ElMessage.error('获取用户信息失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchUserInfo()
+})
+
 const startEdit = () => {
   isEditing.value = true
 }
 
 const cancelEdit = () => {
   isEditing.value = false
-  formRef.value?.resetFields()
+  fetchUserInfo() // 重新加载数据
 }
 
 const saveChanges = async () => {
@@ -142,7 +178,10 @@ const saveChanges = async () => {
     ElMessage.success('保存成功')
     isEditing.value = false
   } catch (error) {
-    console.error('表单验证失败:', error)
+    if (error !== 'validation') {
+      console.error('保存失败:', error)
+      ElMessage.error('保存失败')
+    }
   }
 }
 
