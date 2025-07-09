@@ -1763,8 +1763,8 @@ export async function getUserRoleAndPermissions() {
             throw new Error('获取角色列表失败');
         }
 
-        // 在角色列表中找到用户的角色
-        const userRole = rolesData.data.find(role => role.name === userInfo.role);
+        // 从results数组中找到用户的角色
+        const userRole = rolesData.data.results.find(role => role.name === userInfo.role);
         console.log('找到用户角色:', userRole);
 
         if (!userRole) {
