@@ -2745,3 +2745,21 @@ export async function getStudentAnswers(params = {}) {
         };
     }
 }
+
+// 生成PPT的接口
+export const generateKnowledgePointsPPT = async (params) => {
+    try {
+        const response = await instance.post('/knowledge-points-to-ppt/', params, {
+            headers: {
+                'ngrok-skip-browser-warning': true
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error('生成PPT失败:', error);
+        return {
+            code: -1,
+            msg: error.message || '生成PPT失败'
+        };
+    }
+};
