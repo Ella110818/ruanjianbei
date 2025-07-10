@@ -318,6 +318,7 @@ export async function login(username, password, role) {
         }
     } else {
         try {
+            // 1. 首先进行登录
             const loginUrl = `${API_CONFIG.BASE_URL}/login/`;
             console.log('开始登录请求');
 
@@ -353,7 +354,7 @@ export async function login(username, password, role) {
                 return handleHttpError(response, responseData);
             }
 
-            // 检查响应是否成功
+            // 检查登录响应是否成功
             if (responseData.success && responseData.status_code === 200 && responseData.data) {
                 const { access, refresh, user } = responseData.data;
                 console.log('登录成功，获取到tokens:', {
@@ -370,27 +371,52 @@ export async function login(username, password, role) {
                     // 保存新token
                     TokenManager.setTokens(access, refresh);
 
+                    // 2. 获取角色列表，找到对应角色的ID
+                    console.log('开始获取角色列表');
+                    const rolesResponse = await getRoles();
+                    if (!rolesResponse.success || rolesResponse.status_code !== 200) {
+                        console.error('获取角色列表失败:', rolesResponse);
+                        return {
+                            code: 1,
+                            msg: '获取角色信息失败',
+                            data: null
+                        };
+                    }
+
+                    // 找到对应角色的ID
+                    const userRole = rolesResponse.data.find(r => r.name === role);
+                    if (!userRole) {
+                        console.error('未找到对应的角色ID');
+                        return {
+                            code: 1,
+                            msg: '未找到对应的角色信息',
+                            data: null
+                        };
+                    }
+
+                    // 3. 获取角色详细信息
+                    console.log('开始获取角色详细信息');
+                    const roleDetailResponse = await getRoleById(userRole.id);
+                    if (!roleDetailResponse.success || roleDetailResponse.status_code !== 200) {
+                        console.error('获取角色详细信息失败:', roleDetailResponse);
+                        return {
+                            code: 1,
+                            msg: '获取角色详细信息失败',
+                            data: null
+                        };
+                    }
+
                     // 保存用户信息
                     const userInfo = {
                         ...user,
-                        role
+                        role,
+                        roleId: userRole.id,
+                        permissions: roleDetailResponse.data.permissions || []
                     };
                     localStorage.setItem('user', JSON.stringify(userInfo));
                     localStorage.setItem('userRole', role);
-
-                    // 获取用户权限
-                    console.log('开始获取用户权限');
-                    const permissionsResponse = await getUserPermissions();
-                    console.log('权限响应:', permissionsResponse);
-
-                    // 即使权限获取失败也允许登录
-                    if (permissionsResponse.success && permissionsResponse.status_code === 200) {
-                        console.log('成功获取用户权限:', permissionsResponse.data);
-                        localStorage.setItem('userPermissions', JSON.stringify(permissionsResponse.data.permissions || []));
-                    } else {
-                        console.warn('获取用户权限失败，但继续登录流程');
-                        localStorage.setItem('userPermissions', '[]');
-                    }
+                    localStorage.setItem('userRoleId', userRole.id);
+                    localStorage.setItem('userPermissions', JSON.stringify(roleDetailResponse.data.permissions || []));
 
                     return {
                         code: 0,
@@ -398,7 +424,8 @@ export async function login(username, password, role) {
                         data: {
                             token: access,
                             refreshToken: refresh,
-                            user: userInfo
+                            user: userInfo,
+                            roleDetail: roleDetailResponse.data
                         }
                     };
                 } else {
@@ -425,6 +452,79 @@ export async function login(username, password, role) {
                 data: null
             };
         }
+    }
+}
+
+// 获取角色列表
+export async function getRoles() {
+    if (getMockFlag()) {
+        return Promise.resolve({
+            success: true,
+            status_code: 200,
+            data: [
+                { id: 1, name: 'teacher', display_name: '教师' },
+                { id: 2, name: 'student', display_name: '学生' },
+                { id: 3, name: 'admin', display_name: '管理员' }
+            ]
+        });
+    }
+
+    try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/roles/`, {
+            method: 'GET',
+            headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${TokenManager.getAccessToken()}`,
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        return responseData;
+    } catch (error) {
+        console.error('获取角色列表失败:', error);
+        return {
+            success: false,
+            status_code: 500,
+            message: '获取角色列表失败'
+        };
+    }
+}
+
+// 获取角色详细信息
+export async function getRoleById(roleId) {
+    if (getMockFlag()) {
+        return Promise.resolve({
+            success: true,
+            status_code: 200,
+            data: {
+                id: roleId,
+                name: 'teacher',
+                display_name: '教师',
+                permissions: ['view_course', 'edit_course', 'create_course']
+            }
+        });
+    }
+
+    try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/roles/${roleId}/`, {
+            method: 'GET',
+            headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${TokenManager.getAccessToken()}`,
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        return responseData;
+    } catch (error) {
+        console.error('获取角色详细信息失败:', error);
+        return {
+            success: false,
+            status_code: 500,
+            message: '获取角色详细信息失败'
+        };
     }
 }
 
