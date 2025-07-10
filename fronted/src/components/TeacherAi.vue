@@ -232,10 +232,20 @@ const confirmGenerateCourse = async () => {
 
   try {
     isGeneratingCourse.value = true
-    const response = await generateCourseContent({
-      ...courseConfig.value,
-      use_ai: true
-    })
+    // 准备请求参数
+    const params = {
+      course_name: courseConfig.value.course_name,
+      course_description: courseConfig.value.course_description,
+      subject: courseConfig.value.subject,
+      grade_level: courseConfig.value.grade_level,
+      chapter_count: courseConfig.value.chapter_count,
+      additional_requirements: courseConfig.value.additional_requirements || '',
+      chatInput: courseConfig.value.chatInput || '',
+      knowledge_point_ids: courseConfig.value.knowledge_point_ids,
+      sessionId: Date.now().toString()
+    }
+    console.log('生成课程内容请求参数:', params)
+    const response = await generateCourseContent(params)
 
     if (response.success && response.status_code === 201) {
       ElMessage.success('课程内容生成成功！')
