@@ -374,13 +374,13 @@ export async function login(username, password, role) {
                     };
                     localStorage.setItem('user', JSON.stringify(userInfo));
 
-                    // 获取用户角色和权限
-                    console.log('开始获取用户角色和权限');
-                    const roleResponse = await getUserRoleAndPermissions();
-                    if (roleResponse.code !== 0) {
-                        console.error('获取角色和权限失败:', roleResponse.msg);
+                    // 获取用户权限
+                    console.log('开始获取用户权限');
+                    const permissionsResponse = await getUserPermissions();
+                    if (permissionsResponse.code !== 0) {
+                        console.error('获取用户权限失败:', permissionsResponse.msg);
                     } else {
-                        console.log('成功获取角色和权限:', roleResponse.data);
+                        console.log('成功获取用户权限:', permissionsResponse.data);
                     }
 
                     return {
@@ -389,7 +389,8 @@ export async function login(username, password, role) {
                         data: {
                             token: access,
                             refreshToken: refresh,
-                            user: userInfo
+                            user: userInfo,
+                            permissions: permissionsResponse.data
                         }
                     };
                 } else {
@@ -2844,6 +2845,79 @@ export async function getCoursewareList(params = {}) {
         return {
             code: 1,
             msg: error.message || '获取课件列表失败',
+            data: null
+        };
+    }
+}
+
+// 获取用户权限
+export async function getUserPermissions() {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取权限成功',
+            data: {
+                role: 'teacher',
+                permissions: ['view_course', 'edit_course'],
+                is_staff: true,
+                is_superuser: false,
+                is_authenticated: true
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            return {
+                code: 1,
+                msg: '未登录',
+                data: null
+            };
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/my_permissions/`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('获取用户权限响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            // 保存权限信息到本地存储
+            localStorage.setItem('userRole', responseData.data.role || '');
+            localStorage.setItem('userPermissions', JSON.stringify(responseData.data.permissions || []));
+            localStorage.setItem('isStaff', responseData.data.is_staff.toString());
+            localStorage.setItem('isSuperuser', responseData.data.is_superuser.toString());
+            localStorage.setItem('isAuthenticated', responseData.data.is_authenticated.toString());
+
+            return {
+                code: 0,
+                msg: '获取权限成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取权限失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取用户权限失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取用户权限失败',
             data: null
         };
     }
