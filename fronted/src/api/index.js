@@ -2850,15 +2850,24 @@ export async function submitStudentAnswer(data) {
     }
 
     try {
+        // 检查传入的数据
+        console.log('提交答案的原始数据:', data);
+
+        // 构造请求数据
+        const requestData = {
+            exercise: parseInt(data.exercise_id), // 确保是数字
+            content: String(data.answer_content), // 确保是字符串
+            student: parseInt(data.student_id)    // 确保是数字
+        };
+
+        console.log('发送到服务器的数据:', requestData);
+
         const response = await handleRequest(`${API_CONFIG.BASE_URL}/student-answers/`, {
             method: 'POST',
-            body: JSON.stringify({
-                exercise: data.exercise_id,  // 练习题ID
-                content: data.answer_content, // 答案内容
-                student: data.student_id     // 学生ID
-            })
+            body: JSON.stringify(requestData)
         });
 
+        console.log('服务器响应:', response);
         return response;
     } catch (error) {
         console.error('提交答案失败:', error);
