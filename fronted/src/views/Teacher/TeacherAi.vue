@@ -57,30 +57,22 @@ const handleGeneratePPT = async (knowledgePoints) => {
     include_course_info: true,
     use_ai: false,
     return_file_content: false,
-    course_id: localStorage.getItem('currentCourseId') || null
+    course_id: localStorage.getItem('currentCourseId') || null,
+    sessionId: Date.now().toString()  // 添加会话ID
   }
 
   try {
     isGeneratingPPT.value = true
     const response = await generateKnowledgePointsPPT(params)
     
-    if (response.success && response.status_code === 201) {  // 修改为 201
-      const fileUrl = response.data.file_url
-      // 创建一个下载链接
-      const link = document.createElement('a')
-      link.href = fileUrl
-      link.download = response.data.filename || '知识点PPT.pptx'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
+    if (response.success) {
       ElMessage.success('PPT生成成功！')
     } else {
-      ElMessage.error(response.message || '生成PPT失败')
+      ElMessage.error(response.error || '生成PPT失败')
     }
   } catch (error) {
     console.error('生成PPT失败:', error)
-    ElMessage.error('生成PPT失败，请稍后重试')
+    ElMessage.error(error.message || '生成PPT失败，请稍后重试')
   } finally {
     isGeneratingPPT.value = false
   }
