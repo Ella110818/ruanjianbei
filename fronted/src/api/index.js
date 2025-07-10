@@ -303,13 +303,16 @@ export async function login(username, password, role) {
                 data: {
                     name: '测试用户',
                     role: role || 'teacher',
-                    id: 1
+                    id: 1,
+                    access: 'mock_token',
+                    refresh: 'mock_refresh_token'
                 }
             });
         } else {
             return Promise.resolve({
                 success: false,
                 status_code: 400,
+                message: '用户名或密码错误',
                 data: null
             });
         }
@@ -333,38 +336,92 @@ export async function login(username, password, role) {
                 body: JSON.stringify(loginData)
             });
 
-            const responseData = await response.json();
-            console.log('登录响应:', responseData);
-
-            if (responseData.success && responseData.status_code === 200) {
-                // 保存token
-                if (responseData.data.access) {
-                    TokenManager.setTokens(responseData.data.access, responseData.data.refresh);
-                }
-
-                // 保存角色信息
-                localStorage.setItem('userRole', role);
-
+            let responseData;
+            try {
+                responseData = await response.json();
+                console.log('登录响应数据:', responseData);
+            } catch (e) {
+                console.error('登录响应解析失败:', e);
                 return {
-                    code: 0, // 为了保持与前端代码兼容
-                    msg: '登录成功',
-                    data: {
-                        ...responseData.data,
-                        role
-                    }
+                    code: 1,
+                    msg: '服务器响应格式错误',
+                    data: null
                 };
             }
 
-            return {
-                code: 1,
-                msg: responseData.message || '登录失败',
-                data: null
-            };
+            if (!response.ok) {
+                return handleHttpError(response, responseData);
+            }
+
+            // 检查响应是否成功
+            if (responseData.success && responseData.status_code === 200 && responseData.data) {
+                const { access, refresh, user } = responseData.data;
+                console.log('登录成功，获取到tokens:', {
+                    accessToken: access ? '存在' : '不存在',
+                    refreshToken: refresh ? '存在' : '不存在',
+                    user: user ? '存在' : '不存在'
+                });
+
+                // 验证并保存token
+                if (TokenManager.isValidToken(access) && TokenManager.isValidToken(refresh)) {
+                    // 先清除旧数据
+                    TokenManager.clearTokens();
+
+                    // 保存新token
+                    TokenManager.setTokens(access, refresh);
+
+                    // 保存用户信息
+                    const userInfo = {
+                        ...user,
+                        role
+                    };
+                    localStorage.setItem('user', JSON.stringify(userInfo));
+                    localStorage.setItem('userRole', role);
+
+                    // 获取用户权限
+                    console.log('开始获取用户权限');
+                    const permissionsResponse = await getUserPermissions();
+                    console.log('权限响应:', permissionsResponse);
+
+                    // 即使权限获取失败也允许登录
+                    if (permissionsResponse.success && permissionsResponse.status_code === 200) {
+                        console.log('成功获取用户权限:', permissionsResponse.data);
+                        localStorage.setItem('userPermissions', JSON.stringify(permissionsResponse.data.permissions || []));
+                    } else {
+                        console.warn('获取用户权限失败，但继续登录流程');
+                        localStorage.setItem('userPermissions', '[]');
+                    }
+
+                    return {
+                        code: 0,
+                        msg: '登录成功',
+                        data: {
+                            token: access,
+                            refreshToken: refresh,
+                            user: userInfo
+                        }
+                    };
+                } else {
+                    console.error('Token格式无效');
+                    return {
+                        code: 1,
+                        msg: 'Token格式无效',
+                        data: null
+                    };
+                }
+            } else {
+                console.error('登录响应格式错误:', responseData);
+                return {
+                    code: 1,
+                    msg: responseData.message || '登录失败',
+                    data: null
+                };
+            }
         } catch (error) {
             console.error('登录请求失败:', error);
             return {
                 code: 1,
-                msg: '登录失败，请稍后重试',
+                msg: error.message || '网络错误，请稍后重试',
                 data: null
             };
         }
