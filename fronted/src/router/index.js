@@ -170,20 +170,39 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
     // 检查是否已登录
-    const studentName = localStorage.getItem('studentName')
-    const teacherName = localStorage.getItem('teacherName')
-    const adminName = localStorage.getItem('adminName')  // 添加管理员检查
+    const userRole = localStorage.getItem('userRole');
+    const userPermissions = JSON.parse(localStorage.getItem('userPermissions') || '[]');
 
-    if (!studentName && !teacherName && !adminName) {
+    if (!userRole) {
       next({
         path: '/login',
         query: { redirect: to.fullPath }
-      })
-    } else {
-      next()
+      });
+      return;
     }
+
+    // 检查路由路径是否匹配用户角色
+    const pathRole = to.path.split('/')[1]; // 获取路径中的角色部分
+    if (pathRole !== userRole) {
+      next({
+        path: `/${userRole}`,
+        query: { redirect: to.fullPath }
+      });
+      return;
+    }
+
+    // 如果路由需要特定权限，检查用户是否有该权限
+    if (to.meta.permissions && !to.meta.permissions.some(permission => userPermissions.includes(permission))) {
+      next({
+        path: `/${userRole}`,
+        query: { redirect: to.fullPath }
+      });
+      return;
+    }
+
+    next();
   } else {
-    next()
+    next();
   }
 })
 
