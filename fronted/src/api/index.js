@@ -1004,93 +1004,51 @@ export function isSuperuser() {
 }
 
 // 课程内容生成
-export async function generateCourseContent() {
+export async function generateCourseContent(params) {
     if (getMockFlag()) {
         return mockApiResponse({
-            code: 0,
-            msg: '课程内容生成成功',
+            success: true,
+            status_code: 201,
             data: {
                 id: 1,
-                title: 'Python编程基础',
-                description: 'Python入门课程',
-                subject: 'Python编程',
-                grade_level: '大学一年级',
+                title: params.title || 'Python编程基础',
+                description: params.description || 'Python入门课程',
+                subject: params.subject || 'Python编程',
+                grade_level: params.grade_level || '大学一年级',
                 created_at: new Date().toISOString()
-            }
+            },
+            message: '课程内容生成成功'
         });
-    }
-
-    // 检查是否有生成课程的权限
-    if (!hasPermission('generate_course')) {
-        return {
-            code: 1,
-            msg: '没有生成课程的权限',
-            data: null
-        };
-    }
-
-    const token = TokenManager.getAccessToken();
-    if (!token) {
-        return {
-            code: 1,
-            msg: '请先登录',
-            data: null
-        };
     }
 
     try {
-        // 使用固定的简单参数
-        const requestBody = {
-            course_name: 'Python编程基础',
-            course_description: 'Python入门课程',
-            subject: 'Python编程',
-            grade_level: '大学一年级',
-            chapter_count: 5
-        };
-
-        const response = await fetch(`${API_CONFIG.BASE_URL}/course-generate/`, {
+        const response = await handleRequest(`${API_CONFIG.BASE_URL}/course-generate/`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(params)
         });
 
-        const responseData = await response.json();
-        console.log('课程内容生成响应:', responseData);
-
-        if (!response.ok) {
-            if (response.status === 403) {
-                return {
-                    code: 1,
-                    msg: responseData.message || '没有权限访问此功能',
-                    data: null
-                };
-            }
-            return handleHttpError(response, responseData);
-        }
-
-        if (responseData.success && responseData.status_code === 200) {
+        if (response.ok) {
+            const data = await response.json();
             return {
-                code: 0,
-                msg: '课程内容生成成功',
-                data: responseData.data
+                success: true,
+                status_code: response.status,
+                data: data,
+                message: '课程内容生成成功'
             };
         } else {
+            const errorData = await response.json();
             return {
-                code: 1,
-                msg: responseData.message || '生成课程内容失败',
-                data: null
+                success: false,
+                status_code: response.status,
+                message: errorData.message || '生成课程内容失败'
             };
         }
     } catch (error) {
-        console.error('生成课程内容失败:', error);
+        console.error('生成课程内容请求失败:', error);
         return {
-            code: 1,
-            msg: error.message || '网络错误，请稍后重试',
-            data: null
+            success: false,
+            status_code: 500,
+            message: '生成课程内容请求失败'
         };
     }
 }
