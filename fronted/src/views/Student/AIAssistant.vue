@@ -99,7 +99,56 @@
                 <div class="message-content">
                   <template v-if="message.type === 'ai'">
                     <div v-if="isQuestionResponse(message.content)" class="question-response">
-                      <QuestionDisplay :content="message.content" />
+                      <div class="question-list">
+                        <div v-for="question in message.content.questions" 
+                             :key="question.id" 
+                             class="question-item">
+                          <div class="question-header">
+                            <span class="question-number">题目 {{ question.id }}</span>
+                            <span class="question-type">{{ question.type }}</span>
+                            <span class="question-difficulty">难度: {{ question.difficulty }}</span>
+                          </div>
+                          <div class="question-content">{{ question.content }}</div>
+                          
+                          <!-- 选项部分 -->
+                          <div class="question-options" v-if="question.options">
+                            <div v-for="(option, index) in question.options" 
+                                 :key="index"
+                                 class="option-item"
+                                 :class="{ 'selected': question.studentAnswer === option }"
+                                 @click="!question.isSubmitted && (question.studentAnswer = option)">
+                              {{ option }}
+                            </div>
+                          </div>
+                          
+                          <!-- 简答题输入框 -->
+                          <div v-else class="short-answer">
+                            <el-input
+                              v-model="question.studentAnswer"
+                              type="textarea"
+                              :rows="3"
+                              placeholder="请输入你的答案"
+                              :disabled="question.isSubmitted"
+                            />
+                          </div>
+                          
+                          <!-- 提交按钮和反馈 -->
+                          <div class="answer-actions">
+                            <el-button 
+                              type="primary"
+                              @click="submitAnswer(question, question.studentAnswer)"
+                              :disabled="!question.studentAnswer || question.isSubmitted"
+                            >
+                              提交答案
+                            </el-button>
+                            
+                            <div v-if="question.isSubmitted" class="feedback-section">
+                              <div class="score">得分：{{ question.score }}</div>
+                              <div class="feedback">反馈：{{ question.feedback }}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div v-else class="text-content">
                       {{ message.content.error || message.content }}
@@ -187,8 +236,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
-import QuestionDisplay from '@/components/QuestionDisplay.vue'
-import { exportQuestions, generateQuestions } from '@/api/index.js'
+import { exportQuestions, generateQuestions, submitStudentAnswer } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
 
 const searchQuery = ref('')
@@ -312,8 +360,19 @@ const handleQuestionResponse = (response) => {
       };
     }
 
-    // 直接返回data部分
-    return response.data;
+    // 为每个题目添加答案字段
+    const questionsWithAnswers = response.data.questions.map(question => ({
+      ...question,
+      studentAnswer: '',  // 添加学生答案字段
+      isSubmitted: false, // 添加是否已提交字段
+      score: null,        // 添加得分字段
+      feedback: ''        // 添加反馈字段
+    }));
+
+    return {
+      ...response.data,
+      questions: questionsWithAnswers
+    };
 
   } catch (error) {
     console.error('处理题目响应失败:', error);
@@ -326,6 +385,32 @@ const handleQuestionResponse = (response) => {
     };
   }
 }
+
+// 添加提交答案的方法
+const submitAnswer = async (question, answer) => {
+  try {
+    const data = {
+      exercise_id: question.id,
+      answer_content: answer,
+      student_id: localStorage.getItem('userId')
+    };
+
+    const response = await submitStudentAnswer(data);
+    if (response.code === 0) {
+      ElMessage.success('提交答案成功');
+      // 更新问题状态
+      question.studentAnswer = answer;
+      question.isSubmitted = true;
+      question.score = response.data.score;
+      question.feedback = response.data.feedback;
+    } else {
+      ElMessage.error(response.msg || '提交答案失败');
+    }
+  } catch (error) {
+    console.error('提交答案失败:', error);
+    ElMessage.error('提交答案失败');
+  }
+};
 
 // 修改 handleSearch 函数
 const handleSearch = async () => {
@@ -1114,5 +1199,60 @@ const handleExport = async (format) => {
   width: 100%;
   max-width: 100%;
   overflow: visible;
+}
+
+.option-item {
+  padding: 12px 16px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.option-item:hover {
+  background-color: #f5f7fa;
+}
+
+.option-item.selected {
+  background-color: #409EFF;
+  color: white;
+  border-color: #409EFF;
+}
+
+.short-answer {
+  margin: 15px 0;
+}
+
+.answer-actions {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feedback-section {
+  background: #f5f7fa;
+  padding: 12px;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.score {
+  font-weight: bold;
+  color: #409EFF;
+  margin-bottom: 5px;
+}
+
+.feedback {
+  color: #606266;
+}
+
+.option-item.selected:hover {
+  background-color: #66b1ff;
+}
+
+.option-item[disabled] {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 </style> 

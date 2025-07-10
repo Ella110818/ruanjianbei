@@ -109,13 +109,41 @@
         </div>
         <div class="detail-item">
           <label>得分：</label>
-          <span>{{ selectedAnswer.score }}</span>
+          <el-input-number 
+            v-model="selectedAnswer.score" 
+            :min="0" 
+            :max="100"
+            size="small"
+            :disabled="!isEditing"
+          />
+        </div>
+        <div class="detail-item">
+          <label>教师反馈：</label>
+          <el-input
+            v-model="selectedAnswer.feedback"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入反馈意见"
+            :disabled="!isEditing"
+          />
         </div>
         <div class="detail-item">
           <label>提交时间：</label>
           <span>{{ formatDate(selectedAnswer.submit_time) }}</span>
         </div>
       </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <template v-if="!isEditing">
+            <el-button type="primary" @click="startEdit">编辑评分</el-button>
+          </template>
+          <template v-else>
+            <el-button @click="cancelEdit">取消</el-button>
+            <el-button type="primary" @click="saveGrade" :loading="saving">保存</el-button>
+          </template>
+        </span>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -124,7 +152,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { getStudentAnswers, getExercises } from '@/api'
+import { getStudentAnswers, getExercises, updateStudentAnswer } from '@/api'
 import { ElMessage } from 'element-plus'
 
 // 状态管理
@@ -219,6 +247,50 @@ const formatDate = (dateString) => {
   })
 }
 
+// 评分相关状态
+const isEditing = ref(false)
+const saving = ref(false)
+const originalAnswer = ref(null)
+
+// 开始编辑
+const startEdit = () => {
+  originalAnswer.value = { ...selectedAnswer.value }
+  isEditing.value = true
+}
+
+// 取消编辑
+const cancelEdit = () => {
+  Object.assign(selectedAnswer.value, originalAnswer.value)
+  isEditing.value = false
+}
+
+// 保存评分
+const saveGrade = async () => {
+  if (!selectedAnswer.value) return
+  
+  saving.value = true
+  try {
+    const response = await updateStudentAnswer(selectedAnswer.value.id, {
+      score: selectedAnswer.value.score,
+      feedback: selectedAnswer.value.feedback,
+      is_correct: selectedAnswer.value.is_correct
+    })
+    
+    if (response.code === 0) {
+      ElMessage.success('保存成功')
+      isEditing.value = false
+      loadAnswers() // 重新加载列表
+    } else {
+      ElMessage.error(response.msg || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存评分失败:', error)
+    ElMessage.error('保存失败，请稍后重试')
+  } finally {
+    saving.value = false
+  }
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
   loadAnswers()
@@ -270,17 +342,29 @@ onMounted(() => {
 .detail-item {
   margin-bottom: 16px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .detail-item label {
   width: 100px;
   color: #606266;
   font-weight: 500;
+  padding-top: 5px;
 }
 
-.detail-item span {
-  color: #333;
+.detail-item .el-input,
+.detail-item .el-input-number {
+  width: 200px;
+}
+
+.detail-item .el-textarea {
+  width: 400px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 @media screen and (max-width: 1366px) {
