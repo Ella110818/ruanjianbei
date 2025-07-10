@@ -1030,7 +1030,13 @@ export async function generateCourseContent(params) {
         const response = await handleRequest(`${API_CONFIG.BASE_URL}/course-generate/`, {
             method: 'POST',
             body: JSON.stringify({
-                ...params,
+                course_name: params.course_name,
+                course_description: params.course_description,
+                subject: params.subject,
+                grade_level: params.grade_level,
+                chapter_count: params.chapter_count,
+                additional_requirements: params.additional_requirements,
+                knowledge_point_ids: params.knowledge_point_ids,
                 sessionId: params.sessionId || Date.now().toString()
             })
         });

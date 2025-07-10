@@ -94,14 +94,6 @@
               placeholder="请输入额外要求（选填）"
             />
           </el-form-item>
-          <el-form-item label="AI对话输入">
-            <el-input
-              v-model="courseConfig.chatInput"
-              type="textarea"
-              :rows="2"
-              placeholder="请输入与AI的对话内容（选填）"
-            />
-          </el-form-item>
         </el-form>
       </div>
       <template #footer>
@@ -148,7 +140,6 @@ const courseConfig = ref({
   chapter_count: 20,
   additional_requirements: '',
   knowledge_point_ids: [],
-  chatInput: '',
   sessionId: ''
 })
 
@@ -250,7 +241,6 @@ const confirmGenerateCourse = async () => {
       grade_level: courseConfig.value.grade_level,
       chapter_count: courseConfig.value.chapter_count,
       additional_requirements: courseConfig.value.additional_requirements || '',
-      chatInput: courseConfig.value.chatInput || '',
       knowledge_point_ids: courseConfig.value.knowledge_point_ids,
       sessionId: Date.now().toString()
     }
@@ -269,7 +259,6 @@ const confirmGenerateCourse = async () => {
         chapter_count: 20,
         additional_requirements: '',
         knowledge_point_ids: [],
-        chatInput: '',
         sessionId: ''
       }
     } else {
