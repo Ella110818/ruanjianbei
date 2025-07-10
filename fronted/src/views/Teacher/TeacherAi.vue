@@ -10,7 +10,10 @@
         @update:courseMenuOpen="updateCourseMenuOpen"
       />
       <div class="content-area">
-        <TeacherAiContent />
+        <TeacherAiContent 
+          @generate-ppt="handleGeneratePPT"
+          :isGeneratingPPT="isGeneratingPPT"
+        />
       </div>
     </div>
   </div>
@@ -21,12 +24,61 @@ import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherAiContent from '@/components/TeacherAi.vue'
-import { getCourses } from '@/api'
+import { getCourses, generateKnowledgePointsPPT } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const sideTab = ref('lesson-prep')
 const courseMenuOpen = ref(false)
 const courses = ref([])
+const isGeneratingPPT = ref(false)
+
+// 处理生成PPT的请求
+const handleGeneratePPT = async () => {
+  if (isGeneratingPPT.value) {
+    ElMessage.warning('正在生成PPT，请稍候...')
+    return
+  }
+
+  const params = {
+    knowledge_point_ids: [1],
+    include_children: true,
+    max_depth: 3,
+    format: "pptx",
+    theme: "hierarchy-default",
+    visual_style: "default",
+    color_scheme: "blue",
+    show_relations: true,
+    title: "知识点PPT",
+    include_course_info: true,
+    use_ai: false,
+    return_file_content: false
+  }
+
+  try {
+    isGeneratingPPT.value = true
+    const response = await generateKnowledgePointsPPT(params)
+    
+    if (response.status === 'success') {
+      const fileUrl = response.data.file_url
+      // 创建一个下载链接
+      const link = document.createElement('a')
+      link.href = fileUrl
+      link.download = response.data.filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      ElMessage.success('PPT生成成功！')
+    } else {
+      ElMessage.error(response.msg || '生成PPT失败')
+    }
+  } catch (error) {
+    console.error('生成PPT失败:', error)
+    ElMessage.error('生成PPT失败，请稍后重试')
+  } finally {
+    isGeneratingPPT.value = false
+  }
+}
 
 // 加载课程数据
 const loadCourses = async () => {
@@ -50,34 +102,34 @@ const loadCourses = async () => {
   }
 }
 
-    // 恢复之前的课程上下文
+// 恢复之前的课程上下文
 const restorePreviousState = () => {
   const previousTab = localStorage.getItem('previousTab')
-    if (previousTab) {
+  if (previousTab) {
     sideTab.value = previousTab
-      if (previousTab.startsWith('course-')) {
+    if (previousTab.startsWith('course-')) {
       courseMenuOpen.value = true
-      }
     }
+  }
 }
 
 const updateSideTab = (tab) => {
   sideTab.value = tab
   localStorage.setItem('sideTab', tab)
       
-      if (tab.startsWith('course-')) {
+  if (tab.startsWith('course-')) {
     const courseIndex = parseInt(tab.split('-')[1])
     const selectedCourse = courses.value[courseIndex]
-        if (selectedCourse) {
+    if (selectedCourse) {
       localStorage.setItem('currentCourseName', selectedCourse.name)
       localStorage.setItem('currentCourseId', selectedCourse.id)
-        }
-      }
+    }
+  }
 }
 
 const updateCourseMenuOpen = (open) => {
   courseMenuOpen.value = open
-    }
+}
 
 // 组件挂载时初始化数据
 onMounted(() => {
