@@ -2853,9 +2853,9 @@ export async function submitStudentAnswer(data) {
         const response = await handleRequest(`${API_CONFIG.BASE_URL}/student-answers/`, {
             method: 'POST',
             body: JSON.stringify({
-                exercise_id: data.exercise_id,
-                answer_content: data.answer_content,
-                student_id: data.student_id
+                exercise: data.exercise_id,  // 练习题ID
+                content: data.answer_content, // 答案内容
+                student: data.student_id     // 学生ID
             })
         });
 
