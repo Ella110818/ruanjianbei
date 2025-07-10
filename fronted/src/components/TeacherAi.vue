@@ -16,7 +16,7 @@
 <script setup>
 import { defineProps, defineEmits } from 'vue'
 
-const props = defineProps({
+defineProps({
   isGeneratingPPT: {
     type: Boolean,
     default: false
