@@ -2833,3 +2833,35 @@ export async function generateQuestions(params) {
         };
     }
 }
+
+// 提交学生答案
+export async function submitStudentAnswer(data) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '提交答案成功',
+            data: {
+                id: Math.floor(Math.random() * 1000),
+                score: Math.floor(Math.random() * 100),
+                feedback: '答案评价：回答得不错，继续加油！',
+                is_correct: Math.random() > 0.5
+            }
+        });
+    }
+
+    try {
+        const response = await handleRequest(`${API_CONFIG.BASE_URL}/student-answers/`, {
+            method: 'POST',
+            body: JSON.stringify({
+                exercise_id: data.exercise_id,
+                answer_content: data.answer_content,
+                student_id: data.student_id
+            })
+        });
+
+        return response;
+    } catch (error) {
+        console.error('提交答案失败:', error);
+        throw error;
+    }
+}
