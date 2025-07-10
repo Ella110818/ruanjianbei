@@ -48,13 +48,58 @@
       >
         {{ isGeneratingPPT ? '正在生成PPT...' : '生成知识点PPT' }}
       </el-button>
+      <el-button 
+        type="success" 
+        @click="handleGenerateCourse"
+        :loading="isGeneratingCourse"
+        :disabled="selectedPoints.length === 0"
+      >
+        {{ isGeneratingCourse ? '正在生成课程...' : '生成课程内容' }}
+      </el-button>
     </div>
+
+    <!-- 生成课程内容的对话框 -->
+    <el-dialog
+      v-model="courseDialogVisible"
+      title="生成课程内容"
+      width="70%"
+    >
+      <div class="course-config">
+        <el-form :model="courseConfig" label-width="120px">
+          <el-form-item label="课程标题">
+            <el-input v-model="courseConfig.title" placeholder="请输入课程标题" />
+          </el-form-item>
+          <el-form-item label="课程描述">
+            <el-input
+              v-model="courseConfig.description"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入课程描述"
+            />
+          </el-form-item>
+          <el-form-item label="学科">
+            <el-input v-model="courseConfig.subject" placeholder="请输入学科" />
+          </el-form-item>
+          <el-form-item label="年级">
+            <el-input v-model="courseConfig.grade_level" placeholder="请输入年级" />
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="courseDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmGenerateCourse" :loading="isGeneratingCourse">
+            确认生成
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getKnowledgePoints } from '@/api'
+import { getKnowledgePoints, generateCourseContent } from '@/api'
 import { ElMessage } from 'element-plus'
 
 defineProps({
@@ -72,6 +117,17 @@ const selectedPoints = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const isGeneratingCourse = ref(false)
+const courseDialogVisible = ref(false)
+
+// 课程配置
+const courseConfig = ref({
+  title: '',
+  description: '',
+  subject: '',
+  grade_level: '',
+  knowledge_point_ids: []
+})
 
 // 加载知识点列表
 const loadKnowledgePoints = async () => {
@@ -120,6 +176,52 @@ const handleGeneratePPT = () => {
     return
   }
   emit('generate-ppt', selectedPoints.value)
+}
+
+// 处理生成课程内容
+const handleGenerateCourse = () => {
+  if (selectedPoints.value.length === 0) {
+    ElMessage.warning('请先选择要生成课程的知识点')
+    return
+  }
+  courseConfig.value.knowledge_point_ids = selectedPoints.value.map(point => point.id)
+  courseDialogVisible.value = true
+}
+
+// 确认生成课程内容
+const confirmGenerateCourse = async () => {
+  if (!courseConfig.value.title) {
+    ElMessage.warning('请输入课程标题')
+    return
+  }
+
+  try {
+    isGeneratingCourse.value = true
+    const response = await generateCourseContent({
+      ...courseConfig.value,
+      use_ai: true
+    })
+
+    if (response.success && response.status_code === 201) {
+      ElMessage.success('课程内容生成成功！')
+      courseDialogVisible.value = false
+      // 重置表单
+      courseConfig.value = {
+        title: '',
+        description: '',
+        subject: '',
+        grade_level: '',
+        knowledge_point_ids: []
+      }
+    } else {
+      ElMessage.error(response.message || '生成课程内容失败')
+    }
+  } catch (error) {
+    console.error('生成课程内容失败:', error)
+    ElMessage.error('生成课程内容失败，请稍后重试')
+  } finally {
+    isGeneratingCourse.value = false
+  }
 }
 
 onMounted(() => {
