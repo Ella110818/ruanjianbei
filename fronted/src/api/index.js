@@ -374,6 +374,8 @@ export async function login(username, password, role) {
                     // 2. 获取角色列表，找到对应角色的ID
                     console.log('开始获取角色列表');
                     const rolesResponse = await getRoles();
+                    console.log('获取角色列表响应:', rolesResponse);
+
                     if (!rolesResponse.success || rolesResponse.status_code !== 200) {
                         console.error('获取角色列表失败:', rolesResponse);
                         return {
@@ -384,7 +386,7 @@ export async function login(username, password, role) {
                     }
 
                     // 找到对应角色的ID
-                    const userRole = rolesResponse.data.find(r => r.name === role);
+                    const userRole = rolesResponse.data.results.find(r => r.name === role);
                     if (!userRole) {
                         console.error('未找到对应的角色ID');
                         return {
@@ -1584,51 +1586,43 @@ export async function deleteExercise(exerciseId) {
 // 获取所有角色列表
 export async function getRoles() {
     if (getMockFlag()) {
-        return mockApiResponse({
-            code: 0,
-            msg: '获取角色列表成功',
-            data: [
-                { id: 1, name: 'teacher', display_name: '教师' },
-                { id: 2, name: 'student', display_name: '学生' },
-                { id: 3, name: 'admin', display_name: '管理员' }
-            ]
+        return Promise.resolve({
+            success: true,
+            status_code: 200,
+            data: {
+                count: 3,
+                next: null,
+                previous: null,
+                results: [
+                    { id: 1, name: 'teacher', display_name: '教师' },
+                    { id: 2, name: 'student', display_name: '学生' },
+                    { id: 3, name: 'admin', display_name: '管理员' }
+                ]
+            }
         });
     }
 
     try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            throw new Error('No access token available');
-        }
-
         const response = await fetch(`${API_CONFIG.BASE_URL}/roles/`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${TokenManager.getAccessToken()}`,
                 'ngrok-skip-browser-warning': 'true'
             }
         });
 
         const responseData = await response.json();
-        console.log('获取角色列表响应:', responseData);
+        console.log('获取角色列表原始响应:', responseData);
 
-        if (!response.ok) {
-            return handleHttpError(response, responseData);
-        }
-
-        return {
-            code: 0,
-            msg: '获取角色列表成功',
-            data: responseData.data || []
-        };
+        // 直接返回后端的响应，不做转换
+        return responseData;
     } catch (error) {
         console.error('获取角色列表失败:', error);
         return {
-            code: 1,
-            msg: error.message || '获取角色列表失败',
-            data: null
+            success: false,
+            status_code: 500,
+            message: '获取角色列表失败'
         };
     }
 }
