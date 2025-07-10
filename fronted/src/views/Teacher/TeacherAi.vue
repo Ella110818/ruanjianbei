@@ -49,21 +49,22 @@ const handleGeneratePPT = async (knowledgePoints) => {
     include_children: true,
     max_depth: 3,
     format: "pptx",
-    theme: "hierarchy-default",
-    visual_style: "default",
+    theme: "default",
+    visual_style: "modern",
     color_scheme: "blue",
     show_relations: true,
     title: "知识点PPT",
     include_course_info: true,
     use_ai: true,
-    return_file_content: false
+    return_file_content: false,
+    course_id: localStorage.getItem('currentCourseId') || null
   }
 
   try {
     isGeneratingPPT.value = true
     const response = await generateKnowledgePointsPPT(params)
     
-    if (response.success && response.status_code === 200) {
+    if (response.success && response.status_code === 201) {  // 修改为 201
       const fileUrl = response.data.file_url
       // 创建一个下载链接
       const link = document.createElement('a')
