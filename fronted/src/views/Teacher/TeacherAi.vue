@@ -10,10 +10,97 @@
         @update:courseMenuOpen="updateCourseMenuOpen"
       />
       <div class="content-area">
-        <TeacherAiContent 
-          @generate-ppt="handleGeneratePPT"
-          :isGeneratingPPT="isGeneratingPPT"
-        />
+        <div class="knowledge-points-container">
+          <h2>选择知识点</h2>
+          
+          <!-- 搜索和筛选区域 -->
+          <div class="filter-section">
+            <el-input
+              v-model="searchQuery"
+              placeholder="搜索知识点"
+              @input="handleSearch"
+              class="search-input"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+            
+            <el-select
+              v-model="selectedCourse"
+              placeholder="选择课程"
+              @change="handleCourseChange"
+              class="course-select"
+            >
+              <el-option
+                v-for="course in courses"
+                :key="course.id"
+                :label="course.name"
+                :value="course.id"
+              />
+            </el-select>
+          </div>
+
+          <!-- 知识点列表 -->
+          <div class="knowledge-points-list" v-loading="loading">
+            <el-table
+              :data="knowledgePoints"
+              style="width: 100%"
+              @selection-change="handleSelectionChange"
+            >
+              <el-table-column
+                type="selection"
+                width="55"
+              />
+              <el-table-column
+                prop="title"
+                label="知识点名称"
+                min-width="200"
+              />
+              <el-table-column
+                prop="course_name"
+                label="所属学科"
+                width="150"
+              />
+              <el-table-column
+                prop="importance"
+                label="重要程度"
+                width="100"
+                :formatter="formatImportance"
+              />
+              <el-table-column
+                prop="content"
+                label="描述"
+                show-overflow-tooltip
+              />
+            </el-table>
+
+            <!-- 分页器 -->
+            <div class="pagination">
+              <el-pagination
+                v-model="currentPage"
+                :page-size="pageSize"
+                :total="total"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+              />
+            </div>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div class="actions">
+            <el-button
+              type="primary"
+              :loading="isGeneratingPPT"
+              @click="handleGeneratePPT(selectedPoints)"
+              :disabled="selectedPoints.length === 0"
+            >
+              生成PPT
+            </el-button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -23,14 +110,94 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import TeacherAiContent from '@/components/TeacherAi.vue'
-import { getCourses, generateKnowledgePointsPPT } from '@/api'
+import { getCourses, generateKnowledgePointsPPT, getKnowledgePoints } from '@/api'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 
 const sideTab = ref('lesson-prep')
 const courseMenuOpen = ref(false)
 const courses = ref([])
 const isGeneratingPPT = ref(false)
+const loading = ref(false)
+
+// 知识点列表相关
+const knowledgePoints = ref([])
+const selectedPoints = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const searchQuery = ref('')
+const selectedCourse = ref('')
+
+// 加载知识点列表
+const loadKnowledgePoints = async () => {
+  loading.value = true
+  try {
+    const params = {
+      page: currentPage.value,
+      page_size: pageSize.value,
+      search: searchQuery.value,
+      course: selectedCourse.value
+    }
+
+    const response = await getKnowledgePoints(params)
+    if (response.code === 0) {
+      knowledgePoints.value = response.data.results.map(point => ({
+        ...point,
+        course_name: courses.value.find(c => c.id === point.course)?.name || '未知课程'
+      }))
+      total.value = response.data.count
+    } else {
+      ElMessage.error(response.msg || '获取知识点列表失败')
+    }
+  } catch (error) {
+    console.error('加载知识点失败:', error)
+    ElMessage.error('加载知识点失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 处理搜索
+const handleSearch = () => {
+  currentPage.value = 1
+  loadKnowledgePoints()
+}
+
+// 处理课程选择
+const handleCourseChange = () => {
+  currentPage.value = 1
+  loadKnowledgePoints()
+}
+
+// 处理分页大小变化
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  loadKnowledgePoints()
+}
+
+// 处理页码变化
+const handleCurrentChange = (page) => {
+  currentPage.value = page
+  loadKnowledgePoints()
+}
+
+// 处理选择变化
+const handleSelectionChange = (selection) => {
+  selectedPoints.value = selection
+}
+
+// 格式化重要程度
+const formatImportance = (row) => {
+  const levels = {
+    1: '非常低',
+    2: '低',
+    3: '中等',
+    4: '高',
+    5: '非常高'
+  }
+  return levels[row.importance] || row.importance
+}
 
 // 处理生成PPT的请求
 const handleGeneratePPT = async (knowledgePoints) => {
@@ -131,6 +298,7 @@ const updateCourseMenuOpen = (open) => {
 // 组件挂载时初始化数据
 onMounted(() => {
   loadCourses()
+  loadKnowledgePoints()
   restorePreviousState()
 })
 </script>
@@ -150,5 +318,49 @@ onMounted(() => {
   flex: 1;
   margin-left: 300px;
   min-height: calc(100vh - 64px);
+  padding: 24px;
+}
+
+.knowledge-points-container {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.knowledge-points-container h2 {
+  margin: 0 0 24px;
+  color: #333;
+  font-size: 20px;
+}
+
+.filter-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.search-input {
+  width: 300px;
+}
+
+.course-select {
+  width: 200px;
+}
+
+.knowledge-points-list {
+  margin-bottom: 24px;
+}
+
+.pagination {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
 }
 </style> 
