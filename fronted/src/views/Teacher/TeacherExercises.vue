@@ -43,13 +43,19 @@
             placeholder="知识点"
             @change="handleFilterChange"
             class="filter-item"
+            :loading="knowledgePointsLoading"
           >
             <el-option
               v-for="point in knowledgePoints"
               :key="point.id"
               :label="point.title"
               :value="point.id"
-            />
+            >
+              <div class="knowledge-point-option">
+                <span>{{ point.title }}</span>
+                <small v-if="point.description" class="knowledge-point-desc">{{ point.description }}</small>
+              </div>
+            </el-option>
           </el-select>
         </div>
 
@@ -81,7 +87,8 @@
         <!-- 分页器 -->
         <div class="pagination-container">
           <el-pagination
-            v-model:current-page="currentPage"
+            :model-value="currentPage"
+            @update:modelValue="currentPage = $event"
             :page-size="pageSize"
             :total="total"
             @current-change="handlePageChange"
@@ -107,6 +114,7 @@ const courses = ref([])
 const exercises = ref([])
 const knowledgePoints = ref([])
 const loading = ref(false)
+const knowledgePointsLoading = ref(false)  // 添加知识点加载状态
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -145,17 +153,28 @@ const loadExercises = async () => {
 
 // 加载知识点
 const loadKnowledgePoints = async () => {
+  knowledgePointsLoading.value = true
   try {
     const response = await getKnowledgePoints({
       page: 1,
-      ordering: '1'
+      page_size: 100,  // 获取更多知识点
+      ordering: 'name'  // 按名称排序
     })
     
     if (response.code === 0 && response.data) {
-      knowledgePoints.value = response.data.results || []
+      knowledgePoints.value = response.data.results.map(point => ({
+        id: point.id,
+        title: point.name,
+        description: point.description
+      })) || []
+    } else {
+      ElMessage.error(response.msg || '获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
+    ElMessage.error('加载知识点失败，请稍后重试')
+  } finally {
+    knowledgePointsLoading.value = false
   }
 }
 
@@ -277,6 +296,17 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   margin-top: 24px;
+}
+
+.knowledge-point-option {
+  display: flex;
+  flex-direction: column;
+}
+
+.knowledge-point-desc {
+  color: #999;
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 @media screen and (max-width: 1366px) {
