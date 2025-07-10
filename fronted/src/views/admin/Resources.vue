@@ -148,7 +148,7 @@
 <script>
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourseList, API_CONFIG } from '@/api'
+import { getCourseList, getCoursewareList } from '@/api'
 
 export default {
   name: 'AdminResources',
@@ -166,28 +166,7 @@ export default {
       pageSize: 10,
       total: 0,
       uploadDialogVisible: false,
-      resourceList: [
-        {
-          id: 1,
-          name: '课程大纲.docx',
-          type: 'document',
-          size: 1024576, // 1MB
-          course: '高等数学',
-          uploader: '张老师',
-          uploadTime: '2024-03-15 10:30:00',
-          downloads: 25
-        },
-        {
-          id: 2,
-          name: '实验演示.mp4',
-          type: 'video',
-          size: 52428800, // 50MB
-          course: '物理实验',
-          uploader: '李老师',
-          uploadTime: '2024-03-14 15:20:00',
-          downloads: 18
-        }
-      ],
+      resourceList: [],
       courseOptions: [],
       uploadForm: {
         course: '',
@@ -205,21 +184,53 @@ export default {
   },
   async created() {
     await this.fetchCourseList()
+    await this.fetchResourceList()
   },
   methods: {
+    async fetchResourceList() {
+      try {
+        this.loading = true
+        const params = {
+          page: this.currentPage,
+          page_size: this.pageSize,
+          search: this.searchQuery,
+          type: this.typeFilter,
+          course: this.courseFilter
+        }
+        if (this.dateRange && this.dateRange.length === 2) {
+          params.start_date = this.dateRange[0]
+          params.end_date = this.dateRange[1]
+        }
+        
+        const response = await getCoursewareList(params)
+        if (response.code === 0 && response.data) {
+          this.resourceList = response.data.results || []
+          this.total = response.data.total || 0
+        } else {
+          ElMessage.error(response.msg || '获取资源列表失败')
+        }
+      } catch (error) {
+        console.error('获取资源列表失败:', error)
+        ElMessage.error('获取资源列表失败')
+      } finally {
+        this.loading = false
+      }
+    },
     async fetchCourseList() {
       try {
         this.loading = true
         const response = await getCourseList()
-        if (response && response.results) {
-          this.courseOptions = response.results.map(course => ({
+        if (response.code === 0 && response.data) {
+          this.courseOptions = response.data.results.map(course => ({
             label: course.name,
             value: course.id
           }))
+        } else {
+          ElMessage.error(response.msg || '获取课程列表失败')
         }
       } catch (error) {
-        ElMessage.error('获取课程列表失败')
         console.error('获取课程列表失败:', error)
+        ElMessage.error('获取课程列表失败')
       } finally {
         this.loading = false
       }
@@ -259,13 +270,8 @@ export default {
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
     },
     handleSearch() {
-      // 实现搜索逻辑
-      console.log('搜索条件：', {
-        query: this.searchQuery,
-        type: this.typeFilter,
-        course: this.courseFilter,
-        dateRange: this.dateRange
-      })
+      this.currentPage = 1
+      this.fetchResourceList()
     },
     handleUpload() {
       this.uploadDialogVisible = true
@@ -305,11 +311,11 @@ export default {
     },
     handleSizeChange(val) {
       this.pageSize = val
-      // 重新加载数据
+      this.fetchResourceList()
     },
     handleCurrentChange(val) {
       this.currentPage = val
-      // 重新加载数据
+      this.fetchResourceList()
     },
     beforeUpload(file) {
       const maxSize = 100 * 1024 * 1024 // 100MB

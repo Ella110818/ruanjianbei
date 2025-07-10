@@ -2749,12 +2749,30 @@ export async function getStudentAnswers(params = {}) {
 // 生成PPT的接口
 export const generateKnowledgePointsPPT = async (params) => {
     try {
-        const response = await instance.post('/knowledge-points-to-ppt/', params, {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/knowledge-points-to-ppt/`, {
+            method: 'POST',
             headers: {
-                'ngrok-skip-browser-warning': true
-            }
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify(params)
         });
-        return response.data;
+
+        const responseData = await response.json();
+        console.log('生成PPT响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return responseData;
     } catch (error) {
         console.error('生成PPT失败:', error);
         return {
@@ -2763,3 +2781,70 @@ export const generateKnowledgePointsPPT = async (params) => {
         };
     }
 };
+
+// 获取课件列表
+export async function getCoursewareList(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取课件列表成功',
+            data: {
+                results: [
+                    {
+                        id: 1,
+                        name: '第一章课件.pptx',
+                        type: 'ppt',
+                        size: 1024576,
+                        course: '高等数学',
+                        uploader: '张老师',
+                        upload_time: new Date().toISOString(),
+                        downloads: 25
+                    }
+                ],
+                total: 1
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const queryString = new URLSearchParams(params).toString();
+        const url = `${API_CONFIG.BASE_URL}/courseware/${queryString ? `?${queryString}` : ''}`;
+
+        console.log('请求课件列表URL:', url);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('获取课件列表响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '获取课件列表成功',
+            data: responseData.data
+        };
+    } catch (error) {
+        console.error('获取课件列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取课件列表失败',
+            data: null
+        };
+    }
+}
