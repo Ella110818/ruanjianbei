@@ -119,6 +119,8 @@
                 :total="total"
                 @size-change="handleSizeChange"
                 @current-change="handleCurrentChange"
+                @update:current-page="currentPage = $event"
+                @update:page-size="pageSize = $event"
                 layout="total, sizes, prev, pager, next, jumper"
               />
             </div>
@@ -291,8 +293,8 @@
               </el-table>
               <div class="table-pagination">
                 <el-pagination
-                  v-model:current-page="currentPage"
-                  v-model:page-size="pageSize"
+                  v-model="currentPage"
+                  v-model="pageSize"
                   :page-sizes="[10, 20, 50, 100]"
                   layout="total, sizes, prev, pager, next, jumper"
                   :total="total"
@@ -470,10 +472,12 @@ import { ref, onMounted, computed, nextTick, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, User, Location, Calendar, Timer, ScaleToOriginal, EditPen, View, Delete, Plus, Download, Upload, Folder, Collection, VideoPlay, Files, More, UploadFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { mockCourseDetail } from '@/mock/courseData'
 import { checkAndSetMockEnvironment, getCourseDetail, getCoursewareList } from '@/api'
+
+const router = useRouter()
 
 // 声明 gradeChart 变量
 let gradeChart = null;
@@ -622,17 +626,28 @@ const loadClassInfo = async () => {
     const isMock = checkAndSetMockEnvironment();
     console.log('当前Mock状态:', isMock);
 
+    // 获取用户信息
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+    console.log('当前用户信息:', userInfo);
+
     // 先从接口获取课程详情
     if (courseId.value) {
       const res = await getCourseDetail(courseId.value)
       if (res.code === 0 && res.data) {
-        courseInfo.value = res.data
-        courseName.value = res.data.title || res.data.name || '未知课程'
-        // 如果是mock环境，加载测试数据
-        if (isMock) {
-          loadTestData();
+        // 检查是否是当前教师的课程
+        if (res.data.teacher_name === userInfo.name || res.data.teacher === userInfo.id) {
+          courseInfo.value = res.data
+          courseName.value = res.data.title || res.data.name || '未知课程'
+          // 如果是mock环境，加载测试数据
+          if (isMock) {
+            loadTestData();
+          }
+          return
+        } else {
+          ElMessage.error('您没有权限访问此课程');
+          router.push('/teacher/course');
+          return;
         }
-        return
       }
     }
 

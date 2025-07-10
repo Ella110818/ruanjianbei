@@ -195,9 +195,12 @@ const loadCourses = async () => {
       return;
     }
 
-    // 检查用户角色
+    // 检查用户角色和信息
     const userRole = localStorage.getItem('userRole');
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
     console.log('当前用户角色:', userRole);
+    console.log('当前用户信息:', userInfo);
+
     if (userRole !== 'teacher') {
       ElMessage.error('只有教师可以访问此页面');
       router.push('/login');
@@ -212,8 +215,13 @@ const loadCourses = async () => {
     console.log('获取课程列表响应:', response);
 
     if (response.code === 0 && response.data) {
-      courses.value = response.data.results || [];
-      courseCount.value = response.data.total || 0;
+      // 筛选当前教师的课程
+      const filteredCourses = response.data.results.filter(course => 
+        course.teacher_name === userInfo.name || course.teacher === userInfo.id
+      );
+      
+      courses.value = filteredCourses;
+      courseCount.value = filteredCourses.length;
       
       // 更新其他统计数据
       let totalStudents = 0;
@@ -226,11 +234,10 @@ const loadCourses = async () => {
       classCount.value = totalClasses;
 
       // 获取教师姓名
-      const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
       teacherName.value = userInfo.name || '尊敬的老师';
     } else {
       // 如果是权限问题，显示具体的错误信息
-      if (response.msg.includes('没有访问权限')) {
+      if (response.msg && response.msg.includes('没有访问权限')) {
         ElMessage.error('您没有教师权限，请联系管理员');
       } else {
         ElMessage.error(response.msg || '获取课程列表失败');
