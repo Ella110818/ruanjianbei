@@ -49,13 +49,13 @@ const handleGeneratePPT = async (knowledgePoints) => {
     include_children: true,
     max_depth: 3,
     format: "pptx",
-    theme: "default",
-    visual_style: "modern",
+    theme: "hierarchy-default",
+    visual_style: "default",
     color_scheme: "blue",
     show_relations: true,
     title: "知识点PPT",
     include_course_info: true,
-    use_ai: true,
+    use_ai: false,
     return_file_content: false,
     course_id: localStorage.getItem('currentCourseId') || null
   }

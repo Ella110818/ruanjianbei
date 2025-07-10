@@ -2599,36 +2599,30 @@ export async function getStudentAnswers(params = {}) {
 
 // 生成PPT的接口
 export const generateKnowledgePointsPPT = async (params) => {
-    try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            throw new Error('No access token available');
-        }
+    if (getMockFlag()) {
+        return mockApiResponse({
+            success: true,
+            status_code: 201,
+            data: {
+                file_url: 'mock_ppt_url.pptx',
+                filename: '知识点PPT.pptx'
+            }
+        });
+    }
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}/knowledge-points-to-ppt/`, {
+    try {
+        const response = await handleRequest(`${API_CONFIG.BASE_URL}/knowledge-points-to-ppt/`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            },
             body: JSON.stringify(params)
         });
 
-        const responseData = await response.json();
-        console.log('生成PPT响应:', responseData);
-
-        if (!response.ok) {
-            return handleHttpError(response, responseData);
-        }
-
-        return responseData;
+        return response;
     } catch (error) {
         console.error('生成PPT失败:', error);
         return {
-            code: -1,
-            msg: error.message || '生成PPT失败'
+            success: false,
+            status_code: 500,
+            message: error.message || '生成PPT失败'
         };
     }
 };
