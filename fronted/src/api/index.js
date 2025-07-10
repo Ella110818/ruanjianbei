@@ -2820,3 +2820,41 @@ export async function getUserPermissions() {
         };
     }
 }
+
+// 生成题目
+export async function generateQuestions(params) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            success: true,
+            status_code: 201,
+            data: {
+                questions: [],
+                session_key: 'mock_session',
+                saved_exercises: [],
+                failed_exercises: 0
+            }
+        });
+    }
+
+    try {
+        const url = `${API_CONFIG.BASE_URL}/questions-generate/`;
+        const response = await handleRequest(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(params)
+        });
+
+        console.log('生成题目响应:', response);
+        return response;
+    } catch (error) {
+        console.error('生成题目失败:', error);
+        return {
+            success: false,
+            status_code: 500,
+            message: error.message || '生成题目失败',
+            data: null
+        };
+    }
+}
