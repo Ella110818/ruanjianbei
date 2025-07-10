@@ -303,11 +303,7 @@ export async function login(username, password, role) {
                 data: {
                     name: '测试用户',
                     role: role || 'teacher',
-                    id: 1,
-                    permissions: ['view_course', 'edit_course'],
-                    is_staff: true,
-                    is_superuser: false,
-                    is_authenticated: true
+                    id: 1
                 }
             });
         } else {
@@ -346,32 +342,15 @@ export async function login(username, password, role) {
                     TokenManager.setTokens(responseData.data.access, responseData.data.refresh);
                 }
 
-                // 获取用户权限
-                const permissionsResponse = await getUserPermissions();
-                console.log('权限响应:', permissionsResponse);
-
-                // 如果是教师角色，但没有教师权限，则拒绝登录
-                if (role === 'teacher' && (!permissionsResponse.data.role || permissionsResponse.data.role !== 'teacher')) {
-                    TokenManager.clearTokens();
-                    return {
-                        code: 1,
-                        msg: '您没有教师权限',
-                        data: null
-                    };
-                }
-
-                // 保存权限信息
+                // 保存角色信息
                 localStorage.setItem('userRole', role);
-                localStorage.setItem('userPermissions', JSON.stringify(permissionsResponse.data.permissions || []));
-                localStorage.setItem('isStaff', permissionsResponse.data.is_staff);
-                localStorage.setItem('isSuperuser', permissionsResponse.data.is_superuser);
 
                 return {
                     code: 0,
                     msg: '登录成功',
                     data: {
                         ...responseData.data,
-                        ...permissionsResponse.data
+                        role
                     }
                 };
             }
