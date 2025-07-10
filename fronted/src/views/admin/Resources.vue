@@ -148,6 +148,7 @@
 <script>
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCourseList, API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminResources',
@@ -187,11 +188,7 @@ export default {
           downloads: 18
         }
       ],
-      courseOptions: [
-        { label: '高等数学', value: 'math' },
-        { label: '物理实验', value: 'physics' },
-        { label: '程序设计', value: 'programming' }
-      ],
+      courseOptions: [],
       uploadForm: {
         course: '',
         file: null
@@ -206,7 +203,27 @@ export default {
       }
     }
   },
+  async created() {
+    await this.fetchCourseList()
+  },
   methods: {
+    async fetchCourseList() {
+      try {
+        this.loading = true
+        const response = await getCourseList()
+        if (response && response.results) {
+          this.courseOptions = response.results.map(course => ({
+            label: course.name,
+            value: course.id
+          }))
+        }
+      } catch (error) {
+        ElMessage.error('获取课程列表失败')
+        console.error('获取课程列表失败:', error)
+      } finally {
+        this.loading = false
+      }
+    },
     getFileIcon(type) {
       const icons = {
         document: 'el-icon-document',
