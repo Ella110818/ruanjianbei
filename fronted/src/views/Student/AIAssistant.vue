@@ -389,11 +389,20 @@ const handleQuestionResponse = (response) => {
 // 添加提交答案的方法
 const submitAnswer = async (question, answer) => {
   try {
+    // 确保 userId 存在
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      ElMessage.error('请先登录');
+      return;
+    }
+
     const data = {
-      exercise_id: question.id,
-      answer_content: answer,
-      student_id: localStorage.getItem('userId')
+      exercise: parseInt(question.id),  // 直接使用正确的字段名
+      content: String(answer),          // 直接使用正确的字段名
+      student: parseInt(userId)         // 直接使用正确的字段名
     };
+
+    console.log('提交答案数据:', data);  // 添加日志
 
     const response = await submitStudentAnswer(data);
     if (response.code === 0) {
