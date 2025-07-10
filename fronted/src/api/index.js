@@ -356,99 +356,97 @@ export async function login(username, password, role) {
 
             // 检查登录响应是否成功
             if (responseData.success && responseData.status_code === 200 && responseData.data) {
-                const { access, refresh, user } = responseData.data;
+                const { access, refresh } = responseData.data;
                 console.log('登录成功，获取到tokens:', {
                     accessToken: access ? '存在' : '不存在',
-                    refreshToken: refresh ? '存在' : '不存在',
-                    user: user ? '存在' : '不存在'
+                    refreshToken: refresh ? '存在' : '不存在'
                 });
 
-                // 验证并保存token
-                if (TokenManager.isValidToken(access) && TokenManager.isValidToken(refresh)) {
-                    // 先清除旧数据
-                    TokenManager.clearTokens();
+                // 先清除旧数据
+                TokenManager.clearTokens();
 
-                    // 保存新token
-                    TokenManager.setTokens(access, refresh);
+                // 保存新token
+                TokenManager.setTokens(access, refresh);
 
-                    // 2. 获取角色列表，找到对应角色的ID
-                    console.log('开始获取角色列表');
-                    const rolesResponse = await getRoles();
-                    console.log('获取角色列表响应:', rolesResponse);
-
-                    if (!rolesResponse.success || rolesResponse.status_code !== 200) {
-                        console.error('获取角色列表失败:', rolesResponse);
-                        return {
-                            code: 1,
-                            msg: '获取角色信息失败',
-                            data: null
-                        };
+                // 2. 获取角色列表，找到对应角色的ID
+                console.log('开始获取角色列表');
+                const rolesResponse = await fetch(`${API_CONFIG.BASE_URL}/roles/`, {
+                    method: 'GET',
+                    headers: {
+                        ...API_CONFIG.headers,
+                        'Authorization': `Bearer ${access}`, // 使用新获取的 token
+                        'ngrok-skip-browser-warning': 'true'
                     }
+                });
 
-                    // 找到对应角色的ID
-                    const userRole = rolesResponse.data.results.find(r => r.name === role);
-                    if (!userRole) {
-                        console.error('未找到对应的角色ID');
-                        return {
-                            code: 1,
-                            msg: '未找到对应的角色信息',
-                            data: null
-                        };
-                    }
+                const rolesData = await rolesResponse.json();
+                console.log('获取角色列表响应:', rolesData);
 
-                    // 3. 获取角色详细信息
-                    console.log('开始获取角色详细信息, 角色ID:', userRole.id);
-                    const roleDetailResponse = await fetch(`${API_CONFIG.BASE_URL}/roles/${userRole.id}/`, {
-                        method: 'GET',
-                        headers: {
-                            ...API_CONFIG.headers,
-                            'Authorization': `Bearer ${TokenManager.getAccessToken()}`,
-                            'ngrok-skip-browser-warning': 'true'
-                        }
-                    });
-
-                    const roleDetailData = await roleDetailResponse.json();
-                    console.log('角色详细信息响应:', roleDetailData);
-
-                    if (!roleDetailData.success || roleDetailData.status_code !== 200) {
-                        console.error('获取角色详细信息失败:', roleDetailData);
-                        return {
-                            code: 1,
-                            msg: '获取角色详细信息失败',
-                            data: null
-                        };
-                    }
-
-                    // 保存用户信息
-                    const userInfo = {
-                        ...user,
-                        role,
-                        roleId: userRole.id,
-                        permissions: roleDetailData.data.permissions || []
-                    };
-                    localStorage.setItem('user', JSON.stringify(userInfo));
-                    localStorage.setItem('userRole', role);
-                    localStorage.setItem('userRoleId', userRole.id);
-                    localStorage.setItem('userPermissions', JSON.stringify(roleDetailData.data.permissions || []));
-
-                    return {
-                        code: 0,
-                        msg: '登录成功',
-                        data: {
-                            token: access,
-                            refreshToken: refresh,
-                            user: userInfo,
-                            roleDetail: roleDetailData.data
-                        }
-                    };
-                } else {
-                    console.error('Token格式无效');
+                if (!rolesData.success || rolesData.status_code !== 200) {
+                    console.error('获取角色列表失败:', rolesData);
                     return {
                         code: 1,
-                        msg: 'Token格式无效',
+                        msg: '获取角色信息失败',
                         data: null
                     };
                 }
+
+                // 找到对应角色的ID
+                const userRole = rolesData.data.results.find(r => r.name === role);
+                if (!userRole) {
+                    console.error('未找到对应的角色ID');
+                    return {
+                        code: 1,
+                        msg: '未找到对应的角色信息',
+                        data: null
+                    };
+                }
+
+                // 3. 获取角色详细信息
+                console.log('开始获取角色详细信息, 角色ID:', userRole.id);
+                const roleDetailResponse = await fetch(`${API_CONFIG.BASE_URL}/roles/${userRole.id}/`, {
+                    method: 'GET',
+                    headers: {
+                        ...API_CONFIG.headers,
+                        'Authorization': `Bearer ${access}`, // 使用新获取的 token
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
+
+                const roleDetailData = await roleDetailResponse.json();
+                console.log('角色详细信息响应:', roleDetailData);
+
+                if (!roleDetailData.success || roleDetailData.status_code !== 200) {
+                    console.error('获取角色详细信息失败:', roleDetailData);
+                    return {
+                        code: 1,
+                        msg: '获取角色详细信息失败',
+                        data: null
+                    };
+                }
+
+                // 保存用户信息
+                const userInfo = {
+                    ...responseData.data.user,
+                    role,
+                    roleId: userRole.id,
+                    permissions: roleDetailData.data.permissions || []
+                };
+                localStorage.setItem('user', JSON.stringify(userInfo));
+                localStorage.setItem('userRole', role);
+                localStorage.setItem('userRoleId', userRole.id);
+                localStorage.setItem('userPermissions', JSON.stringify(roleDetailData.data.permissions || []));
+
+                return {
+                    code: 0,
+                    msg: '登录成功',
+                    data: {
+                        token: access,
+                        refreshToken: refresh,
+                        user: userInfo,
+                        roleDetail: roleDetailData.data
+                    }
+                };
             } else {
                 console.error('登录响应格式错误:', responseData);
                 return {
