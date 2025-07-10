@@ -392,10 +392,15 @@ const currentUser = ref(null);
 // 获取当前用户信息
 const loadUserInfo = async () => {
   try {
+    console.log('开始获取用户信息');
     const response = await getCurrentUser();
+    console.log('获取用户信息响应:', response);
+    
     if (response.code === 0 && response.data) {
       currentUser.value = response.data;
+      console.log('当前用户信息:', currentUser.value);
     } else {
+      console.error('获取用户信息失败:', response.msg);
       ElMessage.error('获取用户信息失败');
     }
   } catch (error) {
@@ -406,8 +411,13 @@ const loadUserInfo = async () => {
 // 修改提交答案的方法
 const submitAnswer = async (question, answer) => {
   try {
+    console.log('当前用户状态:', currentUser.value);
+    console.log('问题信息:', question);
+    console.log('答案内容:', answer);
+
     // 确保用户已登录
     if (!currentUser.value || !currentUser.value.id) {
+      console.error('用户未登录或ID不存在:', currentUser.value);
       ElMessage.error('请先登录');
       return;
     }
@@ -418,9 +428,16 @@ const submitAnswer = async (question, answer) => {
       student: parseInt(currentUser.value.id)
     };
 
-    console.log('提交答案数据:', data);
+    console.log('准备提交的数据:', data);
+    console.log('数据类型检查:', {
+      exercise: typeof data.exercise,
+      content: typeof data.content,
+      student: typeof data.student
+    });
 
     const response = await submitStudentAnswer(data);
+    console.log('提交答案响应:', response);
+
     if (response.code === 0) {
       ElMessage.success('提交答案成功');
       // 更新问题状态
@@ -429,6 +446,7 @@ const submitAnswer = async (question, answer) => {
       question.score = response.data.score;
       question.feedback = response.data.feedback;
     } else {
+      console.error('提交答案失败:', response);
       ElMessage.error(response.msg || '提交答案失败');
     }
   } catch (error) {
