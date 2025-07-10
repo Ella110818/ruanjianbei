@@ -2584,15 +2584,9 @@ export async function getStudentAnswers(params = {}) {
 // 生成PPT的接口
 export const generateKnowledgePointsPPT = async (params) => {
     try {
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            throw new Error('No access token available');
-        }
-
         const response = await handleRequest('/knowledge-points-to-ppt/', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'ngrok-skip-browser-warning': 'true'
