@@ -1632,106 +1632,34 @@ export async function getRoleById(roleId) {
 }
 
 // 获取我的课程列表
-export async function getMyCourses(params = {}, retryCount = 0) {
-    const MAX_RETRIES = 1; // 最多只重试一次
-
+export async function getMyCourses(params = {}) {
     if (getMockFlag()) {
         return mockApiResponse(mockCourseList);
     }
 
     try {
-        // 先检查并刷新token如果需要
-        await TokenManager.refreshTokenIfNeeded();
-
-        const token = TokenManager.getAccessToken();
-        if (!token) {
-            console.log('没有有效的token，重定向到登录页');
-            TokenManager.clearTokens();
-            window.location.href = '/login';
-            return {
-                code: 1,
-                msg: '请重新登录',
-                data: null
-            };
-        }
-
-        // 检查用户角色
-        const userInfo = getUserInfo();
-        if (!userInfo || !userInfo.role) {
-            console.log('用户信息不完整，尝试重新获取用户信息');
-            // 尝试重新获取用户信息和权限
-            const roleResponse = await getUserRoleAndPermissions();
-            if (roleResponse.code !== 0) {
-                console.error('获取用户角色和权限失败');
-                return {
-                    code: 1,
-                    msg: '获取用户权限失败',
-                    data: null
-                };
-            }
-        }
-
         // 构建查询参数
         const queryParams = new URLSearchParams();
-        if (params.search) queryParams.append('search', params.search);
         if (params.ordering) queryParams.append('ordering', params.ordering);
         if (params.page) queryParams.append('page', params.page);
 
         const queryString = queryParams.toString();
         const url = `${API_CONFIG.BASE_URL}/courses/my_courses/${queryString ? `?${queryString}` : ''}`;
 
-        console.log('请求我的课程列表URL:', url);
-        console.log('请求Headers:', {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
-        });
+        const response = await handleRequest(url);
 
-        const response = await fetch(url, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        // 打印响应头信息，帮助调试
-        console.log('响应状态:', response.status);
-        console.log('响应头:', Object.fromEntries(response.headers.entries()));
-
-        const responseData = await response.json();
-        console.log('获取我的课程列表响应:', responseData);
-
-        if (!response.ok) {
-            if ((response.status === 403 || response.status === 401) && retryCount < MAX_RETRIES) {
-                console.log(`认证失败，尝试刷新token (重试次数: ${retryCount + 1}/${MAX_RETRIES})`);
-                const newToken = await TokenManager.refreshToken();
-                if (newToken) {
-                    console.log('token刷新成功，重试请求');
-                    return getMyCourses(params, retryCount + 1);
-                }
-            }
-
-            // 如果是权限问题，检查用户角色
-            if (response.status === 403) {
+        // 检查响应格式
+        if (response.success && response.status_code === 200) {
+            return {
+                code: 0,
+                msg: '获取我的课程列表成功',
+                data: response.data
+            };
+        } else {
+            // 如果是权限问题，返回具体的错误信息
+            if (response.status_code === 403) {
                 const userRole = localStorage.getItem('userRole');
                 console.log('当前用户角色:', userRole);
-
-                // 如果没有角色信息，尝试重新获取
-                if (!userRole) {
-                    console.log('尝试重新获取用户角色和权限');
-                    const roleResponse = await getUserRoleAndPermissions();
-                    if (roleResponse.code === 0) {
-                        // 获取成功后重试请求
-                        return getMyCourses(params, retryCount);
-                    }
-                }
-
-                // 返回具体的权限错误信息
                 return {
                     code: 1,
                     msg: '没有访问权限，请确认您是否具有教师角色',
@@ -1739,20 +1667,9 @@ export async function getMyCourses(params = {}, retryCount = 0) {
                 };
             }
 
-            return handleHttpError(response, responseData);
-        }
-
-        // 检查响应格式
-        if (responseData.success && responseData.data) {
-            return {
-                code: 0,
-                msg: '获取我的课程列表成功',
-                data: responseData.data
-            };
-        } else {
             return {
                 code: 1,
-                msg: responseData.message || '获取我的课程列表失败',
+                msg: response.message || '获取我的课程列表失败',
                 data: null
             };
         }
