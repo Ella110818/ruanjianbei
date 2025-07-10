@@ -57,8 +57,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
     include_course_info: true,
     use_ai: false,
     return_file_content: false,
-    course_id: localStorage.getItem('currentCourseId') || null,
-    sessionId: Date.now().toString()  // 添加会话ID
+    course_id: localStorage.getItem('currentCourseId') || null
   }
 
   try {
@@ -72,7 +71,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
     }
   } catch (error) {
     console.error('生成PPT失败:', error)
-    ElMessage.error(error.message || '生成PPT失败，请稍后重试')
+    ElMessage.error('生成PPT失败，请稍后重试')
   } finally {
     isGeneratingPPT.value = false
   }
