@@ -35,6 +35,10 @@
          @click.prevent="selectSide('exercises', '/teacher/exercises')">
         练习题库
       </a>
+      <el-menu-item index="student-answers">
+        <i class="el-icon-data-analysis"></i>
+        <span>学生答题记录</span>
+      </el-menu-item>
     </nav>
   </aside>
 </template>

@@ -122,6 +122,15 @@ const routes = [
     }
   },
   {
+    path: '/teacher/student-answers',
+    name: 'TeacherStudentAnswers',
+    component: () => import('@/views/Teacher/StudentAnswers.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'teacher'
+    }
+  },
+  {
     path: '/admin',
     redirect: '/admin/dashboard',
     meta: { requiresAuth: true }
