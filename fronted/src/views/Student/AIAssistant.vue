@@ -234,9 +234,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
-import { exportQuestions, generateQuestions, submitStudentAnswer } from '@/api/index.js'
+import { exportQuestions, generateQuestions, submitStudentAnswer, getCurrentUser } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
 
 const searchQuery = ref('')
@@ -386,23 +386,39 @@ const handleQuestionResponse = (response) => {
   }
 }
 
-// 添加提交答案的方法
+// 添加用户状态管理
+const currentUser = ref(null);
+
+// 获取当前用户信息
+const loadUserInfo = async () => {
+  try {
+    const response = await getCurrentUser();
+    if (response.code === 0 && response.data) {
+      currentUser.value = response.data;
+    } else {
+      ElMessage.error('获取用户信息失败');
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+  }
+};
+
+// 修改提交答案的方法
 const submitAnswer = async (question, answer) => {
   try {
-    // 确保 userId 存在
-    const userId = localStorage.getItem('userId');
-    if (!userId) {
+    // 确保用户已登录
+    if (!currentUser.value || !currentUser.value.id) {
       ElMessage.error('请先登录');
       return;
     }
 
     const data = {
-      exercise: parseInt(question.id),  // 直接使用正确的字段名
-      content: String(answer),          // 直接使用正确的字段名
-      student: parseInt(userId)         // 直接使用正确的字段名
+      exercise: parseInt(question.id),
+      content: String(answer),
+      student: parseInt(currentUser.value.id)
     };
 
-    console.log('提交答案数据:', data);  // 添加日志
+    console.log('提交答案数据:', data);
 
     const response = await submitStudentAnswer(data);
     if (response.code === 0) {
@@ -420,6 +436,11 @@ const submitAnswer = async (question, answer) => {
     ElMessage.error('提交答案失败');
   }
 };
+
+// 组件挂载时加载用户信息
+onMounted(() => {
+  loadUserInfo();
+});
 
 // 修改 handleSearch 函数
 const handleSearch = async () => {
