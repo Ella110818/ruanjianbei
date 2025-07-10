@@ -67,11 +67,11 @@
       <div class="course-config">
         <el-form :model="courseConfig" label-width="120px">
           <el-form-item label="课程标题">
-            <el-input v-model="courseConfig.title" placeholder="请输入课程标题" />
+            <el-input v-model="courseConfig.course_name" placeholder="请输入课程标题" />
           </el-form-item>
           <el-form-item label="课程描述">
             <el-input
-              v-model="courseConfig.description"
+              v-model="courseConfig.course_description"
               type="textarea"
               :rows="3"
               placeholder="请输入课程描述"
@@ -82,6 +82,25 @@
           </el-form-item>
           <el-form-item label="年级">
             <el-input v-model="courseConfig.grade_level" placeholder="请输入年级" />
+          </el-form-item>
+          <el-form-item label="章节数量">
+            <el-input-number v-model="courseConfig.chapter_count" :min="1" :max="50" />
+          </el-form-item>
+          <el-form-item label="额外要求">
+            <el-input
+              v-model="courseConfig.additional_requirements"
+              type="textarea"
+              :rows="2"
+              placeholder="请输入额外要求（选填）"
+            />
+          </el-form-item>
+          <el-form-item label="AI对话输入">
+            <el-input
+              v-model="courseConfig.chatInput"
+              type="textarea"
+              :rows="2"
+              placeholder="请输入与AI的对话内容（选填）"
+            />
           </el-form-item>
         </el-form>
       </div>
@@ -122,11 +141,15 @@ const courseDialogVisible = ref(false)
 
 // 课程配置
 const courseConfig = ref({
-  title: '',
-  description: '',
+  course_name: '',
+  course_description: '',
   subject: '',
   grade_level: '',
-  knowledge_point_ids: []
+  chapter_count: 20,
+  additional_requirements: '',
+  knowledge_point_ids: [],
+  chatInput: '',
+  sessionId: ''
 })
 
 // 加载知识点列表
@@ -190,8 +213,20 @@ const handleGenerateCourse = () => {
 
 // 确认生成课程内容
 const confirmGenerateCourse = async () => {
-  if (!courseConfig.value.title) {
+  if (!courseConfig.value.course_name) {
     ElMessage.warning('请输入课程标题')
+    return
+  }
+  if (!courseConfig.value.course_description) {
+    ElMessage.warning('请输入课程描述')
+    return
+  }
+  if (!courseConfig.value.subject) {
+    ElMessage.warning('请输入学科')
+    return
+  }
+  if (!courseConfig.value.grade_level) {
+    ElMessage.warning('请输入年级')
     return
   }
 
@@ -207,11 +242,15 @@ const confirmGenerateCourse = async () => {
       courseDialogVisible.value = false
       // 重置表单
       courseConfig.value = {
-        title: '',
-        description: '',
+        course_name: '',
+        course_description: '',
         subject: '',
         grade_level: '',
-        knowledge_point_ids: []
+        chapter_count: 20,
+        additional_requirements: '',
+        knowledge_point_ids: [],
+        chatInput: '',
+        sessionId: ''
       }
     } else {
       ElMessage.error(response.message || '生成课程内容失败')

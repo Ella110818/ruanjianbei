@@ -1011,10 +1011,11 @@ export async function generateCourseContent(params) {
             status_code: 201,
             data: {
                 id: 1,
-                title: params.title || 'Python编程基础',
-                description: params.description || 'Python入门课程',
+                course_name: params.course_name || 'Python编程基础',
+                course_description: params.course_description || 'Python入门课程',
                 subject: params.subject || 'Python编程',
                 grade_level: params.grade_level || '大学一年级',
+                chapter_count: params.chapter_count || 20,
                 created_at: new Date().toISOString()
             },
             message: '课程内容生成成功'
@@ -1024,25 +1025,18 @@ export async function generateCourseContent(params) {
     try {
         const response = await handleRequest(`${API_CONFIG.BASE_URL}/course-generate/`, {
             method: 'POST',
-            body: JSON.stringify(params)
+            body: JSON.stringify({
+                ...params,
+                sessionId: params.sessionId || Date.now().toString()
+            })
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            return {
-                success: true,
-                status_code: response.status,
-                data: data,
-                message: '课程内容生成成功'
-            };
-        } else {
-            const errorData = await response.json();
-            return {
-                success: false,
-                status_code: response.status,
-                message: errorData.message || '生成课程内容失败'
-            };
-        }
+        return {
+            success: response.success,
+            status_code: response.status_code,
+            data: response.data,
+            message: response.message || '课程内容生成成功'
+        };
     } catch (error) {
         console.error('生成课程内容请求失败:', error);
         return {
