@@ -588,6 +588,10 @@ async function handleRequest(url, options = {}, retryCount = 0) {
         const currentToken = TokenManager.getAccessToken();
         console.log('发送请求使用的token:', currentToken);
 
+        // 确保URL是完整的
+        const fullUrl = url.startsWith('http') ? url : `${API_CONFIG.BASE_URL}${url.startsWith('/') ? url : '/' + url}`;
+        console.log('完整请求URL:', fullUrl);
+
         const finalOptions = {
             ...options,
             headers: {
@@ -599,12 +603,12 @@ async function handleRequest(url, options = {}, retryCount = 0) {
         };
 
         console.log('请求配置:', {
-            url,
+            url: fullUrl,
             method: finalOptions.method || 'GET',
             headers: finalOptions.headers
         });
 
-        const response = await fetch(url, finalOptions);
+        const response = await fetch(fullUrl, finalOptions);
         let responseData;
 
         try {
@@ -1073,7 +1077,8 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'Accept': format === 'json' ? 'application/json' : 'text/csv'
+                'Accept': format === 'json' ? 'application/json' : 'text/csv',
+                'ngrok-skip-browser-warning': 'true'  // 添加 ngrok 跳过警告头
             }
         });
 
@@ -1083,25 +1088,41 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
 
         // 检查Content-Type
         const contentType = response.headers.get('Content-Type');
+        console.log('响应Content-Type:', contentType);
 
+        // 如果是JSON响应
         if (contentType && contentType.includes('application/json')) {
-            // JSON响应
             const data = await response.json();
+            if (data.success && data.data && data.data.file_url) {
+                // 如果返回的是文件URL，创建下载链接
+                const fileUrl = `${API_CONFIG.BASE_URL}${data.data.file_url}`;
+                const link = document.createElement('a');
+                link.href = fileUrl;
+                link.download = filename + '.' + format;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                return {
+                    code: 0,
+                    msg: '文件下载成功',
+                    data: data.data
+                };
+            }
             return {
                 code: 0,
                 msg: '导出成功',
                 data
             };
         } else {
-            // 文件下载
+            // 直接下载文件
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `${filename}.${format}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `${filename}.${format}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             window.URL.revokeObjectURL(downloadUrl);
 
             return {
@@ -2584,7 +2605,10 @@ export async function getStudentAnswers(params = {}) {
 // 生成PPT的接口
 export const generateKnowledgePointsPPT = async (params) => {
     try {
-        const response = await handleRequest('/knowledge-points-to-ppt/', {
+        const url = `${API_CONFIG.BASE_URL}/knowledge-points-to-ppt/`;
+        console.log('生成PPT请求URL:', url);
+
+        const response = await handleRequest(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2597,6 +2621,7 @@ export const generateKnowledgePointsPPT = async (params) => {
         if (response.status === 'success' && response.data) {
             // 构建完整的文件URL
             const fileUrl = `${API_CONFIG.BASE_URL}${response.data.file_url.replace(/\\/g, '/')}`;
+            console.log('下载文件URL:', fileUrl);
 
             // 创建一个隐藏的a标签来下载文件
             const link = document.createElement('a');
