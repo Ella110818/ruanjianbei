@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://d35fdced922c.ngrok-free.app',  // 更新为新的ngrok地址
+        API_URL: 'https://046db807ed8b.ngrok-free.app',  // 更新为新的ngrok地址
         API_VERSION: 'api'
     }
 };
@@ -2599,30 +2599,39 @@ export async function getStudentAnswers(params = {}) {
 
 // 生成PPT的接口
 export const generateKnowledgePointsPPT = async (params) => {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            success: true,
-            status_code: 201,
-            data: {
-                file_url: 'mock_ppt_url.pptx',
-                filename: '知识点PPT.pptx'
-            }
-        });
-    }
-
     try {
-        const response = await handleRequest(`${API_CONFIG.BASE_URL}/knowledge-points-to-ppt/`, {
+        const response = await handleRequest('/knowledge-points-to-ppt/', {
             method: 'POST',
             body: JSON.stringify(params)
         });
 
-        return response;
-    } catch (error) {
-        console.error('生成PPT失败:', error);
+        if (response.status === 'success' && response.data) {
+            // 构建完整的文件URL
+            const fileUrl = `${API_CONFIG.BASE_URL}${response.data.file_url.replace(/\\/g, '/')}`;
+
+            // 创建一个隐藏的a标签来下载文件
+            const link = document.createElement('a');
+            link.href = fileUrl;
+            link.download = response.data.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            return {
+                success: true,
+                data: response.data
+            };
+        }
+
         return {
             success: false,
-            status_code: 500,
-            message: error.message || '生成PPT失败'
+            error: '生成PPT失败'
+        };
+    } catch (error) {
+        console.error('生成PPT时发生错误:', error);
+        return {
+            success: false,
+            error: error.message || '生成PPT失败'
         };
     }
 };
