@@ -10,6 +10,13 @@
         @update:courseMenuOpen="courseMenuOpen = $event"
       />
       <div class="exercises-container">
+        <!-- 添加创建按钮 -->
+        <div class="action-bar">
+          <el-button type="primary" @click="showCreateDialog">
+            创建练习题
+          </el-button>
+        </div>
+
         <!-- 筛选器 -->
         <div class="filter-section">
           <el-input
@@ -95,6 +102,82 @@
             layout="prev, pager, next"
           />
         </div>
+
+        <!-- 添加创建练习题对话框 -->
+        <el-dialog
+          title="创建练习题"
+          v-model="createDialogVisible"
+          width="600px"
+        >
+          <el-form
+            ref="createForm"
+            :model="exerciseForm"
+            :rules="formRules"
+            label-width="100px"
+          >
+            <el-form-item label="题目标题" prop="title">
+              <el-input v-model="exerciseForm.title" placeholder="请输入题目标题" />
+            </el-form-item>
+            
+            <el-form-item label="题目内容" prop="content">
+              <el-input
+                v-model="exerciseForm.content"
+                type="textarea"
+                :rows="4"
+                placeholder="请输入题目内容"
+              />
+            </el-form-item>
+            
+            <el-form-item label="题目类型" prop="type">
+              <el-select v-model="exerciseForm.type" placeholder="请选择题目类型">
+                <el-option label="单选题" value="single_choice" />
+                <el-option label="多选题" value="multiple_choice" />
+                <el-option label="判断题" value="true_false" />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="难度等级" prop="difficulty">
+              <el-select v-model="exerciseForm.difficulty" placeholder="请选择难度等级">
+                <el-option label="简单" :value="1" />
+                <el-option label="中等" :value="2" />
+                <el-option label="困难" :value="3" />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="知识点" prop="knowledge_point">
+              <el-select
+                v-model="exerciseForm.knowledge_point"
+                placeholder="请选择知识点"
+                :loading="knowledgePointsLoading"
+              >
+                <el-option
+                  v-for="point in knowledgePoints"
+                  :key="point.id"
+                  :label="point.title"
+                  :value="point.id"
+                />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="答案模板" prop="answer_template">
+              <el-input
+                v-model="exerciseForm.answer_template"
+                type="textarea"
+                :rows="3"
+                placeholder="请输入答案模板"
+              />
+            </el-form-item>
+          </el-form>
+          
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button @click="createDialogVisible = false">取消</el-button>
+              <el-button type="primary" @click="handleCreateExercise" :loading="creating">
+                创建
+              </el-button>
+            </span>
+          </template>
+        </el-dialog>
       </div>
     </div>
   </div>
@@ -104,7 +187,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { getExercises, getKnowledgePoints, getCourseList } from '@/api'
+import { getExercises, getKnowledgePoints, getCourseList, createExercise } from '@/api'
 import { ElMessage } from 'element-plus'
 
 // 状态管理
@@ -207,6 +290,79 @@ const handleSideTabChange = (tab) => {
   sideTab.value = tab
 }
 
+// 创建练习题相关状态
+const createDialogVisible = ref(false)
+const creating = ref(false)
+const createForm = ref(null)
+
+// 练习题表单数据
+const exerciseForm = ref({
+  title: '',
+  content: '',
+  type: 'single_choice',
+  difficulty: 1,
+  knowledge_point: '',
+  answer_template: ''
+})
+
+// 表单验证规则
+const formRules = {
+  title: [
+    { required: true, message: '请输入题目标题', trigger: 'blur' },
+    { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
+  ],
+  content: [
+    { required: true, message: '请输入题目内容', trigger: 'blur' }
+  ],
+  type: [
+    { required: true, message: '请选择题目类型', trigger: 'change' }
+  ],
+  difficulty: [
+    { required: true, message: '请选择难度等级', trigger: 'change' }
+  ],
+  knowledge_point: [
+    { required: true, message: '请选择知识点', trigger: 'change' }
+  ],
+  answer_template: [
+    { required: true, message: '请输入答案模板', trigger: 'blur' }
+  ]
+}
+
+// 显示创建对话框
+const showCreateDialog = () => {
+  createDialogVisible.value = true
+  // 重置表单
+  if (createForm.value) {
+    createForm.value.resetFields()
+  }
+}
+
+// 创建练习题
+const handleCreateExercise = async () => {
+  if (!createForm.value) return
+  
+  try {
+    await createForm.value.validate()
+    
+    creating.value = true
+    const response = await createExercise(exerciseForm.value)
+    
+    if (response.code === 0) {
+      ElMessage.success(response.msg || '创建练习题成功')
+      createDialogVisible.value = false
+      // 重新加载练习题列表
+      loadExercises()
+    } else {
+      ElMessage.error(response.msg || '创建练习题失败')
+    }
+  } catch (error) {
+    console.error('创建练习题失败:', error)
+    ElMessage.error('创建练习题失败，请检查表单内容')
+  } finally {
+    creating.value = false
+  }
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
   loadExercises()
@@ -307,6 +463,19 @@ onMounted(() => {
   color: #999;
   font-size: 12px;
   margin-top: 2px;
+}
+
+/* 添加新样式 */
+.action-bar {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 @media screen and (max-width: 1366px) {
