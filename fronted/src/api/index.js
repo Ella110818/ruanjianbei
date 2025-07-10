@@ -2113,7 +2113,7 @@ export async function getUserRoleAndPermissions() {
 }
 
 // 获取知识点列表
-export async function getKnowledgePoints(params = {}) {
+export async function getKnowledgePoints(params = {}, isRetry = false) {
     if (getMockFlag()) {
         return mockApiResponse({
             code: 0,
@@ -2126,30 +2126,18 @@ export async function getKnowledgePoints(params = {}) {
                         description: 'Python基础知识点',
                         subject: 'Python',
                         created_at: new Date().toISOString()
-                    },
-                    {
-                        id: 2,
-                        name: '条件语句',
-                        description: 'Python控制流',
-                        subject: 'Python',
-                        created_at: new Date().toISOString()
-                    },
-                    {
-                        id: 3,
-                        name: '循环结构',
-                        description: 'Python循环语句',
-                        subject: 'Python',
-                        created_at: new Date().toISOString()
                     }
                 ],
-                total: 3
+                total: 1
             }
         });
     }
 
     try {
-        // 先检查并刷新token如果需要
-        await TokenManager.refreshTokenIfNeeded();
+        // 如果不是重试请求，才检查token
+        if (!isRetry) {
+            await TokenManager.refreshTokenIfNeeded();
+        }
 
         const token = TokenManager.getAccessToken();
         if (!token) {
@@ -2187,20 +2175,16 @@ export async function getKnowledgePoints(params = {}) {
             }
         });
 
-        // 打印响应头信息，帮助调试
-        console.log('响应状态:', response.status);
-        console.log('响应头:', Object.fromEntries(response.headers.entries()));
-
         const responseData = await response.json();
         console.log('获取知识点列表响应:', responseData);
 
         if (!response.ok) {
-            if (response.status === 403 || response.status === 401) {
+            if ((response.status === 403 || response.status === 401) && !isRetry) {
                 console.log('认证失败，尝试刷新token');
                 const newToken = await TokenManager.refreshToken();
                 if (newToken) {
                     console.log('token刷新成功，重试请求');
-                    return getKnowledgePoints(params);
+                    return getKnowledgePoints(params, true); // 标记为重试请求
                 } else {
                     console.log('token刷新失败，需要重新登录');
                     TokenManager.clearTokens();
