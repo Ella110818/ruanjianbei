@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://9a3173bc2b72.ngrok-free.app',  // 更新为新的ngrok地址
+        API_URL: 'https://d35fdced922c.ngrok-free.app',  // 更新为新的ngrok地址
         API_VERSION: 'api'
     }
 };
@@ -2256,6 +2256,362 @@ export async function getUserRoleAndPermissions() {
         return {
             code: 1,
             msg: error.message || '获取用户角色和权限失败',
+            data: null
+        };
+    }
+}
+
+// 获取知识点列表
+export async function getKnowledgePoints(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取知识点列表成功',
+            data: {
+                results: [
+                    {
+                        id: 1,
+                        name: '变量与数据类型',
+                        description: 'Python基础知识点',
+                        subject: 'Python',
+                        created_at: new Date().toISOString()
+                    },
+                    {
+                        id: 2,
+                        name: '条件语句',
+                        description: 'Python控制流',
+                        subject: 'Python',
+                        created_at: new Date().toISOString()
+                    },
+                    {
+                        id: 3,
+                        name: '循环结构',
+                        description: 'Python循环语句',
+                        subject: 'Python',
+                        created_at: new Date().toISOString()
+                    }
+                ],
+                total: 3
+            }
+        });
+    }
+
+    try {
+        // 先检查并刷新token如果需要
+        await TokenManager.refreshTokenIfNeeded();
+
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            console.log('没有有效的token，重定向到登录页');
+            TokenManager.clearTokens();
+            window.location.href = '/login';
+            return {
+                code: 1,
+                msg: '请重新登录',
+                data: null
+            };
+        }
+
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.subject) queryParams.append('subject', params.subject);
+        if (params.page) queryParams.append('page', params.page);
+        if (params.page_size) queryParams.append('page_size', params.page_size);
+        if (params.ordering) queryParams.append('ordering', params.ordering);
+
+        const queryString = queryParams.toString();
+        const url = `${API_CONFIG.BASE_URL}/knowledge-points/${queryString ? `?${queryString}` : ''}`;
+
+        console.log('请求知识点列表URL:', url);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        // 打印响应头信息，帮助调试
+        console.log('响应状态:', response.status);
+        console.log('响应头:', Object.fromEntries(response.headers.entries()));
+
+        const responseData = await response.json();
+        console.log('获取知识点列表响应:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403 || response.status === 401) {
+                console.log('认证失败，尝试刷新token');
+                const newToken = await TokenManager.refreshToken();
+                if (newToken) {
+                    console.log('token刷新成功，重试请求');
+                    return getKnowledgePoints(params);
+                } else {
+                    console.log('token刷新失败，需要重新登录');
+                    TokenManager.clearTokens();
+                    window.location.href = '/login';
+                    return {
+                        code: 1,
+                        msg: '认证失败，请重新登录',
+                        data: null
+                    };
+                }
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        // 检查响应格式
+        if (responseData.success && responseData.data) {
+            return {
+                code: 0,
+                msg: '获取知识点列表成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取知识点列表失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取知识点列表失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取知识点列表失败',
+            data: null
+        };
+    }
+}
+
+// 获取单个知识点详情
+export async function getKnowledgePointDetail(pointId) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取知识点详情成功',
+            data: {
+                id: pointId,
+                name: '变量与数据类型',
+                description: 'Python基础知识点',
+                subject: 'Python',
+                content: '详细的知识点内容...',
+                examples: ['示例1', '示例2'],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const url = `${API_CONFIG.BASE_URL}/knowledge-points/${pointId}/`;
+        console.log('请求知识点详情URL:', url);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        const responseData = await response.json();
+        console.log('获取知识点详情响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.data) {
+            return {
+                code: 0,
+                msg: '获取知识点详情成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取知识点详情失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取知识点详情失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取知识点详情失败',
+            data: null
+        };
+    }
+}
+
+// 创建知识点
+export async function createKnowledgePoint(pointData) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '创建知识点成功',
+            data: {
+                ...pointData,
+                id: Math.floor(Math.random() * 1000),
+                created_at: new Date().toISOString()
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/knowledge-points/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify(pointData)
+        });
+
+        const responseData = await response.json();
+        console.log('创建知识点响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '创建知识点成功',
+            data: responseData.data
+        };
+    } catch (error) {
+        console.error('创建知识点失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '创建知识点失败',
+            data: null
+        };
+    }
+}
+
+// 更新知识点
+export async function updateKnowledgePoint(pointId, pointData) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '更新知识点成功',
+            data: {
+                ...pointData,
+                id: pointId,
+                updated_at: new Date().toISOString()
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/knowledge-points/${pointId}/`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify(pointData)
+        });
+
+        const responseData = await response.json();
+        console.log('更新知识点响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 0,
+            msg: '更新知识点成功',
+            data: responseData.data
+        };
+    } catch (error) {
+        console.error('更新知识点失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '更新知识点失败',
+            data: null
+        };
+    }
+}
+
+// 删除知识点
+export async function deleteKnowledgePoint(pointId) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '删除知识点成功',
+            data: null
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/knowledge-points/${pointId}/`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        if (response.status === 204) {
+            return {
+                code: 0,
+                msg: '删除知识点成功',
+                data: null
+            };
+        }
+
+        const responseData = await response.json();
+        console.log('删除知识点响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 1,
+            msg: responseData.message || '删除知识点失败',
+            data: null
+        };
+    } catch (error) {
+        console.error('删除知识点失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '删除知识点失败',
             data: null
         };
     }
