@@ -663,7 +663,7 @@ export async function resetUserPassword(username) {
 }
 
 // 获取课程列表
-export async function getCourseList(params = {}, retryCount = 0) {
+export async function getCourseList(params = {}) {
     if (getMockFlag()) {
         return mockApiResponse(mockCourseList);
     }
