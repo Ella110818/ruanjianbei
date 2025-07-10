@@ -455,78 +455,7 @@ export async function login(username, password, role) {
     }
 }
 
-// 获取角色列表
-export async function getRoles() {
-    if (getMockFlag()) {
-        return Promise.resolve({
-            success: true,
-            status_code: 200,
-            data: [
-                { id: 1, name: 'teacher', display_name: '教师' },
-                { id: 2, name: 'student', display_name: '学生' },
-                { id: 3, name: 'admin', display_name: '管理员' }
-            ]
-        });
-    }
-
-    try {
-        const response = await fetch(`${API_CONFIG.BASE_URL}/roles/`, {
-            method: 'GET',
-            headers: {
-                ...API_CONFIG.headers,
-                'Authorization': `Bearer ${TokenManager.getAccessToken()}`,
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        const responseData = await response.json();
-        return responseData;
-    } catch (error) {
-        console.error('获取角色列表失败:', error);
-        return {
-            success: false,
-            status_code: 500,
-            message: '获取角色列表失败'
-        };
-    }
-}
-
-// 获取角色详细信息
-export async function getRoleById(roleId) {
-    if (getMockFlag()) {
-        return Promise.resolve({
-            success: true,
-            status_code: 200,
-            data: {
-                id: roleId,
-                name: 'teacher',
-                display_name: '教师',
-                permissions: ['view_course', 'edit_course', 'create_course']
-            }
-        });
-    }
-
-    try {
-        const response = await fetch(`${API_CONFIG.BASE_URL}/roles/${roleId}/`, {
-            method: 'GET',
-            headers: {
-                ...API_CONFIG.headers,
-                'Authorization': `Bearer ${TokenManager.getAccessToken()}`,
-                'ngrok-skip-browser-warning': 'true'
-            }
-        });
-
-        const responseData = await response.json();
-        return responseData;
-    } catch (error) {
-        console.error('获取角色详细信息失败:', error);
-        return {
-            success: false,
-            status_code: 500,
-            message: '获取角色详细信息失败'
-        };
-    }
-}
+// 获取角色列表和详细信息的函数已经在文件前面定义过了
 
 // Mock数据
 const mockCourseList = {
