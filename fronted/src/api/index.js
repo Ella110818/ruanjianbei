@@ -2875,34 +2875,3 @@ export async function submitStudentAnswer(data) {
     }
 }
 
-/**
- * 创建练习题
- * @param {Object} data - 练习题数据
- * @param {string} data.title - 题目标题
- * @param {string} data.content - 题目内容
- * @param {string} data.type - 题目类型 (single_choice/multiple_choice/true_false)
- * @param {number} data.difficulty - 难度等级 (1-3)
- * @param {number} data.knowledge_point - 知识点ID
- * @param {string} data.answer_template - 答案模板
- * @returns {Promise} 返回创建结果
- */
-export const createExercise = async (data) => {
-    try {
-        const response = await request({
-            url: '/exercises/',
-            method: 'POST',
-            data: {
-                title: data.title,
-                content: data.content,
-                type: data.type,
-                difficulty: parseInt(data.difficulty),
-                knowledge_point: parseInt(data.knowledge_point),
-                answer_template: data.answer_template
-            }
-        })
-        return response
-    } catch (error) {
-        console.error('创建练习题失败:', error)
-        throw error
-    }
-}
