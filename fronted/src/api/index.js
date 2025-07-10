@@ -2616,3 +2616,132 @@ export async function deleteKnowledgePoint(pointId) {
         };
     }
 }
+
+// 获取学生答题记录
+export async function getStudentAnswers(params = {}) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '获取学生答题记录成功',
+            data: {
+                results: [
+                    {
+                        id: 1,
+                        student_id: 1,
+                        student_name: '张三',
+                        exercise_id: 1,
+                        exercise_title: 'Python基础语法',
+                        answer: 'A',
+                        is_correct: true,
+                        score: 10,
+                        submit_time: new Date().toISOString()
+                    },
+                    {
+                        id: 2,
+                        student_id: 2,
+                        student_name: '李四',
+                        exercise_id: 1,
+                        exercise_title: 'Python基础语法',
+                        answer: 'B',
+                        is_correct: false,
+                        score: 0,
+                        submit_time: new Date().toISOString()
+                    }
+                ],
+                total: 2
+            }
+        });
+    }
+
+    try {
+        // 先检查并刷新token如果需要
+        await TokenManager.refreshTokenIfNeeded();
+
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            console.log('没有有效的token，重定向到登录页');
+            TokenManager.clearTokens();
+            window.location.href = '/login';
+            return {
+                code: 1,
+                msg: '请重新登录',
+                data: null
+            };
+        }
+
+        // 构建查询参数
+        const queryParams = new URLSearchParams();
+        if (params.exercise_id) queryParams.append('exercise_id', params.exercise_id);
+        if (params.student_id) queryParams.append('student_id', params.student_id);
+        if (params.is_correct !== undefined) queryParams.append('is_correct', params.is_correct);
+        if (params.page) queryParams.append('page', params.page);
+        if (params.page_size) queryParams.append('page_size', params.page_size);
+        if (params.ordering) queryParams.append('ordering', params.ordering);
+
+        const queryString = queryParams.toString();
+        const url = `${API_CONFIG.BASE_URL}/student-answers/${queryString ? `?${queryString}` : ''}`;
+
+        console.log('请求学生答题记录URL:', url);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        // 打印响应头信息，帮助调试
+        console.log('响应状态:', response.status);
+        console.log('响应头:', Object.fromEntries(response.headers.entries()));
+
+        const responseData = await response.json();
+        console.log('获取学生答题记录响应:', responseData);
+
+        if (!response.ok) {
+            if (response.status === 403 || response.status === 401) {
+                console.log('认证失败，尝试刷新token');
+                const newToken = await TokenManager.refreshToken();
+                if (newToken) {
+                    console.log('token刷新成功，重试请求');
+                    return getStudentAnswers(params);
+                } else {
+                    console.log('token刷新失败，需要重新登录');
+                    TokenManager.clearTokens();
+                    window.location.href = '/login';
+                    return {
+                        code: 1,
+                        msg: '认证失败，请重新登录',
+                        data: null
+                    };
+                }
+            }
+            return handleHttpError(response, responseData);
+        }
+
+        // 检查响应格式
+        if (responseData.success && responseData.data) {
+            return {
+                code: 0,
+                msg: '获取学生答题记录成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '获取学生答题记录失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('获取学生答题记录失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '获取学生答题记录失败',
+            data: null
+        };
+    }
+}
