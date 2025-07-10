@@ -113,14 +113,14 @@
 
             <div class="pagination-container">
               <el-pagination
-                v-model:current-page="currentPage"
-                v-model:page-size="pageSize"
+                :current-page="currentPage"
+                :page-size="pageSize"
                 :page-sizes="[10, 20, 50, 100]"
                 :total="total"
-                @size-change="handleSizeChange"
-                @current-change="handleCurrentChange"
                 @update:current-page="currentPage = $event"
                 @update:page-size="pageSize = $event"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
                 layout="total, sizes, prev, pager, next, jumper"
               />
             </div>
@@ -293,11 +293,13 @@
               </el-table>
               <div class="table-pagination">
                 <el-pagination
-                  v-model="currentPage"
-                  v-model="pageSize"
+                  :current-page="currentPage"
+                  :page-size="pageSize"
                   :page-sizes="[10, 20, 50, 100]"
                   layout="total, sizes, prev, pager, next, jumper"
                   :total="total"
+                  @update:current-page="currentPage = $event"
+                  @update:page-size="pageSize = $event"
                 />
               </div>
             </el-card>
