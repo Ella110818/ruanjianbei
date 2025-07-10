@@ -156,15 +156,25 @@ const courseConfig = ref({
 const loadKnowledgePoints = async () => {
   loading.value = true
   try {
+    console.log('开始加载知识点列表，参数:', {
+      page: currentPage.value,
+      page_size: pageSize.value
+    })
+    
     const response = await getKnowledgePoints({
       page: currentPage.value,
       page_size: pageSize.value
     })
+    
+    console.log('获取知识点列表响应:', response)
 
     if (response.code === 0 && response.data) {
+      console.log('知识点数据:', response.data)
       knowledgePoints.value = response.data.results
       total.value = response.data.count
+      console.log('设置后的知识点数据:', knowledgePoints.value)
     } else {
+      console.error('获取知识点列表失败:', response)
       ElMessage.error(response.msg || '获取知识点列表失败')
     }
   } catch (error) {
