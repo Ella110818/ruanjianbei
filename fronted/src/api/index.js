@@ -298,8 +298,8 @@ export async function login(username, password, role) {
         // 本地测试模式
         if (username === '11' && password === '22') {
             return Promise.resolve({
-                code: 0,
-                msg: '登录成功',
+                success: true,
+                status_code: 200,
                 data: {
                     name: '测试用户',
                     role: role || 'teacher',
@@ -308,8 +308,8 @@ export async function login(username, password, role) {
             });
         } else {
             return Promise.resolve({
-                code: 1,
-                msg: '用户名或密码错误',
+                success: false,
+                status_code: 400,
                 data: null
             });
         }
@@ -336,7 +336,7 @@ export async function login(username, password, role) {
             const responseData = await response.json();
             console.log('登录响应:', responseData);
 
-            if (response.ok && responseData.code === 0) {
+            if (responseData.success && responseData.status_code === 200) {
                 // 保存token
                 if (responseData.data.access) {
                     TokenManager.setTokens(responseData.data.access, responseData.data.refresh);
@@ -346,7 +346,7 @@ export async function login(username, password, role) {
                 localStorage.setItem('userRole', role);
 
                 return {
-                    code: 0,
+                    code: 0, // 为了保持与前端代码兼容
                     msg: '登录成功',
                     data: {
                         ...responseData.data,
@@ -355,7 +355,11 @@ export async function login(username, password, role) {
                 };
             }
 
-            return responseData;
+            return {
+                code: 1,
+                msg: responseData.message || '登录失败',
+                data: null
+            };
         } catch (error) {
             console.error('登录请求失败:', error);
             return {
