@@ -397,10 +397,21 @@ export async function login(username, password, role) {
                     }
 
                     // 3. 获取角色详细信息
-                    console.log('开始获取角色详细信息');
-                    const roleDetailResponse = await getRoleById(userRole.id);
-                    if (!roleDetailResponse.success || roleDetailResponse.status_code !== 200) {
-                        console.error('获取角色详细信息失败:', roleDetailResponse);
+                    console.log('开始获取角色详细信息, 角色ID:', userRole.id);
+                    const roleDetailResponse = await fetch(`${API_CONFIG.BASE_URL}/roles/${userRole.id}/`, {
+                        method: 'GET',
+                        headers: {
+                            ...API_CONFIG.headers,
+                            'Authorization': `Bearer ${TokenManager.getAccessToken()}`,
+                            'ngrok-skip-browser-warning': 'true'
+                        }
+                    });
+
+                    const roleDetailData = await roleDetailResponse.json();
+                    console.log('角色详细信息响应:', roleDetailData);
+
+                    if (!roleDetailData.success || roleDetailData.status_code !== 200) {
+                        console.error('获取角色详细信息失败:', roleDetailData);
                         return {
                             code: 1,
                             msg: '获取角色详细信息失败',
@@ -413,12 +424,12 @@ export async function login(username, password, role) {
                         ...user,
                         role,
                         roleId: userRole.id,
-                        permissions: roleDetailResponse.data.permissions || []
+                        permissions: roleDetailData.data.permissions || []
                     };
                     localStorage.setItem('user', JSON.stringify(userInfo));
                     localStorage.setItem('userRole', role);
                     localStorage.setItem('userRoleId', userRole.id);
-                    localStorage.setItem('userPermissions', JSON.stringify(roleDetailResponse.data.permissions || []));
+                    localStorage.setItem('userPermissions', JSON.stringify(roleDetailData.data.permissions || []));
 
                     return {
                         code: 0,
@@ -427,7 +438,7 @@ export async function login(username, password, role) {
                             token: access,
                             refreshToken: refresh,
                             user: userInfo,
-                            roleDetail: roleDetailResponse.data
+                            roleDetail: roleDetailData.data
                         }
                     };
                 } else {
