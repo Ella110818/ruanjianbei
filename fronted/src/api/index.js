@@ -303,7 +303,11 @@ export async function login(username, password, role) {
                 data: {
                     name: '测试用户',
                     role: role || 'teacher',
-                    id: 1
+                    id: 1,
+                    permissions: ['view_course', 'edit_course'],
+                    is_staff: true,
+                    is_superuser: false,
+                    is_authenticated: true
                 }
             });
         } else {
@@ -333,87 +337,51 @@ export async function login(username, password, role) {
                 body: JSON.stringify(loginData)
             });
 
-            let responseData;
-            try {
-                responseData = await response.json();
-                console.log('登录响应数据:', responseData);
-            } catch (e) {
-                console.error('登录响应解析失败:', e);
-                return {
-                    code: 1,
-                    msg: '服务器响应格式错误',
-                    data: null
-                };
-            }
+            const responseData = await response.json();
+            console.log('登录响应:', responseData);
 
-            if (!response.ok) {
-                return handleHttpError(response, responseData);
-            }
+            if (response.ok && responseData.code === 0) {
+                // 保存token
+                if (responseData.data.access) {
+                    TokenManager.setTokens(responseData.data.access, responseData.data.refresh);
+                }
 
-            // 检查响应是否成功
-            if (responseData.success && responseData.status_code === 200 && responseData.data) {
-                const { access, refresh, user } = responseData.data;
-                console.log('登录成功，获取到tokens:', {
-                    accessToken: access ? '存在' : '不存在',
-                    refreshToken: refresh ? '存在' : '不存在',
-                    user: user ? '存在' : '不存在'
-                });
+                // 获取用户权限
+                const permissionsResponse = await getUserPermissions();
+                console.log('权限响应:', permissionsResponse);
 
-                // 验证并保存token
-                if (TokenManager.isValidToken(access) && TokenManager.isValidToken(refresh)) {
-                    // 先清除旧数据
+                // 如果是教师角色，但没有教师权限，则拒绝登录
+                if (role === 'teacher' && (!permissionsResponse.data.role || permissionsResponse.data.role !== 'teacher')) {
                     TokenManager.clearTokens();
-
-                    // 保存新token
-                    TokenManager.setTokens(access, refresh);
-
-                    // 保存用户信息
-                    const userInfo = {
-                        ...user,
-                        role
-                    };
-                    localStorage.setItem('user', JSON.stringify(userInfo));
-
-                    // 获取用户权限
-                    console.log('开始获取用户权限');
-                    const permissionsResponse = await getUserPermissions();
-                    if (permissionsResponse.code !== 0) {
-                        console.error('获取用户权限失败:', permissionsResponse.msg);
-                    } else {
-                        console.log('成功获取用户权限:', permissionsResponse.data);
-                    }
-
-                    return {
-                        code: 0,
-                        msg: '登录成功',
-                        data: {
-                            token: access,
-                            refreshToken: refresh,
-                            user: userInfo,
-                            permissions: permissionsResponse.data
-                        }
-                    };
-                } else {
-                    console.error('Token格式无效');
                     return {
                         code: 1,
-                        msg: 'Token格式无效',
+                        msg: '您没有教师权限',
                         data: null
                     };
                 }
-            } else {
-                console.error('登录响应格式错误:', responseData);
+
+                // 保存权限信息
+                localStorage.setItem('userRole', role);
+                localStorage.setItem('userPermissions', JSON.stringify(permissionsResponse.data.permissions || []));
+                localStorage.setItem('isStaff', permissionsResponse.data.is_staff);
+                localStorage.setItem('isSuperuser', permissionsResponse.data.is_superuser);
+
                 return {
-                    code: 1,
-                    msg: responseData.message || '登录失败',
-                    data: null
+                    code: 0,
+                    msg: '登录成功',
+                    data: {
+                        ...responseData.data,
+                        ...permissionsResponse.data
+                    }
                 };
             }
+
+            return responseData;
         } catch (error) {
             console.error('登录请求失败:', error);
             return {
                 code: 1,
-                msg: error.message || '网络错误，请稍后重试',
+                msg: '登录失败，请稍后重试',
                 data: null
             };
         }
