@@ -422,17 +422,33 @@ const submitAnswer = async (question, answer) => {
       return;
     }
 
+    // 确保问题ID存在
+    if (!question.id) {
+      console.error('问题ID不存在:', question);
+      ElMessage.error('题目信息不完整');
+      return;
+    }
+
     const data = {
-      exercise: parseInt(question.id),
-      content: String(answer),
-      student: parseInt(currentUser.value.id)
+      exercise: Number(question.id), // 使用 Number 确保是数字
+      content: String(answer || ''),  // 使用 String 并提供默认值
+      student: Number(currentUser.value.id) // 使用 Number 确保是数字
     };
+
+    // 验证数据
+    if (isNaN(data.exercise) || isNaN(data.student)) {
+      console.error('数据转换失败:', data);
+      ElMessage.error('数据格式错误');
+      return;
+    }
 
     console.log('准备提交的数据:', data);
     console.log('数据类型检查:', {
       exercise: typeof data.exercise,
       content: typeof data.content,
-      student: typeof data.student
+      student: typeof data.student,
+      exerciseValue: data.exercise,
+      studentValue: data.student
     });
 
     const response = await submitStudentAnswer(data);

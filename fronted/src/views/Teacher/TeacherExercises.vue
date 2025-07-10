@@ -346,14 +346,17 @@ const handleCreateExercise = async () => {
     
     creating.value = true
     const response = await createExercise(exerciseForm.value)
+    console.log('创建练习题响应:', response);
     
-    if (response.code === 0) {
-      ElMessage.success(response.msg || '创建练习题成功')
+    // 检查响应格式
+    if (response.success && (response.status_code === 200 || response.status_code === 201)) {
+      ElMessage.success('创建练习题成功')
       createDialogVisible.value = false
       // 重新加载练习题列表
       loadExercises()
     } else {
-      ElMessage.error(response.msg || '创建练习题失败')
+      console.error('创建练习题失败:', response);
+      ElMessage.error(response.message || '创建练习题失败')
     }
   } catch (error) {
     console.error('创建练习题失败:', error)
