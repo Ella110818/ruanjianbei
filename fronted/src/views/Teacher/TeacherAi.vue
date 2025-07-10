@@ -33,14 +33,19 @@ const courses = ref([])
 const isGeneratingPPT = ref(false)
 
 // 处理生成PPT的请求
-const handleGeneratePPT = async () => {
+const handleGeneratePPT = async (knowledgePoints) => {
   if (isGeneratingPPT.value) {
     ElMessage.warning('正在生成PPT，请稍候...')
     return
   }
 
+  if (!knowledgePoints || knowledgePoints.length === 0) {
+    ElMessage.warning('请先选择要生成PPT的知识点')
+    return
+  }
+
   const params = {
-    knowledge_point_ids: [1],
+    knowledge_point_ids: knowledgePoints.map(point => point.id),
     include_children: true,
     max_depth: 3,
     format: "pptx",
@@ -50,7 +55,7 @@ const handleGeneratePPT = async () => {
     show_relations: true,
     title: "知识点PPT",
     include_course_info: true,
-    use_ai: false,
+    use_ai: true,
     return_file_content: false
   }
 
@@ -58,19 +63,19 @@ const handleGeneratePPT = async () => {
     isGeneratingPPT.value = true
     const response = await generateKnowledgePointsPPT(params)
     
-    if (response.status === 'success') {
+    if (response.success && response.status_code === 200) {
       const fileUrl = response.data.file_url
       // 创建一个下载链接
       const link = document.createElement('a')
       link.href = fileUrl
-      link.download = response.data.filename
+      link.download = response.data.filename || '知识点PPT.pptx'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       
       ElMessage.success('PPT生成成功！')
     } else {
-      ElMessage.error(response.msg || '生成PPT失败')
+      ElMessage.error(response.message || '生成PPT失败')
     }
   } catch (error) {
     console.error('生成PPT失败:', error)
