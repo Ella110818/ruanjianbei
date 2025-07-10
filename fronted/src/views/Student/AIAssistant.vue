@@ -188,7 +188,7 @@
 import { ref, computed } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
 import QuestionDisplay from '@/components/QuestionDisplay.vue'
-import { API_CONFIG, exportQuestions } from '@/api/index.js'
+import { exportQuestions, generateQuestions } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
 
 const searchQuery = ref('')
@@ -251,34 +251,21 @@ const generateSessionId = () => {
 const currentSessionId = ref(generateSessionId());
 
 // API调用函数
-const generateQuestions = async (input) => {
+const generateQuestionsFromAPI = async (input) => {
   try {
     loading.value = true;
     const sessionId = currentSessionId.value;
-    const response = await fetch(`${API_CONFIG.BASE_URL}/questions-generate/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'ngrok-skip-browser-warning': 'true'
-      },
-      body: JSON.stringify({
-        knowledge_point_ids: currentConfig.value.knowledgePointIds,
-        question_types: currentConfig.value.selectedTypes,
-        quantity: currentConfig.value.quantity,
-        difficulty: currentConfig.value.difficulty,
-        chatInput: input,
-        sessionId: sessionId
-      })
+    const response = await generateQuestions({
+      knowledge_point_ids: currentConfig.value.knowledgePointIds,
+      question_types: currentConfig.value.selectedTypes,
+      quantity: currentConfig.value.quantity,
+      difficulty: currentConfig.value.difficulty,
+      chatInput: input,
+      sessionId: sessionId
     });
 
-    if (!response.ok) {
-      throw new Error(`网络请求失败: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('API响应:', data);
-    return data;
+    console.log('API响应:', response);
+    return response;
   } catch (error) {
     console.error('生成问题失败:', error);
     throw error;
@@ -368,7 +355,7 @@ const handleSearch = async () => {
         time: formatTime(new Date())
       });
 
-      const response = await generateQuestions(searchQuery.value);
+      const response = await generateQuestionsFromAPI(searchQuery.value);
       const processedResponse = handleQuestionResponse(response);
       
       const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
@@ -463,7 +450,7 @@ const sendMessage = async (message = null) => {
       time: formatTime(new Date())
     });
 
-    const response = await generateQuestions(userInput);
+    const response = await generateQuestionsFromAPI(userInput);
     const processedResponse = handleQuestionResponse(response);
     
     const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
