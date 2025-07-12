@@ -2816,6 +2816,7 @@ export async function generateQuestions(params) {
         const response = await handleRequest(url, {
             method: 'POST',
             headers: {
+                ...API_CONFIG.headers,  // 包含所有默认头部，包括 ngrok-skip-browser-warning
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(params)
