@@ -1072,78 +1072,41 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
     }
 
     try {
+        const url = `${API_CONFIG.BASE_URL}/generate-questions/export/?session_key=${sessionKey}&format=${format}&filename=${filename}`;
+        console.log('导出题目URL:', url);
+
         const token = TokenManager.getAccessToken();
         if (!token) {
-            throw new Error('请先登录');
+            throw new Error('No access token available');
         }
 
-        // 构建导出URL
-        const exportUrl = `${API_CONFIG.BASE_URL}/questions-generate/export/?session_key=${sessionKey}&format=${format}&filename=${filename}`;
-        console.log('导出URL:', exportUrl);
-
-        const response = await fetch(exportUrl, {
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'Accept': format === 'json' ? 'application/json' : 'text/csv',
-                'ngrok-skip-browser-warning': 'true'  // 添加 ngrok 跳过警告头
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
             }
         });
 
+        const responseData = await response.json();
+        console.log('导出题目响应:', responseData);
+
         if (!response.ok) {
-            throw new Error(`导出失败: ${response.status}`);
+            return handleHttpError(response, responseData);
         }
 
-        // 检查Content-Type
-        const contentType = response.headers.get('Content-Type');
-        console.log('响应Content-Type:', contentType);
-
-        // 如果是JSON响应
-        if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            if (data.success && data.data && data.data.file_url) {
-                // 如果返回的是文件URL，创建下载链接
-                const fileUrl = `${API_CONFIG.BASE_URL}${data.data.file_url}`;
-                const link = document.createElement('a');
-                link.href = fileUrl;
-                link.download = filename + '.' + format;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                return {
-                    code: 0,
-                    msg: '文件下载成功',
-                    data: data.data
-                };
-            }
-            return {
-                code: 0,
-                msg: '导出成功',
-                data
-            };
-        } else {
-            // 直接下载文件
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = `${filename}.${format}`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(downloadUrl);
-
-            return {
-                code: 0,
-                msg: '文件下载成功',
-                data: null
-            };
-        }
+        return {
+            code: 0,
+            msg: '导出成功',
+            data: responseData.data
+        };
     } catch (error) {
-        console.error('导出问题失败:', error);
+        console.error('导出题目失败:', error);
         return {
             code: 1,
-            msg: error.message || '导出失败',
+            msg: error.message || '导出题目失败',
             data: null
         };
     }
@@ -2823,7 +2786,8 @@ export async function generateQuestions(params) {
     }
 
     try {
-        const url = `${API_CONFIG.BASE_URL}/questions-generate/`;
+        const url = `${API_CONFIG.BASE_URL}/generate-questions/`;
+        console.log('生成题目请求URL:', url);
         const response = await handleRequest(url, {
             method: 'POST',
             headers: {
