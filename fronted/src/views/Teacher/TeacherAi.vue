@@ -251,6 +251,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
     include_course_info: true,
     use_ai: false,
     return_file_content: false,
+    direct_download: true,
     course_id: localStorage.getItem('currentCourseId') || null
   }
 
@@ -259,44 +260,60 @@ const handleGeneratePPT = async (knowledgePoints) => {
     const response = await generateKnowledgePointsPPT(params)
     console.log('PPT生成响应:', response)
     
-    if (response.status === 'success' && response.data?.file_url) {
-      // 构建完整的文件URL，添加api前缀
-      const fileUrl = `${API_BASE_URL}/api${response.data.file_url}`
-      console.log('下载文件URL:', fileUrl)
-      
-      try {
-        // 使用fetch获取文件内容
-        const token = localStorage.getItem('token')
-        const fileResponse = await fetch(fileUrl, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'ngrok-skip-browser-warning': 'true'
-          }
-        })
-        
-        if (!fileResponse.ok) {
-          throw new Error(`HTTP error! status: ${fileResponse.status}`)
-        }
-        
-        // 获取文件blob
-        const blob = await fileResponse.blob()
-        
-        // 创建下载链接
+    if (response.status === 'success') {
+      if (response.data?.file_content) {
+        // 如果是直接下载模式，创建blob并下载
+        const blob = new Blob([response.data.file_content], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
         link.download = response.data.filename || '知识点PPT.pptx'
         document.body.appendChild(link)
         link.click()
-        
-        // 清理
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
-        
         ElMessage.success('PPT下载成功！')
-      } catch (downloadError) {
-        console.error('下载文件失败:', downloadError)
-        ElMessage.error('下载文件失败，请稍后重试')
+      } else if (response.data?.file_url) {
+        // 如果返回的是URL，构建完整的文件URL并下载
+        const fileUrl = `${API_BASE_URL}/api${response.data.file_url}`
+        console.log('下载文件URL:', fileUrl)
+        
+        try {
+          // 使用fetch获取文件内容
+          const token = localStorage.getItem('token')
+          const fileResponse = await fetch(fileUrl, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'ngrok-skip-browser-warning': 'true'
+            }
+          })
+          
+          if (!fileResponse.ok) {
+            throw new Error(`HTTP error! status: ${fileResponse.status}`)
+          }
+          
+          // 获取文件blob
+          const blob = await fileResponse.blob()
+          
+          // 创建下载链接
+          const url = window.URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = response.data.filename || '知识点PPT.pptx'
+          document.body.appendChild(link)
+          link.click()
+          
+          // 清理
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(url)
+          
+          ElMessage.success('PPT下载成功！')
+        } catch (downloadError) {
+          console.error('下载文件失败:', downloadError)
+          ElMessage.error('下载文件失败，请稍后重试')
+        }
+      } else {
+        ElMessage.error('生成的PPT数据格式不正确')
       }
     } else {
       ElMessage.error(response.error || '生成PPT失败')
