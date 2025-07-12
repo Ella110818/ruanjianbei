@@ -103,9 +103,10 @@ export default {
     async loadCourses() {
       this.coursesLoading = true
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/courses/`, {
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
+        const response = await fetch(`${API_BASE_URL}/api/courses/`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
             'Content-Type': 'application/json',
             'ngrok-skip-browser-warning': 'true'
           }
