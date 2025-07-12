@@ -151,7 +151,7 @@ const loadKnowledgePoints = async () => {
 
     const response = await fetch(`${API_BASE_URL}/api/knowledge-points/`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': 'true'
       }
@@ -258,7 +258,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
       
       try {
         // 使用fetch获取文件内容
-        const token = localStorage.getItem('access_token')
+        const token = localStorage.getItem('token')
         const fileResponse = await fetch(fileUrl, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -307,7 +307,7 @@ const loadCourses = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/courses/`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': 'true'
       }
