@@ -60,7 +60,9 @@
             >
               <div class="knowledge-point-option">
                 <span>{{ point.title }}</span>
-                <small v-if="point.description" class="knowledge-point-desc">{{ point.description }}</small>
+                <small v-if="point.description" class="knowledge-point-desc">
+                  {{ point.description.length > 50 ? point.description.slice(0, 50) + '...' : point.description }}
+                </small>
               </div>
             </el-option>
           </el-select>
@@ -251,15 +253,16 @@ const loadKnowledgePoints = async () => {
     const response = await getKnowledgePoints({
       page: 1,
       page_size: 100,  // 获取更多知识点
-      ordering: 'name'  // 按名称排序
+      ordering: 'title'  // 按标题排序
     })
     
     if (response.code === 0 && response.data) {
       knowledgePoints.value = response.data.results.map(point => ({
         id: point.id,
-        title: point.name,
-        description: point.description
+        title: point.title, // 使用 title 而不是 name
+        description: point.content // 使用 content 作为描述
       })) || []
+      console.log('知识点列表:', knowledgePoints.value) // 添加日志
     } else {
       ElMessage.error(response.msg || '获取知识点列表失败')
     }

@@ -12,7 +12,12 @@
             <img src="@/assets/大标题1.png" alt="标题" />
           </div>
           <div class="course-select-container">
-            <el-select v-model="selectedCourse" placeholder="请选择课程" class="course-select">
+            <el-select 
+              v-model="selectedCourse" 
+              placeholder="请选择课程" 
+              class="course-select"
+              :loading="coursesLoading"
+            >
               <el-option
                 v-for="course in courses"
                 :key="course.value"
@@ -52,6 +57,7 @@ import TeachingEfficiency from '@/components/TeachingEfficiency.vue'
 import LearningEffect from '@/components/LearningEffect.vue'
 import CourseOptimization from '@/components/CourseOptimization.vue'
 import FrequentErrors from '@/components/FrequentErrors.vue'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'AdminDashboard',
@@ -70,12 +76,8 @@ export default {
       currentTime: '',
       currentDate: '',
       selectedCourse: '',
-      courses: [
-        { value: 'math', label: '高等数学' },
-        { value: 'physics', label: '大学物理' },
-        { value: 'circuit', label: '电路分析' },
-        { value: 'programming', label: '程序设计' }
-      ]
+      courses: [],
+      coursesLoading: false
     }
   },
   methods: {
@@ -95,11 +97,41 @@ export default {
       const day = String(now.getDate()).padStart(2, '0')
       const weekday = weekdays[now.getDay()]
       this.currentDate = `${year}年${month}月${day}日 ${weekday}`
+    },
+
+    // 加载课程列表
+    async loadCourses() {
+      this.coursesLoading = true
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/courses/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
+        const data = await response.json()
+        
+        if (response.ok && data.success) {
+          this.courses = data.data.map(course => ({
+            value: course.id,
+            label: course.title
+          }))
+        } else {
+          ElMessage.error('获取课程列表失败')
+        }
+      } catch (error) {
+        console.error('加载课程失败:', error)
+        ElMessage.error('加载课程列表失败')
+      } finally {
+        this.coursesLoading = false
+      }
     }
   },
   mounted() {
     this.updateTime() // 初始化时间
     this.timer = setInterval(this.updateTime, 1000) // 每秒更新一次
+    this.loadCourses() // 加载课程列表
   },
   beforeUnmount() {
     if (this.timer) {
