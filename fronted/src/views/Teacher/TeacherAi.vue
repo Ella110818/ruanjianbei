@@ -133,6 +133,11 @@ const selectedCourse = ref('')
 const loadKnowledgePoints = async () => {
   loading.value = true
   try {
+    // 确保先加载课程列表
+    if (courses.value.length === 0) {
+      await loadCourses()
+    }
+
     const params = {
       page: currentPage.value,
       page_size: pageSize.value,
@@ -142,10 +147,13 @@ const loadKnowledgePoints = async () => {
 
     const response = await getKnowledgePoints(params)
     if (response.code === 0) {
-      knowledgePoints.value = response.data.results.map(point => ({
-        ...point,
-        course_name: courses.value.find(c => c.id === point.course)?.name || '未知课程'
-      }))
+      knowledgePoints.value = response.data.results.map(point => {
+        const course = courses.value.find(c => c.id === point.course)
+        return {
+          ...point,
+          course_name: course ? course.name : `课程${point.course}`  // 如果找不到课程名称，显示课程ID
+        }
+      })
       total.value = response.data.count
     } else {
       ElMessage.error(response.msg || '获取知识点列表失败')
