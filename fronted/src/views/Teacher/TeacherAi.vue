@@ -134,7 +134,7 @@ const selectedCourse = ref('')
 const coursesList = ref([])
 const coursesLoading = ref(false)
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
 
 // 加载知识点列表
 const loadKnowledgePoints = async () => {
