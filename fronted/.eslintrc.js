@@ -21,7 +21,7 @@ module.exports = {
     ecmaVersion: 2021
   },
   rules: {
-    'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+    'no-console': 'off',  // 允许在所有环境下使用 console
     'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     'no-unused-vars': ['error', {
       'argsIgnorePattern': '^_',

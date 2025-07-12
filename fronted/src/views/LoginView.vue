@@ -144,6 +144,17 @@ export default {
       try {
         const res = await login(this.formData.loginAccount, this.formData.loginPassword, this.selectedRole);
         if (res.code === 0) {
+          // 保存 token 数据
+          if (res.data.access) {
+            localStorage.setItem('token', res.data.access);
+          }
+          if (res.data.refresh) {
+            localStorage.setItem('refreshToken', res.data.refresh);
+          }
+          
+          // 保存用户角色
+          localStorage.setItem('userRole', this.selectedRole);
+          
           // 根据角色保存用户信息
           const roleKey = {
             teacher: 'teacherName',
