@@ -2633,28 +2633,33 @@ export const generateKnowledgePointsPPT = async (params) => {
         console.log('请求配置:', requestConfig);
 
         const response = await fetch(url, requestConfig);
-        const responseText = await response.text();
-        console.log('原始响应:', responseText);
 
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (e) {
-            console.error('解析响应失败:', e);
-            throw new Error('服务器响应格式错误');
-        }
+        // 检查Content-Type
+        const contentType = response.headers.get('content-type');
+        console.log('响应Content-Type:', contentType);
 
-        if (response.ok) {
-            // 修改返回的文件URL，确保包含完整的路径
-            if (data.data && data.data.file_url) {
-                data.data.file_url = data.data.file_url.replace(/\\/g, '/');
-                if (!data.data.file_url.startsWith('/')) {
-                    data.data.file_url = '/' + data.data.file_url;
+        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.presentationml.presentation')) {
+            // 如果是PPT文件，直接返回blob
+            const blob = await response.blob();
+            return {
+                status: 'success',
+                data: {
+                    file_content: blob,
+                    filename: 'knowledge_points.pptx'
                 }
-            }
-            return data;
+            };
         } else {
-            throw new Error(data.message || '生成PPT失败');
+            // 如果不是PPT文件，尝试解析JSON响应
+            const responseText = await response.text();
+            console.log('原始响应:', responseText);
+
+            try {
+                const data = JSON.parse(responseText);
+                return data;
+            } catch (e) {
+                console.error('解析响应失败:', e);
+                throw new Error('服务器响应格式错误');
+            }
         }
     } catch (error) {
         console.error('生成PPT失败:', error);

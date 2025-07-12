@@ -262,8 +262,8 @@ const handleGeneratePPT = async (knowledgePoints) => {
     
     if (response.status === 'success') {
       if (response.data?.file_content) {
-        // 如果是直接下载模式，创建blob并下载
-        const blob = new Blob([response.data.file_content], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
+        // 如果是直接下载模式，直接使用返回的blob
+        const blob = response.data.file_content
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
