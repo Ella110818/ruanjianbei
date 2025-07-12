@@ -2636,7 +2636,8 @@ export const generateKnowledgePointsPPT = async (params) => {
                 .replace(/^\/+/, '') // 移除开头的斜杠
                 .replace(/\/+/g, '/'); // 将多个斜杠替换为单个斜杠
 
-            const fileUrl = `${API_CONFIG.BASE_URL}/api/${cleanPath}`;
+            // 使用 API_URL 而不是 BASE_URL 来避免重复的 /api/
+            const fileUrl = `${ENV[getEnvironment()].API_URL}/${cleanPath}`;
             console.log('下载文件URL:', fileUrl);
 
             // 创建一个隐藏的a标签来下载文件
