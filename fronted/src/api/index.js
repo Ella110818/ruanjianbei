@@ -730,10 +730,8 @@ export async function getCourseDetail(courseId) {
             throw new Error('No access token available');
         }
 
-        // 构建URL并添加bypass参数
-        const courseDetailUrl = `${API_CONFIG.BASE_URL}/courses/${courseId}/`;
-
-        const response = await fetch(courseDetailUrl, {
+        const url = `${API_CONFIG.BASE_URL}/courses/${courseId}/`;
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -744,13 +742,12 @@ export async function getCourseDetail(courseId) {
         });
 
         const responseData = await response.json();
-        console.log('课程详情响应:', responseData);
 
         if (!response.ok) {
             return handleHttpError(response, responseData);
         }
 
-        if (responseData.success && responseData.status_code === 200) {
+        if (responseData.success) {
             return {
                 code: 0,
                 msg: '获取课程详情成功',
@@ -767,7 +764,7 @@ export async function getCourseDetail(courseId) {
         console.error('获取课程详情失败:', error);
         return {
             code: 1,
-            msg: error.message || '网络错误，请稍后重试',
+            msg: error.message || '获取课程详情失败',
             data: null
         };
     }

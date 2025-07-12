@@ -110,7 +110,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { getCourses, generateKnowledgePointsPPT, getKnowledgePoints } from '@/api'
+import { getCourses, generateKnowledgePointsPPT, getKnowledgePoints, getCourseDetail } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
@@ -133,11 +133,6 @@ const selectedCourse = ref('')
 const loadKnowledgePoints = async () => {
   loading.value = true
   try {
-    // 确保先加载课程列表
-    if (courses.value.length === 0) {
-      await loadCourses()
-    }
-
     const params = {
       page: currentPage.value,
       page_size: pageSize.value,
@@ -147,11 +142,28 @@ const loadKnowledgePoints = async () => {
 
     const response = await getKnowledgePoints(params)
     if (response.code === 0) {
+      // 创建一个Map来缓存课程信息，避免重复请求
+      const courseCache = new Map()
+      
+      // 获取所有不重复的课程ID
+      const courseIds = [...new Set(response.data.results.map(point => point.course))]
+      
+      // 并行获取所有课程详情
+      await Promise.all(courseIds.map(async courseId => {
+        if (!courseCache.has(courseId)) {
+          const courseResponse = await getCourseDetail(courseId)
+          if (courseResponse.code === 0) {
+            courseCache.set(courseId, courseResponse.data)
+          }
+        }
+      }))
+
+      // 处理知识点数据
       knowledgePoints.value = response.data.results.map(point => {
-        const course = courses.value.find(c => c.id === point.course)
+        const courseInfo = courseCache.get(point.course)
         return {
           ...point,
-          course_name: course ? course.name : `课程${point.course}`  // 如果找不到课程名称，显示课程ID
+          course_name: courseInfo ? courseInfo.title : `课程${point.course}`
         }
       })
       total.value = response.data.count
