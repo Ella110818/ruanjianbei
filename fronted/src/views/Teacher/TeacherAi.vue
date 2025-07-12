@@ -134,7 +134,9 @@ const selectedCourse = ref('')
 const coursesList = ref([])
 const coursesLoading = ref(false)
 
+// 定义API基础URL
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
+console.log('当前API基础URL:', API_BASE_URL) // 添加日志
 
 // 加载知识点列表
 const loadKnowledgePoints = async () => {
@@ -156,10 +158,11 @@ const loadKnowledgePoints = async () => {
         'ngrok-skip-browser-warning': 'true'
       }
     })
-    const data = await response.json()
-    console.log('知识点列表响应:', data)
+    const responseData = await response.json()
+    console.log('知识点列表响应:', responseData)
 
-    if (response.ok) {
+    if (response.ok && responseData.success) {
+      const data = responseData.data
       knowledgePoints.value = data.results.map(point => ({
         ...point,
         course_name: coursesList.value.find(c => c.id === point.course)?.title || `课程${point.course}`
@@ -167,7 +170,12 @@ const loadKnowledgePoints = async () => {
       total.value = data.count
       console.log('处理后的知识点列表:', knowledgePoints.value)
     } else {
-      ElMessage.error('获取知识点列表失败')
+      if (responseData.status_code === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        // 可以在这里添加重定向到登录页面的逻辑
+      } else {
+        ElMessage.error(responseData.message || '获取知识点列表失败')
+      }
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
@@ -252,7 +260,6 @@ const handleGeneratePPT = async (knowledgePoints) => {
     console.log('PPT生成响应:', response)
     
     if (response.status === 'success' && response.data?.file_url) {
-      // 构建完整的文件URL，添加api前缀
       const fileUrl = `${API_BASE_URL}/api/presentations${response.data.file_url.replace(/\\/g, '/')}`
       console.log('下载文件URL:', fileUrl)
       
@@ -305,6 +312,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
+    console.log('开始加载课程列表')
     const response = await fetch(`${API_BASE_URL}/api/courses/`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -312,17 +320,23 @@ const loadCourses = async () => {
         'ngrok-skip-browser-warning': 'true'
       }
     })
-    const data = await response.json()
-    console.log('课程列表响应:', data)
+    const responseData = await response.json()
+    console.log('课程列表响应:', responseData)
     
-    if (response.ok) {
-      coursesList.value = data.map(course => ({
+    if (response.ok && responseData.success) {
+      const data = responseData.data
+      coursesList.value = data.results.map(course => ({
         id: course.id,
         title: course.title
       }))
       console.log('处理后的课程列表:', coursesList.value)
     } else {
-      ElMessage.error('获取课程列表失败')
+      if (responseData.status_code === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        // 可以在这里添加重定向到登录页面的逻辑
+      } else {
+        ElMessage.error(responseData.message || '获取课程列表失败')
+      }
     }
   } catch (error) {
     console.error('加载课程失败:', error)
