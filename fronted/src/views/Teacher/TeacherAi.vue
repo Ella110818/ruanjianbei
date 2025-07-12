@@ -31,11 +31,12 @@
               placeholder="选择课程"
               @change="handleCourseChange"
               class="course-select"
+              :loading="coursesLoading"
             >
               <el-option
-                v-for="course in courses"
+                v-for="course in coursesList"
                 :key="course.id"
-                :label="course.name"
+                :label="course.title"
                 :value="course.id"
               />
             </el-select>
@@ -110,7 +111,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { getCourses, generateKnowledgePointsPPT, getKnowledgePoints, getCourseDetail } from '@/api'
+import { getKnowledgePoints, getCourseDetail, generateKnowledgePointsPPT } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
@@ -128,6 +129,10 @@ const pageSize = ref(10)
 const total = ref(0)
 const searchQuery = ref('')
 const selectedCourse = ref('')
+
+// 加载课程列表
+const coursesList = ref([])
+const coursesLoading = ref(false)
 
 // 加载知识点列表
 const loadKnowledgePoints = async () => {
@@ -266,23 +271,27 @@ const handleGeneratePPT = async (knowledgePoints) => {
 
 // 加载课程数据
 const loadCourses = async () => {
+  coursesLoading.value = true
   try {
-    const response = await getCourses()
-    if (response.code === 0) {
-      courses.value = response.data.map(course => ({
-        id: course.id,
-        name: course.title,
-        description: course.description,
-        subject: course.subject,
-        grade_level: course.grade_level,
-        teacher_name: course.teacher_name
-      }))
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/courses/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true'
+      }
+    })
+    const data = await response.json()
+    
+    if (response.ok && data.success) {
+      coursesList.value = data.data
     } else {
-      ElMessage.error(response.msg || '获取课程列表失败')
+      ElMessage.error('获取课程列表失败')
     }
   } catch (error) {
     console.error('加载课程失败:', error)
-    ElMessage.error('加载课程数据失败，请稍后重试')
+    ElMessage.error('加载课程列表失败')
+  } finally {
+    coursesLoading.value = false
   }
 }
 
