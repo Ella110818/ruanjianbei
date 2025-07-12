@@ -7,7 +7,7 @@
         :courseMenuOpen="courseMenuOpen"
         :courses="courses"
         @update:sideTab="handleSideTabChange"
-        @update:courseMenuOpen="courseMenuOpen = $event"
+        @update:courseMenuOpen="handleCourseMenuChange"
       />
       <div class="exercises-container">
         <!-- 添加创建按钮 -->
@@ -298,6 +298,32 @@ const handlePageChange = (page) => {
 // 处理侧边栏标签变化
 const handleSideTabChange = (tab) => {
   sideTab.value = tab
+  // 如果是课程相关的标签，打开课程菜单
+  if (tab.startsWith('course-')) {
+    courseMenuOpen.value = true
+  }
+  // 保存到localStorage以便在页面刷新后恢复
+  localStorage.setItem('sideTab', tab)
+}
+
+// 处理课程菜单状态变化
+const handleCourseMenuChange = (open) => {
+  courseMenuOpen.value = open
+  // 如果关闭菜单且当前是课程相关的标签，切换到练习题标签
+  if (!open && sideTab.value.startsWith('course-')) {
+    handleSideTabChange('exercises')
+  }
+}
+
+// 恢复之前的状态
+const restorePreviousState = () => {
+  const previousTab = localStorage.getItem('sideTab')
+  if (previousTab) {
+    sideTab.value = previousTab
+    if (previousTab.startsWith('course-')) {
+      courseMenuOpen.value = true
+    }
+  }
 }
 
 // 创建练习题相关状态
@@ -386,6 +412,7 @@ const toggleExercise = (exerciseId) => {
 
 // 组件挂载时加载数据
 onMounted(() => {
+  restorePreviousState() // 先恢复状态
   loadExercises()
   loadKnowledgePoints()
   loadCourses()
