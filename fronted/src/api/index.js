@@ -293,21 +293,26 @@ export async function login(username, password, role) {
         // 本地测试模式
         if (username === '11' && password === '22') {
             return Promise.resolve({
-                success: true,
-                status_code: 200,
+                code: 0,
+                msg: '登录成功',
                 data: {
                     name: '测试用户',
                     role: role || 'teacher',
                     id: 1,
                     access: 'mock_token',
-                    refresh: 'mock_refresh_token'
+                    refresh: 'mock_refresh_token',
+                    user: {
+                        id: 1,
+                        username: username,
+                        name: '测试用户',
+                        role: role || 'teacher'
+                    }
                 }
             });
         } else {
             return Promise.resolve({
-                success: false,
-                status_code: 400,
-                message: '用户名或密码错误',
+                code: 1,
+                msg: '用户名或密码错误',
                 data: null
             });
         }
