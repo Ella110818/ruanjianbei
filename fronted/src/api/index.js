@@ -2630,8 +2630,13 @@ export const generateKnowledgePointsPPT = async (params) => {
         });
 
         if (response.status === 'success' && response.data) {
-            // 构建完整的文件URL
-            const fileUrl = `${API_CONFIG.BASE_URL}${response.data.file_url.replace(/\\/g, '/')}`;
+            // 构建完整的文件URL，处理路径分隔符
+            const cleanPath = response.data.file_url
+                .replace(/\\/g, '/') // 将所有反斜杠替换为正斜杠
+                .replace(/^\/+/, '') // 移除开头的斜杠
+                .replace(/\/+/g, '/'); // 将多个斜杠替换为单个斜杠
+
+            const fileUrl = `${API_CONFIG.BASE_URL}/api/${cleanPath}`;
             console.log('下载文件URL:', fileUrl);
 
             // 创建一个隐藏的a标签来下载文件
