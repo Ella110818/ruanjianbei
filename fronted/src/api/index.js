@@ -2613,54 +2613,52 @@ export async function getStudentAnswers(params = {}) {
 // 生成PPT的接口
 export const generateKnowledgePointsPPT = async (params) => {
     try {
-        const url = `${API_CONFIG.BASE_URL}/knowledge-points-to-ppt/`;
-        console.log('生成PPT请求URL:', url);
+        console.log('请求参数:', params);
+        const token = TokenManager.getAccessToken();
+        console.log('发送请求使用的token:', token);
 
-        const response = await handleRequest(url, {
+        const url = `${API_CONFIG.BASE_URL}/knowledge-points-to-ppt/`;
+        console.log('完整请求URL:', url);
+
+        const requestConfig = {
+            url,
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${token}`,
                 'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify(params)
-        });
+        };
+        console.log('请求配置:', requestConfig);
 
-        if (response.status === 'success' && response.data) {
-            // 构建完整的文件URL，处理路径分隔符
-            const cleanPath = response.data.file_url
-                .replace(/\\/g, '/') // 将所有反斜杠替换为正斜杠
-                .replace(/^\/+/, '') // 移除开头的斜杠
-                .replace(/\/+/g, '/'); // 将多个斜杠替换为单个斜杠
+        const response = await fetch(url, requestConfig);
+        const responseText = await response.text();
+        console.log('原始响应:', responseText);
 
-            // 使用 API_URL 而不是 BASE_URL 来避免重复的 /api/
-            const fileUrl = `${ENV[getEnvironment()].API_URL}/${cleanPath}`;
-            console.log('下载文件URL:', fileUrl);
-
-            // 创建一个隐藏的a标签来下载文件
-            const link = document.createElement('a');
-            link.href = fileUrl;
-            link.download = response.data.filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            return {
-                success: true,
-                data: response.data
-            };
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('解析响应失败:', e);
+            throw new Error('服务器响应格式错误');
         }
 
-        return {
-            success: false,
-            error: '生成PPT失败'
-        };
+        if (response.ok) {
+            // 修改返回的文件URL，确保包含完整的路径
+            if (data.data && data.data.file_url) {
+                data.data.file_url = data.data.file_url.replace(/\\/g, '/');
+                if (!data.data.file_url.startsWith('/')) {
+                    data.data.file_url = '/' + data.data.file_url;
+                }
+            }
+            return data;
+        } else {
+            throw new Error(data.message || '生成PPT失败');
+        }
     } catch (error) {
-        console.error('生成PPT时发生错误:', error);
-        return {
-            success: false,
-            error: error.message || '生成PPT失败'
-        };
+        console.error('生成PPT失败:', error);
+        throw error;
     }
 };
 
