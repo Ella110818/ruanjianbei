@@ -134,6 +134,8 @@ const selectedCourse = ref('')
 const coursesList = ref([])
 const coursesLoading = ref(false)
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
+
 // 加载知识点列表
 const loadKnowledgePoints = async () => {
   loading.value = true
@@ -145,9 +147,9 @@ const loadKnowledgePoints = async () => {
       course: selectedCourse.value
     }
 
-    console.log('加载知识点参数:', params) // 添加日志
+    console.log('加载知识点参数:', params)
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge-points/`, {
+    const response = await fetch(`${API_BASE_URL}/api/knowledge-points/`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         'Content-Type': 'application/json',
@@ -155,7 +157,7 @@ const loadKnowledgePoints = async () => {
       }
     })
     const data = await response.json()
-    console.log('知识点列表响应:', data) // 添加日志
+    console.log('知识点列表响应:', data)
 
     if (response.ok) {
       knowledgePoints.value = data.results.map(point => ({
@@ -163,7 +165,7 @@ const loadKnowledgePoints = async () => {
         course_name: coursesList.value.find(c => c.id === point.course)?.title || `课程${point.course}`
       }))
       total.value = data.count
-      console.log('处理后的知识点列表:', knowledgePoints.value) // 添加日志
+      console.log('处理后的知识点列表:', knowledgePoints.value)
     } else {
       ElMessage.error('获取知识点列表失败')
     }
@@ -251,8 +253,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
     
     if (response.status === 'success' && response.data?.file_url) {
       // 构建完整的文件URL，添加api前缀
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
-      const fileUrl = `${baseUrl}/api/presentations${response.data.file_url.replace(/\\/g, '/')}`
+      const fileUrl = `${API_BASE_URL}/api/presentations${response.data.file_url.replace(/\\/g, '/')}`
       console.log('下载文件URL:', fileUrl)
       
       try {
@@ -304,7 +305,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/courses/`, {
+    const response = await fetch(`${API_BASE_URL}/api/courses/`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         'Content-Type': 'application/json',
@@ -312,14 +313,14 @@ const loadCourses = async () => {
       }
     })
     const data = await response.json()
-    console.log('课程列表响应:', data) // 添加日志
+    console.log('课程列表响应:', data)
     
     if (response.ok) {
       coursesList.value = data.map(course => ({
         id: course.id,
         title: course.title
       }))
-      console.log('处理后的课程列表:', coursesList.value) // 添加日志
+      console.log('处理后的课程列表:', coursesList.value)
     } else {
       ElMessage.error('获取课程列表失败')
     }
