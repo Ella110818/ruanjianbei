@@ -261,7 +261,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
     
     if (response.status === 'success' && response.data?.file_url) {
       // 构建完整的文件URL，添加api前缀
-      const fileUrl = `${API_BASE_URL}/api/presentations${response.data.file_url}`
+      const fileUrl = `${API_BASE_URL}/api${response.data.file_url}`
       console.log('下载文件URL:', fileUrl)
       
       try {
