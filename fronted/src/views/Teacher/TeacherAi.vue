@@ -111,7 +111,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { getKnowledgePoints, getCourseDetail, generateKnowledgePointsPPT } from '@/api'
+import { generateKnowledgePointsPPT } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
@@ -145,35 +145,27 @@ const loadKnowledgePoints = async () => {
       course: selectedCourse.value
     }
 
-    const response = await getKnowledgePoints(params)
-    if (response.code === 0) {
-      // 创建一个Map来缓存课程信息，避免重复请求
-      const courseCache = new Map()
-      
-      // 获取所有不重复的课程ID
-      const courseIds = [...new Set(response.data.results.map(point => point.course))]
-      
-      // 并行获取所有课程详情
-      await Promise.all(courseIds.map(async courseId => {
-        if (!courseCache.has(courseId)) {
-          const courseResponse = await getCourseDetail(courseId)
-          if (courseResponse.code === 0) {
-            courseCache.set(courseId, courseResponse.data)
-          }
-        }
-      }))
+    console.log('加载知识点参数:', params) // 添加日志
 
-      // 处理知识点数据
-      knowledgePoints.value = response.data.results.map(point => {
-        const courseInfo = courseCache.get(point.course)
-        return {
-          ...point,
-          course_name: courseInfo ? courseInfo.title : `课程${point.course}`
-        }
-      })
-      total.value = response.data.count
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge-points/`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true'
+      }
+    })
+    const data = await response.json()
+    console.log('知识点列表响应:', data) // 添加日志
+
+    if (response.ok) {
+      knowledgePoints.value = data.results.map(point => ({
+        ...point,
+        course_name: coursesList.value.find(c => c.id === point.course)?.title || `课程${point.course}`
+      }))
+      total.value = data.count
+      console.log('处理后的知识点列表:', knowledgePoints.value) // 添加日志
     } else {
-      ElMessage.error(response.msg || '获取知识点列表失败')
+      ElMessage.error('获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
@@ -320,9 +312,14 @@ const loadCourses = async () => {
       }
     })
     const data = await response.json()
+    console.log('课程列表响应:', data) // 添加日志
     
-    if (response.ok && data.success) {
-      coursesList.value = data.data
+    if (response.ok) {
+      coursesList.value = data.map(course => ({
+        id: course.id,
+        title: course.title
+      }))
+      console.log('处理后的课程列表:', coursesList.value) // 添加日志
     } else {
       ElMessage.error('获取课程列表失败')
     }
