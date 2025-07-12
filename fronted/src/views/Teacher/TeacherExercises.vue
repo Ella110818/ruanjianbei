@@ -69,15 +69,25 @@
         <!-- 练习题列表 -->
         <div class="exercises-list" v-loading="loading">
           <el-card v-for="exercise in exercises" :key="exercise.id" class="exercise-card">
-            <div class="exercise-header">
+            <div class="exercise-header" @click="toggleExercise(exercise.id)">
               <span class="exercise-title">{{ exercise.title }}</span>
               <el-tag size="small" :type="exercise.type === 'single_choice' ? 'primary' : 'success'">
                 {{ exercise.type === 'single_choice' ? '单选题' : '多选题' }}
               </el-tag>
             </div>
             <div class="exercise-content">{{ exercise.content }}</div>
+            <!-- 添加选项展示区域 -->
+            <div v-if="exercise.id === expandedExerciseId" class="exercise-options">
+              <div class="options-title">选项：</div>
+              <div v-for="(option, index) in JSON.parse(exercise.answer_template)" 
+                   :key="index" 
+                   class="option-item">
+                <span class="option-label">{{ String.fromCharCode(65 + index) }}.</span>
+                <span class="option-text">{{ option }}</span>
+              </div>
+            </div>
             <div class="exercise-footer">
-              <span class="knowledge-point">知识点：{{ exercise.knowledge_point }}</span>
+              <span class="knowledge-point">知识点：{{ exercise.knowledge_point_title }}</span>
               <span class="difficulty">
                 难度：
                 <el-rate
@@ -366,6 +376,14 @@ const handleCreateExercise = async () => {
   }
 }
 
+// 添加展开/折叠状态管理
+const expandedExerciseId = ref(null)
+
+// 切换练习题展开/折叠状态
+const toggleExercise = (exerciseId) => {
+  expandedExerciseId.value = expandedExerciseId.value === exerciseId ? null : exerciseId
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
   loadExercises()
@@ -414,6 +432,7 @@ onMounted(() => {
 .exercise-card {
   border-radius: 8px;
   transition: transform 0.2s;
+  cursor: pointer;
 }
 
 .exercise-card:hover {
@@ -425,6 +444,13 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.exercise-header:hover {
+  background-color: #f5f7fa;
 }
 
 .exercise-title {
@@ -479,6 +505,39 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.exercise-options {
+  margin: 16px 0;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.options-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #606266;
+}
+
+.option-item {
+  margin: 8px 0;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: white;
+  display: flex;
+  align-items: center;
+}
+
+.option-label {
+  font-weight: 600;
+  margin-right: 8px;
+  color: #409EFF;
+  min-width: 24px;
+}
+
+.option-text {
+  color: #606266;
 }
 
 @media screen and (max-width: 1366px) {

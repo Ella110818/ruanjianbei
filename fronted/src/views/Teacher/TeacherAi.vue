@@ -59,7 +59,7 @@
               />
               <el-table-column
                 prop="course_name"
-                label="所属学科"
+                label="所属课程"
                 width="150"
               />
               <el-table-column
