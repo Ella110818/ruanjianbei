@@ -1151,20 +1151,23 @@ const currentFeatureRows = computed(() => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
-/* 用户消息样式 */
+/* 用户消息样式 - 完全移除背景和边框 */
 .message.user .message-content {
-  background: transparent;
-  padding: 12px 4px;
+  background: none;
+  padding: 0;
   box-shadow: none;
   text-align: left;
+  width: 100%;
 }
 
 .message.user .text-content {
-  background: rgba(255, 255, 255, 0.7); /* 保持一致的透明度 */
-  backdrop-filter: blur(10px);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  background: none;
+  backdrop-filter: none;
+  padding: 4px 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: #333;
+  border: none;
 }
 
 /* 移除题目列表的特殊样式 */
@@ -1187,11 +1190,11 @@ const currentFeatureRows = computed(() => {
 }
 
 .message-content-wrapper {
-  background: transparent !important;
+  background: none !important;
 }
 
 .message-content {
-  background: transparent !important;
+  background: none !important;
 }
 
 /* 消息框布局 */
@@ -1442,12 +1445,17 @@ const currentFeatureRows = computed(() => {
   margin-bottom: 80px; /* 增加底部margin，确保内容不被输入框遮挡 */
 }
 
+/* 减少消息之间的间距 */
 .message-list {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  align-items: flex-start; /* 确保列表项靠左对齐 */
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.message-box {
+  margin-bottom: 8px;
 }
 
 /* 消息框样式 */
@@ -1507,19 +1515,20 @@ const currentFeatureRows = computed(() => {
   word-break: break-word;
 }
 
-/* AI消息样式 */
+/* 调整AI消息样式使其更紧凑 */
 .message.ai .message-content {
-  background: white;
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 12px;
-  padding: 32px 36px; /* 显著增加内边距 */
+  padding: 12px 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   width: 100%;
 }
 
 .message.ai .text-content {
   padding: 0;
-  font-size: 15px;
-  line-height: 1.6;
+  background: none;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 /* 用户消息样式 */
@@ -1554,6 +1563,21 @@ const currentFeatureRows = computed(() => {
   gap: 8px;
   margin-bottom: 12px; /* 增加头部与内容的间距 */
   padding: 0 4px;
+}
+
+/* 调整消息头部样式 */
+.message-header {
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+/* 移除所有可能的背景和边框 */
+.message-content-wrapper {
+  background: none !important;
+}
+
+.message-content {
+  background: none !important;
 }
 </style> 
 
