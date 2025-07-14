@@ -257,11 +257,7 @@ const loadKnowledgePoints = async () => {
     })
     
     if (response.success && response.status_code === 200) {  // 修改判断条件
-      knowledgePoints.value = response.data.results.map(point => ({
-        id: point.id,
-        title: point.title,
-        description: point.content
-      })) || []
+      knowledgePoints.value = response.data.results || []
       console.log('知识点列表:', knowledgePoints.value)
     } else {
       ElMessage.error('获取知识点列表失败')
