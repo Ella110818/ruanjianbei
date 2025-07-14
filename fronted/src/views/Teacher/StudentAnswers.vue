@@ -191,10 +191,10 @@ const loadExercises = async () => {
       page_size: 100
     })
     
-    if (response.success && response.status_code === 200) {
+    if (response.code === 0) {  // 修改判断条件，与API返回结构一致
       exercises.value = response.data || []
     } else {
-      ElMessage.error(response.message || '获取练习题列表失败')
+      ElMessage.error(response.msg || '获取练习题列表失败')  // 使用API返回的错误消息字段
     }
   } catch (error) {
     console.error('加载练习题失败:', error)
