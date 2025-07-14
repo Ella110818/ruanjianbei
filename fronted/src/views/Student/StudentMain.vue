@@ -278,9 +278,9 @@ const submitAnswer = async (exercise) => {
 
   try {
     const response = await submitStudentAnswer({
-      exercise: parseInt(exercise.id), // 确保是整数
-      content: exercise.studentAnswer, // 答案内容
-      student: parseInt(currentUser.value.id) // 确保是整数
+      exercise_id: exercise.id,         // 修改参数名称
+      answer_content: exercise.studentAnswer,  // 修改参数名称
+      student_id: currentUser.value.id  // 修改参数名称
     })
 
     if (response.code === 0 && response.data) {

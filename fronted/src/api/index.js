@@ -2831,9 +2831,9 @@ export async function submitStudentAnswer(data) {
 
         // 构造请求数据
         const requestData = {
-            exercise: parseInt(data.exercise_id), // 确保是数字
-            content: String(data.answer_content), // 确保是字符串
-            student: parseInt(data.student_id)    // 确保是数字
+            exercise: parseInt(data.exercise_id), // 转换练习题ID
+            content: String(data.answer_content), // 转换答案内容
+            student: parseInt(data.student_id)    // 转换学生ID
         };
 
         console.log('发送到服务器的数据:', requestData);
@@ -2847,7 +2847,11 @@ export async function submitStudentAnswer(data) {
         return response;
     } catch (error) {
         console.error('提交答案失败:', error);
-        throw error;
+        return {
+            code: 1,
+            msg: error.message || '提交答案失败',
+            data: null
+        };
     }
 }
 
