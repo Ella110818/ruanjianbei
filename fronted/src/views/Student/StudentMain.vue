@@ -152,7 +152,7 @@ const filters = ref({
 const loadUserInfo = async () => {
   try {
     const response = await getCurrentUser()
-    if (response.code === 0 && response.data) {
+    if (response.success && response.status_code === 200) {  // 修改判断条件
       currentUser.value = response.data
     } else {
       ElMessage.error('获取用户信息失败')
@@ -305,10 +305,8 @@ const submitAnswer = async (exercise) => {
 // 组件挂载时加载数据
 onMounted(async () => {
   await loadUserInfo() // 先加载用户信息
-  if (currentUser.value) { // 只有在成功获取用户信息后才加载其他数据
-    loadExercises()
-    loadKnowledgePoints()
-  }
+  loadExercises()     // 无论用户信息是否加载成功，都尝试加载练习题
+  loadKnowledgePoints() // 同时加载知识点列表
 })
 </script>
 
