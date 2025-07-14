@@ -1114,26 +1114,6 @@ export async function exportQuestions(sessionKey, format = 'json', filename = 'q
 
 // 获取练习题列表
 export async function getExercises(params) {
-    if (getMockFlag()) {
-        return mockApiResponse({
-            code: 0,
-            msg: '获取练习题成功',
-            data: {
-                count: 10,
-                results: Array(10).fill().map((_, index) => ({
-                    id: index + 1,
-                    title: `模拟练习题 ${index + 1}`,
-                    content: '这是一道模拟练习题',
-                    type: 'single_choice',
-                    difficulty: 1,
-                    knowledge_point: '基础知识',
-                    options: ['A', 'B', 'C', 'D'],
-                    answer: 'A'
-                }))
-            }
-        });
-    }
-
     try {
         const token = TokenManager.getAccessToken();
         if (!token) {
@@ -1150,58 +1130,17 @@ export async function getExercises(params) {
         const response = await fetch(url, {
             method: 'GET',
             headers: {
-                ...API_CONFIG.headers,
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
             }
         });
 
-        // 添加详细的响应日志
-        console.log('API Response Status:', response.status);
-        console.log('API Response Headers:', Object.fromEntries(response.headers.entries()));
+        const responseData = await response.json();
+        console.log('练习题列表响应:', responseData);
 
-        // 获取原始响应文本
-        const responseText = await response.text();
-        console.log('API Raw Response:', responseText);
-
-        // 尝试解析JSON
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (e) {
-            console.error('JSON Parse Error:', e);
-            throw new Error('服务器返回了非JSON格式的数据');
-        }
-
-        if (!response.ok) {
-            // 如果是401或403，可能是token过期
-            if (response.status === 401 || response.status === 403) {
-                // 尝试刷新token
-                try {
-                    const newToken = await TokenManager.refreshToken();
-                    if (newToken) {
-                        // 使用新token重试请求
-                        return await getExercises(params);
-                    }
-                } catch (refreshError) {
-                    console.error('Token刷新失败:', refreshError);
-                    // 清除token并重定向到登录页
-                    TokenManager.clearTokens();
-                    window.location.href = '/login';
-                    return {
-                        code: 1,
-                        msg: '登录已过期，请重新登录',
-                        data: null
-                    };
-                }
-            }
-            return handleHttpError(response, data);
-        }
-
-        return {
-            code: 0,
-            msg: '获取练习题成功',
-            data: data.data || []
-        };
+        return responseData;  // 直接返回API响应数据
     } catch (error) {
         console.error('获取练习题失败:', error);
         return {
