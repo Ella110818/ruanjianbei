@@ -2661,7 +2661,7 @@ export async function getCoursewareList(params = {}) {
         }
 
         const queryString = new URLSearchParams(params).toString();
-        const url = `${API_CONFIG.BASE_URL}/courseware/${queryString ? `?${queryString}` : ''}`;
+        const url = `${API_CONFIG.BASE_URL}/coursewares/${queryString ? `?${queryString}` : ''}`;
 
         console.log('请求课件列表URL:', url);
 
