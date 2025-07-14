@@ -167,7 +167,7 @@ onUnmounted(() => {
 
 <style scoped>
 .side-nav {
-  width: 300px;
+  width: 200px;
   background: linear-gradient(180deg, #E8EBFF 0%, #F0F3FF 50%, #F8FAFF 100%);
   color: #333;
   padding: 0;
@@ -181,12 +181,13 @@ onUnmounted(() => {
   z-index: 100;
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.05);
   transition: width 0.3s ease;
+  overflow-y: auto; /* 添加滚动条 */
 }
 
 /* 添加响应式设计 */
 @media screen and (max-width: 1366px) {
   .side-nav {
-    width: 250px;
+    width: 180px;
   }
   
   .side-title {
@@ -208,7 +209,7 @@ onUnmounted(() => {
 
 @media screen and (max-width: 1024px) {
   .side-nav {
-    width: 200px;
+    width: 160px;
   }
   
   .side-title {

@@ -4,9 +4,10 @@
     <div class="ai-assistant-container">
       <div class="background-overlay"></div>
       
-      <div class="content-wrapper">
+      <!-- 初始欢迎界面 - 保持不变 -->
+      <div class="content-wrapper" v-if="!hasStartedChat">
         <div class="welcome-section">
-            <h1>学伴AI</h1>
+          <h1>学伴AI</h1>
           <p class="subtitle">你的AI学习助手</p>
         </div>
 
@@ -67,36 +68,25 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- 聊天部分 -->
-        <div class="chat-section" v-if="showChat">
-          <el-card class="chat-card">
-            <div class="chat-header">
-              <h3>对话记录</h3>
-              <div class="chat-actions">
-                <el-button 
-                  type="primary" 
-                  size="small" 
-                  @click="handleExport('json')"
-                  :loading="exporting"
-                >
-                  导出JSON
-                </el-button>
-                <el-button 
-                  type="success" 
-                  size="small" 
-                  @click="handleExport('csv')"
-                  :loading="exporting"
-                >
-                  导出CSV
-                </el-button>
+      <!-- 对话界面 -->
+      <div class="chat-layout" v-else>
+        <div class="chat-messages-container">
+          <div class="message-list">
+            <div v-for="message in messages" 
+                 :key="message.id" 
+                 class="message-box">
+              <div class="message-avatar">
+                <img v-if="message.type === 'ai'" src="@/assets/智能助手-copy.png" class="avatar-image" alt="AI助手">
+                <el-icon v-else class="avatar-icon"><User /></el-icon>
               </div>
-            </div>
-            <div class="chat-messages" ref="chatMessages">
-              <div v-for="message in messages" 
-                   :key="message.id" 
-                   :class="['message', message.type]">
-                <div class="message-content">
+              <div class="message-content-wrapper">
+                <div class="message-header">
+                  <span class="message-sender">{{ message.type === 'user' ? '我' : 'AI助手' }}</span>
+                  <span class="message-time">{{ message.time }}</span>
+                </div>
+                <div class="message-content" :class="{ 'user-message': message.type === 'user' }">
                   <template v-if="message.type === 'ai'">
                     <div v-if="isQuestionResponse(message.content)" class="question-response">
                       <div class="question-list">
@@ -108,44 +98,28 @@
                             <span class="question-type">{{ question.type }}</span>
                             <span class="question-difficulty">难度: {{ question.difficulty }}</span>
                           </div>
+                          <div class="question-title">{{ question.title }}</div>
                           <div class="question-content">{{ question.content }}</div>
-                          
-                          <!-- 选项部分 -->
-                          <div class="question-options" v-if="question.options">
-                            <div v-for="(option, index) in question.options" 
-                                 :key="index"
+                          <div class="question-options">
+                            <div v-for="option in question.options" 
+                                 :key="option.id"
                                  class="option-item"
-                                 :class="{ 'selected': question.studentAnswer === option }"
-                                 @click="!question.isSubmitted && (question.studentAnswer = option)">
-                              {{ option }}
+                                 :class="{ 'selected': option.id === question.studentAnswer }"
+                                 @click="question.studentAnswer = option.id"
+                                 :disabled="question.isSubmitted">
+                              {{ option.content }}
                             </div>
                           </div>
-                          
-                          <!-- 简答题输入框 -->
-                          <div v-else class="short-answer">
-                            <el-input
-                              v-model="question.studentAnswer"
-                              type="textarea"
-                              :rows="3"
-                              placeholder="请输入你的答案"
-                              :disabled="question.isSubmitted"
-                            />
-                          </div>
-                          
-                          <!-- 提交按钮和反馈 -->
-                          <div class="answer-actions">
-                            <el-button 
-                              type="primary"
-                              @click="submitAnswer(question, question.studentAnswer)"
-                              :disabled="!question.studentAnswer || question.isSubmitted"
-                            >
+                          <div class="answer-actions" v-if="!question.isSubmitted">
+                            <button class="submit-button" 
+                                    @click="submitAnswer(question, question.studentAnswer)"
+                                    :disabled="!question.studentAnswer">
                               提交答案
-                            </el-button>
-                            
-                            <div v-if="question.isSubmitted" class="feedback-section">
-                              <div class="score">得分：{{ question.score }}</div>
-                              <div class="feedback">反馈：{{ question.feedback }}</div>
-                            </div>
+                            </button>
+                          </div>
+                          <div class="feedback-section" v-if="question.isSubmitted">
+                            <div class="score">得分: {{ question.score }}</div>
+                            <div class="feedback">反馈: {{ question.feedback }}</div>
                           </div>
                         </div>
                       </div>
@@ -158,76 +132,28 @@
                     <div class="text-content">{{ message.content }}</div>
                   </template>
                 </div>
-                <div class="message-time">{{ message.time }}</div>
               </div>
             </div>
-            
-            <div class="chat-input">
-              <el-input
+          </div>
+        </div>
+
+        <!-- 底部输入框 -->
+        <div class="chat-input-container">
+          <div class="chat-input-wrapper">
+            <div class="input-box">
+              <input 
+                type="text" 
                 v-model="inputMessage"
                 placeholder="输入你的问题..."
+                class="chat-input"
                 @keyup.enter="sendMessage"
-                :disabled="loading"
               >
-                <template #append>
-                  <el-button type="primary" @click="sendMessage" :loading="loading">发送</el-button>
-                </template>
-              </el-input>
+              <button class="send-button" @click="sendMessage" :disabled="loading">
+                <el-icon class="send-icon"><Position /></el-icon>
+              </button>
             </div>
-          </el-card>
+          </div>
         </div>
-
-        <!-- 添加配置面板 -->
-        <div class="config-panel" v-if="showChat">
-          <el-form :model="currentConfig" label-width="100px">
-            <el-form-item label="知识点">
-              <el-select v-model="currentConfig.knowledgePointIds" multiple placeholder="选择知识点">
-                <el-option
-                  v-for="point in questionConfig.knowledgePoints"
-                  :key="point.id"
-                  :label="point.name"
-                  :value="point.id"
-                />
-              </el-select>
-            </el-form-item>
-
-            <el-form-item label="题目类型">
-              <el-select v-model="currentConfig.selectedTypes" multiple placeholder="选择题目类型">
-                <el-option
-                  v-for="type in questionConfig.questionTypes"
-                  :key="type.value"
-                  :label="type.label"
-                  :value="type.value"
-                />
-              </el-select>
-            </el-form-item>
-
-            <el-form-item label="题目数量">
-              <el-select v-model="currentConfig.quantity" placeholder="选择题目数量">
-                <el-option
-                  v-for="qty in questionConfig.quantities"
-                  :key="qty.value"
-                  :label="qty.label"
-                  :value="qty.value"
-                />
-              </el-select>
-            </el-form-item>
-
-            <el-form-item label="难度等级">
-              <el-select v-model="currentConfig.difficulty" placeholder="选择难度等级">
-                <el-option
-                  v-for="diff in questionConfig.difficulties"
-                  :key="diff.value"
-                  :label="diff.label"
-                  :value="diff.value"
-                />
-              </el-select>
-            </el-form-item>
-          </el-form>
-        </div>
-      </div>
-      <div class="environment-status">
-        当前环境: {{ currentEnvironment }}
       </div>
     </div>
   </div>
@@ -236,16 +162,30 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
-import { exportQuestions, generateQuestions, submitStudentAnswer, getCurrentUser } from '@/api/index.js'
+import { generateQuestions, submitStudentAnswer, getCurrentUser } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
+import { User, Position } from '@element-plus/icons-vue'  // 移除 Monitor 图标
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
 const activeSubTab = ref('marketing')
-const showChat = ref(false)
 const loading = ref(false)
-const currentEnvironment = ref('生产API')
-const exporting = ref(false)
+const hasStartedChat = ref(false)
+const inputMessage = ref('')
+const messages = ref([
+  {
+    id: 1,
+    type: 'ai',
+    content: {
+      questions: [],
+      session_key: '',
+      saved_exercises: [],
+      failed_exercises: 0,
+      error: '你好！我是你的AI学习助手，有什么我可以帮你的吗？'
+    },
+    time: '刚刚'
+  }
+])
 
 // 判断是否为题目响应
 const isQuestionResponse = (content) => {
@@ -255,32 +195,6 @@ const isQuestionResponse = (content) => {
          content.questions.length > 0 && 
          !content.error;
 }
-
-// 添加配置选项
-const questionConfig = ref({
-  knowledgePoints: [
-    { id: 1, name: '基础知识' },
-    { id: 2, name: '进阶概念' },
-    { id: 3, name: '高级应用' }
-  ],
-  questionTypes: [
-    { value: 'single_choice', label: '单选题' },
-    { value: 'multiple_choice', label: '多选题' },
-    { value: 'true_false', label: '判断题' },
-    { value: 'short_answer', label: '简答题' }
-  ],
-  difficulties: [
-    { value: 1, label: '简单' },
-    { value: 3, label: '中等' },
-    { value: 5, label: '困难' }
-  ],
-  quantities: [
-    { value: 5, label: '5题' },
-    { value: 10, label: '10题' },
-    { value: 20, label: '20题' },
-    { value: 50, label: '50题' }
-  ]
-})
 
 // 当前选择的配置
 const currentConfig = ref({
@@ -479,7 +393,7 @@ onMounted(() => {
 // 修改 handleSearch 函数
 const handleSearch = async () => {
   if (searchQuery.value.trim()) {
-    showChat.value = true;
+    hasStartedChat.value = true; // 设置为对话状态
     try {
       loading.value = true;
       const messageId = messages.value.length + 1;
@@ -547,27 +461,11 @@ const formatTime = (date) => {
 
 // 处理功能卡片点击
 const handleFeatureClick = (feature) => {
-  showChat.value = true;
+  hasStartedChat.value = true; // 设置为对话状态
   sendMessage(`请帮我${feature.title}：${feature.description}`);
 }
 
 // 聊天相关逻辑
-const inputMessage = ref('')
-const messages = ref([
-  {
-    id: 1,
-    type: 'ai',
-    content: {
-      questions: [],
-      session_key: '',
-      saved_exercises: [],
-      failed_exercises: 0,
-      error: '你好！我是你的AI学习助手，有什么我可以帮你的吗？'
-    },
-    time: '刚刚'
-  }
-])
-
 const sendMessage = async (message = null) => {
   const userInput = message || inputMessage.value;
   if (!userInput.trim()) return;
@@ -708,33 +606,10 @@ const currentFeatureRows = computed(() => {
   return []
 })
 
-// 处理导出
-const handleExport = async (format) => {
-  try {
-    if (!currentSessionId.value) {
-      ElMessage.warning('请先生成问题后再导出');
-      return;
-    }
-
-    exporting.value = true;
-    const filename = `问题导出_${new Date().toISOString().split('T')[0]}`;
-    const result = await exportQuestions(currentSessionId.value, format, filename);
-    
-    if (result.code === 0) {
-      ElMessage.success(result.msg);
-    } else {
-      ElMessage.error(result.msg || '导出失败');
-    }
-  } catch (error) {
-    console.error('导出失败:', error);
-    ElMessage.error('导出失败，请稍后重试');
-  } finally {
-    exporting.value = false;
-  }
-}
 </script>
 
 <style scoped>
+/* 保持原有的欢迎页面样式不变 */
 .ai-assistant-page {
   min-height: 100vh;
   display: flex;
@@ -748,15 +623,21 @@ const handleExport = async (format) => {
   background-position: center;
   background-repeat: no-repeat;
   position: relative;
+  height: calc(100vh - 80px); /* 调整容器高度，为输入框留出空间 */
+  overflow-y: auto;
+  padding-bottom: 160px; /* 增加底部padding */
 }
 
+/* 修改背景样式 */
 .background-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1;
+  z-index: 0;
+  background: transparent;
+  pointer-events: none;
 }
 
 .content-wrapper {
@@ -1240,83 +1121,439 @@ const handleExport = async (format) => {
 
 /* 消息内容样式 */
 .text-content {
-  padding: 12px 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  color: #303133;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #333;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.7); /* 将透明度从 0.9 改为 0.7，数值范围 0-1，越小越透明 */
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: 12px;
+  width: 100%;
+  margin: 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* AI消息样式 */
+.message.ai .message-content {
+  background: transparent !important;
+  padding: 12px 4px;
+  box-shadow: none;
+  text-align: left;
+  width: 100%;
+}
+
+.message.ai .text-content {
+  background: rgba(255, 255, 255, 0.7); /* 保持一致的透明度 */
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* 用户消息样式 */
+.message.user .message-content {
+  background: transparent;
+  padding: 12px 4px;
+  box-shadow: none;
+  text-align: left;
 }
 
 .message.user .text-content {
+  background: rgba(255, 255, 255, 0.7); /* 保持一致的透明度 */
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* 移除题目列表的特殊样式 */
+.question-list {
+  background: transparent;
+}
+
+.question-item {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  margin-bottom: 15px;
+}
+
+/* 移除所有可能的背景 */
+.message-box {
+  background: transparent !important;
+}
+
+.message-content-wrapper {
+  background: transparent !important;
+}
+
+.message-content {
+  background: transparent !important;
+}
+
+/* 消息框布局 */
+.message-box {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  max-width: 800px;
+  padding: 0;
+  margin-bottom: 24px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  background: transparent;
+}
+
+.message-content-wrapper {
+  flex: 1;
+  width: 100%;
+  max-width: 800px;
+}
+
+.message-content {
+  word-break: break-word;
+  width: 100%;
+  margin-bottom: 0;
+}
+
+/* 移除之前的用户消息蓝色背景样式 */
+.message-content.user-message {
+  background: transparent;
+  width: 100%;
+}
+
+/* 调整头像大小和样式 */
+.message-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-icon {
+  font-size: 20px;
+  color: #666;
+}
+
+/* 调整发送者名称和时间样式 */
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px; /* 调整头部与内容的间距 */
+}
+
+/* 发送者名称和时间样式 */
+.message-sender {
+  font-size: 14px; /* 调整发送者名称大小 */
+  font-weight: 500;
+  color: #666;
+}
+
+.message-time {
+  font-size: 12px; /* 调整时间字体大小 */
+  color: #999;
+}
+
+/* 输入框容器样式 */
+.chat-input-container {
+  position: fixed;
+  bottom: 800px; /* 增加到 80px，让输入框更明显地往上移 */
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: transparent;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+}
+
+.chat-input-wrapper {
+  width: 800px;
+  position: relative;
+  z-index: 11;
+}
+
+.input-box {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  min-height: 52px;
+  position: relative;
+  z-index: 12;
+  width: 100%;
+}
+
+.input-box:hover,
+.input-box:focus-within {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(64, 158, 255, 0.5);
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.1);
+}
+
+.chat-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 10px 18px;
+  font-size: 14px;
+  background: transparent;
+  color: #333;
+  min-height: 24px;
+  line-height: 1.5;
+  width: 100%;
+  position: relative;
+  z-index: 13;
+}
+
+.chat-input::placeholder {
+  color: rgba(144, 147, 153, 0.6);
+}
+
+.send-button {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
   background: #409EFF;
   color: white;
-}
-
-.question-response {
-  width: 100%;
-  max-width: 100%;
-  overflow: visible;
-}
-
-.message.ai .message-content {
-  width: 100%;
-  max-width: 100%;
-  overflow: visible;
-}
-
-.option-item {
-  padding: 12px 16px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  padding: 0;
+  margin-right: 4px;
+  position: relative;
+  z-index: 13;
+}
+
+.send-button:hover {
+  background: #66b1ff;
+  transform: scale(1.05);
+}
+
+.send-button:disabled {
+  background: #a0cfff;
+  opacity: 0.7;
+}
+
+.send-icon {
+  font-size: 18px;
+}
+
+.submit-button {
+  background: #409EFF;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
   transition: all 0.3s;
 }
 
-.option-item:hover {
-  background-color: #f5f7fa;
+.submit-button:hover {
+  background: #66b1ff;
 }
 
-.option-item.selected {
-  background-color: #409EFF;
-  color: white;
-  border-color: #409EFF;
+.submit-button:disabled {
+  background: #a0cfff;
+  cursor: not-allowed;
 }
 
-.short-answer {
-  margin: 15px 0;
+/* 移除可能导致进度条的样式 */
+.chat-input-container::before,
+.chat-input-container::after,
+.chat-layout::before,
+.chat-layout::after {
+  display: none;
 }
 
-.answer-actions {
-  margin-top: 15px;
+/* 移除所有可能的水平线 */
+.chat-layout::before,
+.chat-layout::after,
+.chat-messages-container::before,
+.chat-messages-container::after,
+.message-box::before,
+.message-box::after,
+.chat-input-container::before,
+.chat-input-container::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* 确保背景图片不会显示额外的线条 */
+.background-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* 聊天布局容器，调整底部padding，为输入框腾出空间 */
+.chat-layout {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  padding-bottom: 180px; /* 相应增加底部padding */
+  position: relative;
+  z-index: 2;
+  margin-top: 64px;
+  overflow-y: auto;
 }
 
-.feedback-section {
-  background: #f5f7fa;
-  padding: 12px;
-  border-radius: 4px;
-  margin-top: 10px;
+/* 聊天消息容器 */
+.chat-messages-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 80px; /* 增加底部margin，确保内容不被输入框遮挡 */
 }
 
-.score {
-  font-weight: bold;
-  color: #409EFF;
-  margin-bottom: 5px;
+.message-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: flex-start; /* 确保列表项靠左对齐 */
 }
 
-.feedback {
-  color: #606266;
+/* 消息框样式 */
+.message-box {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 20px;
+  align-items: flex-start;
+  justify-content: flex-start; /* 确保消息靠左对齐 */
 }
 
-.option-item.selected:hover {
-  background-color: #66b1ff;
+/* 消息内容容器 */
+.message-content-wrapper {
+  flex: 1;
+  max-width: calc(100% - 48px);
 }
 
-.option-item[disabled] {
-  cursor: not-allowed;
-  opacity: 0.7;
+/* 输入框容器样式 */
+.chat-input-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: transparent;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+}
+
+.chat-input-wrapper {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 11;
+}
+
+/* 调整头像大小和位置 */
+.message-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+}
+
+/* 消息内容样式 */
+.message-content {
+  width: 100%;
+  word-break: break-word;
+}
+
+/* AI消息样式 */
+.message.ai .message-content {
+  background: white;
+  border-radius: 12px;
+  padding: 32px 36px; /* 显著增加内边距 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  width: 100%;
+}
+
+.message.ai .text-content {
+  padding: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* 用户消息样式 */
+.message.user .message-content {
+  background: transparent;
+  padding: 12px 4px; /* 调整用户消息的内边距 */
+  box-shadow: none;
+  text-align: left;
+}
+
+.message.user .text-content {
+  padding: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* 消息框布局 */
+.message-box {
+  display: flex;
+  gap: 16px; /* 增加头像与消息之间的距离 */
+  width: 100%;
+  padding: 0;
+  margin-bottom: 24px;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+/* 消息头部样式 */
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px; /* 增加头部与内容的间距 */
+  padding: 0 4px;
 }
 </style> 
+

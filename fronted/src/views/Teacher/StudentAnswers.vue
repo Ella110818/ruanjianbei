@@ -310,12 +310,16 @@ onMounted(() => {
 .main-content {
   display: flex;
   min-height: calc(100vh - 64px);
+  position: relative;
 }
 
 .answers-container {
   flex: 1;
   padding: 24px;
-  margin-left: 200px;
+  margin-left: 200px; /* 匹配侧边栏宽度 */
+  width: calc(100% - 200px); /* 确保内容区域不会超出 */
+  box-sizing: border-box;
+  overflow-x: auto;
 }
 
 .filter-section {
@@ -367,23 +371,28 @@ onMounted(() => {
   gap: 10px;
 }
 
+/* 响应式布局调整 */
 @media screen and (max-width: 1366px) {
   .answers-container {
     margin-left: 180px;
+    width: calc(100% - 180px);
+    padding: 20px;
   }
   
   .filter-item {
-    min-width: 180px;
+    min-width: 160px;
   }
 }
 
 @media screen and (max-width: 1024px) {
   .answers-container {
     margin-left: 160px;
+    width: calc(100% - 160px);
+    padding: 16px;
   }
   
   .filter-item {
-    min-width: 160px;
+    min-width: 140px;
   }
 }
 </style> 
