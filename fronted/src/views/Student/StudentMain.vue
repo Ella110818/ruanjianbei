@@ -48,7 +48,14 @@
               :key="point.id"
               :label="point.title"
               :value="point.id"
-            />
+            >
+              <div class="knowledge-point-option">
+                <span>{{ point.title }}</span>
+                <small v-if="point.content" class="knowledge-point-desc">
+                  {{ point.content.length > 50 ? point.content.slice(0, 50) + '...' : point.content }}
+                </small>
+              </div>
+            </el-option>
           </el-select>
         </div>
 
@@ -483,6 +490,21 @@ onMounted(async () => {
   margin-top: 24px;
   display: flex;
   justify-content: center;
+}
+
+.knowledge-point-option {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.knowledge-point-desc {
+  color: #999;
+  font-size: 12px;
+  margin-top: 4px;
+  display: block;
+  white-space: normal;
+  line-height: 1.3;
 }
 
 @media screen and (max-width: 768px) {
