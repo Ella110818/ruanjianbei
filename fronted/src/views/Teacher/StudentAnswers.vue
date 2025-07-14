@@ -146,43 +146,6 @@ const total = ref(0)
 const detailDialogVisible = ref(false)
 const selectedAnswer = ref(null)
 
-// 筛选条件
-const filters = ref({
-  search: '',
-  exercise: undefined
-})
-
-// 加载答题记录
-const loadAnswers = async () => {
-  loading.value = true
-  try {
-    const response = await getStudentAnswers({
-      ...filters.value,
-      page: currentPage.value,
-      page_size: pageSize.value
-    })
-    
-    console.log('API响应数据:', response)
-    
-    if (response.code === 0) {  // 修改判断条件
-      console.log('答题记录数据:', response.data.results)
-      console.log('总记录数:', response.data.count)
-      
-      answers.value = response.data.results || []
-      total.value = response.data.count || 0
-      
-      console.log('更新后的answers:', answers.value)
-    } else {
-      ElMessage.error(response.msg || '获取答题记录失败')  // 使用API返回的错误消息
-    }
-  } catch (error) {
-    console.error('加载答题记录失败:', error)
-    ElMessage.error('加载答题记录失败，请稍后重试')
-  } finally {
-    loading.value = false
-  }
-}
-
 // 加载练习题列表
 const loadExercises = async () => {
   try {
@@ -191,13 +154,20 @@ const loadExercises = async () => {
       page_size: 100
     })
     
-    if (response.code === 0) {  // 修改判断条件
+    if (response.code === 0) {
       exercises.value = response.data || []
+      console.log('练习题列表:', exercises.value)
     }
   } catch (error) {
     console.error('加载练习题失败:', error)
   }
 }
+
+// 筛选条件
+const filters = ref({
+  search: '',
+  exercise: undefined
+})
 
 // 处理筛选条件变化
 const handleFilterChange = () => {
@@ -271,6 +241,37 @@ const saveGrade = async () => {
     ElMessage.error('保存失败，请稍后重试')
   } finally {
     saving.value = false
+  }
+}
+
+// 加载答题记录
+const loadAnswers = async () => {
+  loading.value = true
+  try {
+    const response = await getStudentAnswers({
+      ...filters.value,
+      page: currentPage.value,
+      page_size: pageSize.value
+    })
+    
+    console.log('API响应数据:', response)
+    
+    if (response.code === 0) {  // 修改判断条件
+      console.log('答题记录数据:', response.data.results)
+      console.log('总记录数:', response.data.count)
+      
+      answers.value = response.data.results || []
+      total.value = response.data.count || 0
+      
+      console.log('更新后的answers:', answers.value)
+    } else {
+      ElMessage.error(response.msg || '获取答题记录失败')  // 使用API返回的错误消息
+    }
+  } catch (error) {
+    console.error('加载答题记录失败:', error)
+    ElMessage.error('加载答题记录失败，请稍后重试')
+  } finally {
+    loading.value = false
   }
 }
 
