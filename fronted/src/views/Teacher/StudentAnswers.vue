@@ -154,7 +154,7 @@ const loadExercises = async () => {
       page_size: 100
     })
     
-    if (response.code === 0) {
+    if (response.success && response.status_code === 200) {  // 修改判断条件
       exercises.value = response.data || []
       console.log('练习题列表:', exercises.value)
     }
@@ -256,7 +256,7 @@ const loadAnswers = async () => {
     
     console.log('API响应数据:', response)
     
-    if (response.code === 0) {  // 修改判断条件
+    if (response.success && response.status_code === 200) {  // 修改判断条件
       console.log('答题记录数据:', response.data.results)
       console.log('总记录数:', response.data.count)
       
@@ -265,7 +265,7 @@ const loadAnswers = async () => {
       
       console.log('更新后的answers:', answers.value)
     } else {
-      ElMessage.error(response.msg || '获取答题记录失败')  // 使用API返回的错误消息
+      ElMessage.error('获取答题记录失败')
     }
   } catch (error) {
     console.error('加载答题记录失败:', error)
