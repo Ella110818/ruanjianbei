@@ -13,7 +13,7 @@
             class="filter-item"
           />
           <el-select
-            v-model="filters.exercise_id"
+            v-model="filters.exercise"
             placeholder="选择练习题"
             @change="handleFilterChange"
             class="filter-item"
@@ -24,16 +24,6 @@
               :label="exercise.title"
               :value="exercise.id"
             />
-          </el-select>
-          <el-select
-            v-model="filters.is_correct"
-            placeholder="答题结果"
-            @change="handleFilterChange"
-            class="filter-item"
-          >
-            <el-option label="全部" :value="undefined" />
-            <el-option label="正确" :value="true" />
-            <el-option label="错误" :value="false" />
           </el-select>
         </div>
 
@@ -46,18 +36,15 @@
         >
           <el-table-column prop="student_name" label="学生姓名" width="120" />
           <el-table-column prop="exercise_title" label="练习题" min-width="200" />
-          <el-table-column prop="answer" label="学生答案" width="120" align="center" />
-          <el-table-column label="是否正确" width="100" align="center">
+          <el-table-column prop="content" label="学生答案" width="120" align="center" />
+          <el-table-column prop="score" label="得分" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.is_correct ? 'success' : 'danger'">
-                {{ row.is_correct ? '正确' : '错误' }}
-              </el-tag>
+              {{ row.score || '未评分' }}
             </template>
           </el-table-column>
-          <el-table-column prop="score" label="得分" width="100" align="center" />
-          <el-table-column prop="submit_time" label="提交时间" width="180">
+          <el-table-column prop="submitted_at" label="提交时间" width="180">
             <template #default="{ row }">
-              {{ formatDate(row.submit_time) }}
+              {{ formatDate(row.submitted_at) }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120" fixed="right">
@@ -99,13 +86,7 @@
         </div>
         <div class="detail-item">
           <label>学生答案：</label>
-          <span>{{ selectedAnswer.answer }}</span>
-        </div>
-        <div class="detail-item">
-          <label>是否正确：</label>
-          <el-tag :type="selectedAnswer.is_correct ? 'success' : 'danger'">
-            {{ selectedAnswer.is_correct ? '正确' : '错误' }}
-          </el-tag>
+          <span>{{ selectedAnswer.content }}</span>
         </div>
         <div class="detail-item">
           <label>得分：</label>
@@ -129,7 +110,7 @@
         </div>
         <div class="detail-item">
           <label>提交时间：</label>
-          <span>{{ formatDate(selectedAnswer.submit_time) }}</span>
+          <span>{{ formatDate(selectedAnswer.submitted_at) }}</span>
         </div>
       </div>
       <template #footer>
@@ -168,8 +149,7 @@ const selectedAnswer = ref(null)
 // 筛选条件
 const filters = ref({
   search: '',
-  exercise_id: undefined,
-  is_correct: undefined
+  exercise: undefined
 })
 
 // 加载答题记录
@@ -182,11 +162,11 @@ const loadAnswers = async () => {
       page_size: pageSize.value
     })
     
-    if (response.code === 0 && response.data) {
-      answers.value = response.data.results || []
-      total.value = response.data.total || 0
+    if (response.success && response.status_code === 200) {
+      answers.value = response.data ? [response.data] : []
+      total.value = answers.value.length
     } else {
-      ElMessage.error(response.msg || '获取答题记录失败')
+      ElMessage.error(response.message || '获取答题记录失败')
     }
   } catch (error) {
     console.error('加载答题记录失败:', error)
@@ -204,10 +184,10 @@ const loadExercises = async () => {
       page_size: 100
     })
     
-    if (response.code === 0 && response.data) {
-      exercises.value = response.data.results || []
+    if (response.success && response.status_code === 200) {
+      exercises.value = response.data || []
     } else {
-      ElMessage.error(response.msg || '获取练习题列表失败')
+      ElMessage.error(response.message || '获取练习题列表失败')
     }
   } catch (error) {
     console.error('加载练习题失败:', error)
@@ -229,7 +209,7 @@ const handlePageChange = (page) => {
 
 // 查看详情
 const handleViewDetail = (row) => {
-  selectedAnswer.value = row
+  selectedAnswer.value = { ...row }
   detailDialogVisible.value = true
 }
 
@@ -272,16 +252,15 @@ const saveGrade = async () => {
   try {
     const response = await updateStudentAnswer(selectedAnswer.value.id, {
       score: selectedAnswer.value.score,
-      feedback: selectedAnswer.value.feedback,
-      is_correct: selectedAnswer.value.is_correct
+      feedback: selectedAnswer.value.feedback
     })
     
-    if (response.code === 0) {
+    if (response.success && response.status_code === 200) {
       ElMessage.success('保存成功')
       isEditing.value = false
       loadAnswers() // 重新加载列表
     } else {
-      ElMessage.error(response.msg || '保存失败')
+      ElMessage.error(response.message || '保存失败')
     }
   } catch (error) {
     console.error('保存评分失败:', error)
@@ -316,8 +295,8 @@ onMounted(() => {
 .answers-container {
   flex: 1;
   padding: 24px;
-  margin-left: 200px; /* 匹配侧边栏宽度 */
-  width: calc(100% - 200px); /* 确保内容区域不会超出 */
+  margin-left: 200px;
+  width: calc(100% - 200px);
   box-sizing: border-box;
   overflow-x: auto;
 }
@@ -371,7 +350,6 @@ onMounted(() => {
   gap: 10px;
 }
 
-/* 响应式布局调整 */
 @media screen and (max-width: 1366px) {
   .answers-container {
     margin-left: 180px;
