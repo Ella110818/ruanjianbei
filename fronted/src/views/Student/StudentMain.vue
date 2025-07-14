@@ -278,22 +278,26 @@ const submitAnswer = async (exercise) => {
 
   try {
     const response = await submitStudentAnswer({
-      exercise: exercise.id,
-      content: exercise.studentAnswer,
-      student: currentUser.value.id // 使用真实的学生ID
+      exercise: parseInt(exercise.id), // 确保是整数
+      content: exercise.studentAnswer, // 答案内容
+      student: parseInt(currentUser.value.id) // 确保是整数
     })
 
-    if (response.code === 0) {
+    if (response.code === 0 && response.data) {
       exercise.isSubmitted = true
       exercise.score = response.data.score
       exercise.feedback = response.data.feedback
       ElMessage.success('提交成功')
     } else {
-      ElMessage.error(response.msg || '提交失败')
+      ElMessage.error(response.message || '提交失败')
     }
   } catch (error) {
     console.error('提交答案失败:', error)
-    ElMessage.error('提交答案失败，请稍后重试')
+    if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('提交答案失败，请稍后重试')
+    }
   }
 }
 
