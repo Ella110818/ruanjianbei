@@ -152,17 +152,18 @@ const filters = ref({
 const loadUserInfo = async () => {
   try {
     const response = await getCurrentUser()
-    if (response.success && response.status_code === 200) {  // 修改判断条件
+    console.log('获取用户信息响应:', response)  // 添加日志
+    
+    if (response.success && response.status_code === 200) {
       currentUser.value = response.data
+      return true  // 返回成功标志
     } else {
-      ElMessage.error('获取用户信息失败')
-      // 如果获取用户信息失败，可能需要重定向到登录页
-      window.location.href = '/login'
+      console.warn('获取用户信息失败:', response)  // 添加警告日志
+      return false  // 返回失败标志
     }
   } catch (error) {
     console.error('加载用户信息失败:', error)
-    ElMessage.error('获取用户信息失败，请重新登录')
-    window.location.href = '/login'
+    return false  // 返回失败标志
   }
 }
 
@@ -304,9 +305,21 @@ const submitAnswer = async (exercise) => {
 
 // 组件挂载时加载数据
 onMounted(async () => {
-  await loadUserInfo() // 先加载用户信息
-  loadExercises()     // 无论用户信息是否加载成功，都尝试加载练习题
-  loadKnowledgePoints() // 同时加载知识点列表
+  const userLoaded = await loadUserInfo()  // 获取用户信息加载结果
+  
+  if (!userLoaded) {
+    // 只有在确实无法获取用户信息时才重定向
+    console.log('用户未登录，准备重定向到登录页面')
+    ElMessage.warning('请先登录')
+    setTimeout(() => {
+      window.location.href = '/login'
+    }, 1500)  // 延迟1.5秒跳转，让用户看到提示消息
+    return
+  }
+  
+  // 用户信息加载成功，加载其他数据
+  loadExercises()
+  loadKnowledgePoints()
 })
 </script>
 
