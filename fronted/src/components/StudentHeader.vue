@@ -16,7 +16,7 @@
           class="nav-link"
           :class="{ active: activeMenu === 'my-learning' }"
         >
-          我的学堂
+          练习题库
         </router-link>
       </nav>
     </div>

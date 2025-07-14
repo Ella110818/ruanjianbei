@@ -9,7 +9,7 @@
       </a>
       <div class="side-dropdown">
         <div class="dropdown-title" @click="toggleCourseMenu">
-          <span :class="{active: currentTab.startsWith('course')}" >课程</span>
+          <span :class="{active: currentTab && currentTab.startsWith('course')}" >课程</span>
           <span class="arrow" :class="{open: isMenuOpen}"></span>
         </div>
         <div v-if="isMenuOpen" class="dropdown-list">
@@ -53,7 +53,8 @@ const router = useRouter()
 const props = defineProps({
   sideTab: {
     type: String,
-    required: true
+    required: true,
+    default: 'dashboard' // 添加默认值
   },
   courseMenuOpen: {
     type: Boolean,
@@ -67,8 +68,13 @@ const props = defineProps({
 
 const emit = defineEmits(['update:sideTab', 'update:courseMenuOpen'])
 
-const currentTab = ref(props.sideTab)
+const currentTab = ref(props.sideTab || 'dashboard') // 确保有默认值
 const isMenuOpen = ref(props.courseMenuOpen)
+
+// 监听props变化
+watch(() => props.sideTab, (newVal) => {
+  currentTab.value = newVal || 'dashboard' // 确保在props更新时也有默认值
+})
 
 // 监听路由变化，切回课程管理时自动恢复菜单状态
 watch(() => router.currentRoute.value.path, (newPath) => {
@@ -145,9 +151,9 @@ onMounted(() => {
   const savedState = localStorage.getItem('teacherNavState')
   if (savedState) {
     const state = JSON.parse(savedState)
-    currentTab.value = state.tab
+    currentTab.value = state.tab || 'dashboard' // 添加默认值
     isMenuOpen.value = state.menuOpen
-    emit('update:sideTab', state.tab)
+    emit('update:sideTab', state.tab || 'dashboard') // 添加默认值
     emit('update:courseMenuOpen', state.menuOpen)
     
     // 恢复课程信息
@@ -181,7 +187,134 @@ onUnmounted(() => {
   z-index: 100;
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.05);
   transition: width 0.3s ease;
-  overflow-y: auto; /* 添加滚动条 */
+  overflow-y: auto;
+}
+
+.side-title {
+  font-size: 20px;
+  font-weight: bold;
+  padding: 24px 0 16px 32px;
+  letter-spacing: 2px;
+  color: #333;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.side-menu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.side-menu a {
+  color: #666;
+  text-decoration: none;
+  padding: 12px 32px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border-radius: 100px;
+  margin: 0 12px;
+  position: relative;
+  width: calc(100% - 24px);
+  text-align: center;
+}
+
+.side-menu a.active,
+.side-menu a:hover {
+  background: #6366F1;
+  color: #fff;
+  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.2);
+}
+
+.side-dropdown {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  align-items: center;
+}
+
+.dropdown-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 32px;
+  font-size: 15px;
+  cursor: pointer;
+  color: #666;
+  user-select: none;
+  transition: all 0.3s ease;
+  border-radius: 100px;
+  margin: 0 12px;
+  width: calc(100% - 24px);
+}
+
+.dropdown-title:hover,
+.dropdown-title span.active {
+  color: #6366F1;
+}
+
+.dropdown-title .arrow {
+  border: solid #666;
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  padding: 3px;
+  margin-left: 8px;
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+}
+
+.dropdown-title:hover .arrow {
+  border-color: #6366F1;
+}
+
+.dropdown-title .arrow.open {
+  transform: rotate(-135deg);
+}
+
+.dropdown-title span {
+  margin-right: 8px;
+}
+
+.dropdown-list {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  gap: 4px;
+  padding: 4px 0;
+  width: 100%;
+  align-items: center;
+}
+
+.dropdown-list a {
+  text-align: center;
+  padding: 10px 24px;
+  font-size: 14px;
+  width: calc(100% - 32px);
+  margin: 0 16px;
+}
+
+.dropdown-list a.active,
+.dropdown-list a:hover {
+  background: #6366F1;
+  color: #fff !important;
+}
+
+.course-item {
+  text-align: center !important;
+  padding: 10px 24px !important;
+  font-size: 14px !important;
+  color: #666 !important;
+  width: calc(100% - 32px) !important;
+  margin: 0 16px !important;
+}
+
+.course-item:hover,
+.course-item.active {
+  color: #fff !important;
 }
 
 /* 添加响应式设计 */
@@ -228,116 +361,4 @@ onUnmounted(() => {
     font-size: 12px;
   }
 }
-
-.side-title {
-  font-size: 20px;
-  font-weight: bold;
-  padding: 24px 0 16px 32px;
-  letter-spacing: 2px;
-  color: #333;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-.side-menu {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 16px 0;
-  gap: 8px;
-  align-items: center;
-  width: 100%;
-}
-.side-menu a {
-  color: #666;
-  text-decoration: none;
-  padding: 12px 32px;
-  font-size: 15px;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  border-radius: 100px;
-  margin: 0 12px;
-  position: relative;
-  width: calc(100% - 24px);
-  text-align: center;
-}
-.side-menu a.active,
-.side-menu a:hover {
-  background: #6366F1;
-  color: #fff;
-  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.2);
-}
-.side-dropdown {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  align-items: center;
-}
-.dropdown-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 32px;
-  font-size: 15px;
-  cursor: pointer;
-  color: #666;
-  user-select: none;
-  transition: all 0.3s ease;
-  border-radius: 100px;
-  margin: 0 12px;
-  width: calc(100% - 24px);
-}
-.dropdown-title:hover,
-.dropdown-title span.active {
-  color: #6366F1;
-}
-.dropdown-title .arrow {
-  border: solid #666;
-  border-width: 0 2px 2px 0;
-  display: inline-block;
-  padding: 3px;
-  margin-left: 8px;
-  transform: rotate(45deg);
-  transition: transform 0.2s;
-}
-.dropdown-title:hover .arrow {
-  border-color: #6366F1;
-}
-.dropdown-title .arrow.open {
-  transform: rotate(-135deg);
-}
-.dropdown-title span {
-  margin-right: 8px;
-}
-.dropdown-list {
-  display: flex;
-  flex-direction: column;
-  background: transparent;
-  gap: 4px;
-  padding: 4px 0;
-  width: 100%;
-  align-items: center;
-}
-.dropdown-list a {
-  text-align: center;
-  padding: 10px 24px;
-  font-size: 14px;
-  width: calc(100% - 32px);
-  margin: 0 16px;
-}
-.dropdown-list a.active,
-.dropdown-list a:hover {
-  background: #6366F1;
-  color: #fff !important;
-}
-.course-item {
-  text-align: center !important;
-  padding: 10px 24px !important;
-  font-size: 14px !important;
-  color: #666 !important;
-  width: calc(100% - 32px) !important;
-  margin: 0 16px !important;
-}
-.course-item:hover,
-.course-item.active {
-  color: #fff !important;
-}
-</style> 
+</style>
