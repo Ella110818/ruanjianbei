@@ -152,18 +152,18 @@ const filters = ref({
 const loadUserInfo = async () => {
   try {
     const response = await getCurrentUser()
-    console.log('获取用户信息响应:', response)  // 添加日志
+    console.log('获取用户信息响应:', response)
     
-    if (response.success && response.status_code === 200) {
+    if (response.code === 0) {  // 修改判断条件
       currentUser.value = response.data
-      return true  // 返回成功标志
+      return true
     } else {
-      console.warn('获取用户信息失败:', response)  // 添加警告日志
-      return false  // 返回失败标志
+      console.warn('获取用户信息失败:', response)
+      return false
     }
   } catch (error) {
     console.error('加载用户信息失败:', error)
-    return false  // 返回失败标志
+    return false
   }
 }
 
@@ -305,21 +305,27 @@ const submitAnswer = async (exercise) => {
 
 // 组件挂载时加载数据
 onMounted(async () => {
-  const userLoaded = await loadUserInfo()  // 获取用户信息加载结果
+  const userLoaded = await loadUserInfo()
   
   if (!userLoaded) {
-    // 只有在确实无法获取用户信息时才重定向
-    console.log('用户未登录，准备重定向到登录页面')
-    ElMessage.warning('请先登录')
+    console.log('用户未登录或登录已过期')
+    ElMessage.warning('请重新登录')
     setTimeout(() => {
       window.location.href = '/login'
-    }, 1500)  // 延迟1.5秒跳转，让用户看到提示消息
+    }, 1500)
     return
   }
   
   // 用户信息加载成功，加载其他数据
-  loadExercises()
-  loadKnowledgePoints()
+  try {
+    await Promise.all([
+      loadExercises(),
+      loadKnowledgePoints()
+    ])
+  } catch (error) {
+    console.error('加载数据失败:', error)
+    ElMessage.error('加载数据失败，请刷新页面重试')
+  }
 })
 </script>
 
