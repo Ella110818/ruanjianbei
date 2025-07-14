@@ -1,45 +1,128 @@
 <template>
-  <header class="teacher-header">
-    <div class="header-left">
-      <span class="project-name">智慧教育</span>
-      <nav class="main-nav">
-        <a href="#" :class="{active: isActivePath('/teacher/course')}" @click.prevent="navigateTo('/teacher/course')">课程管理</a>
-        <a href="#" :class="{active: isActivePath('/teacher/manage')}" @click.prevent="navigateTo('/teacher/manage')">学生管理</a>
-      </nav>
-    </div>
-    <div class="header-right">
-      <div class="user-dropdown" @click="toggleUserMenu" ref="userDropdown">
-        <img class="avatar" src="@/assets/avatar.png" alt="用户头像">
-        <span class="username">{{ teacherName }}</span>
-        <span class="arrow" :class="{open: userMenuOpen}"></span>
-        <!-- 下拉菜单 -->
-        <div class="dropdown-menu" v-show="userMenuOpen">
-          <a href="#" @click.prevent="handleUserInfo">
-            <i class="menu-icon user-icon"></i>
-            用户信息
-          </a>
-          <a href="#" @click.prevent="handleChangePassword">
-            <i class="menu-icon password-icon"></i>
-            修改密码
-          </a>
-          <div class="menu-divider"></div>
-          <a href="#" @click.prevent="handleLogout" class="logout-option">
-            <i class="menu-icon logout-icon"></i>
-            退出登录
-          </a>
+  <div class="teacher-header-container">
+    <header class="teacher-header">
+      <div class="header-left">
+        <span class="project-name">智慧教育</span>
+        <nav class="main-nav">
+          <a href="#" :class="{active: isActivePath('/teacher/course')}" @click.prevent="navigateTo('/teacher/course')">课程管理</a>
+          <a href="#" :class="{active: isActivePath('/teacher/manage')}" @click.prevent="navigateTo('/teacher/manage')">学生管理</a>
+        </nav>
+      </div>
+      <div class="header-right">
+        <div class="user-dropdown" @click="toggleUserMenu" ref="userDropdown">
+          <img class="avatar" src="@/assets/avatar.png" alt="用户头像">
+          <span class="username">{{ teacherName }}</span>
+          <span class="arrow" :class="{open: userMenuOpen}"></span>
+          <!-- 下拉菜单 -->
+          <div class="dropdown-menu" v-show="userMenuOpen">
+            <a href="#" @click.prevent="handleUserInfo">
+              <i class="menu-icon user-icon"></i>
+              用户信息
+            </a>
+            <a href="#" @click.prevent="handleChangePassword">
+              <i class="menu-icon password-icon"></i>
+              修改密码
+            </a>
+            <div class="menu-divider"></div>
+            <a href="#" @click.prevent="handleLogout" class="logout-option">
+              <i class="menu-icon logout-icon"></i>
+              退出登录
+            </a>
+          </div>
         </div>
       </div>
-    </div>
-  </header>
+    </header>
+
+    <!-- 添加修改密码对话框 -->
+    <el-dialog
+      v-model="changePasswordVisible"
+      title="修改密码"
+      width="400px"
+    >
+      <el-form
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-width="100px"
+      >
+        <el-form-item label="原密码" prop="old_password">
+          <el-input
+            v-model="passwordForm.old_password"
+            type="password"
+            placeholder="请输入原密码"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="新密码" prop="new_password">
+          <el-input
+            v-model="passwordForm.new_password"
+            type="password"
+            placeholder="请输入新密码"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirm_password">
+          <el-input
+            v-model="passwordForm.confirm_password"
+            type="password"
+            placeholder="请再次输入新密码"
+            show-password
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="changePasswordVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitChangePassword" :loading="submitting">
+            确认
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script>
+import { ElMessage } from 'element-plus'
+
 export default {
   name: 'TeacherHeader',
   data() {
+    // 验证确认密码
+    const validateConfirmPassword = (rule, value, callback) => {
+      if (value === '') {
+        callback(new Error('请再次输入密码'))
+      } else if (value !== this.passwordForm.new_password) {
+        callback(new Error('两次输入密码不一致!'))
+      } else {
+        callback()
+      }
+    }
+    
     return {
       userMenuOpen: false,
-      teacherName: localStorage.getItem('teacherName') || '教师姓名'
+      teacherName: localStorage.getItem('teacherName') || '教师姓名',
+      // 修改密码相关数据
+      changePasswordVisible: false,
+      submitting: false,
+      passwordForm: {
+        old_password: '',
+        new_password: '',
+        confirm_password: ''
+      },
+      passwordRules: {
+        old_password: [
+          { required: true, message: '请输入原密码', trigger: 'blur' },
+          { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
+        ],
+        new_password: [
+          { required: true, message: '请输入新密码', trigger: 'blur' },
+          { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
+        ],
+        confirm_password: [
+          { required: true, validator: validateConfirmPassword, trigger: 'blur' }
+        ]
+      }
     }
   },
   methods: {
@@ -77,7 +160,13 @@ export default {
       this.$router.push('/teacher/profile');
     },
     handleChangePassword() {
-      this.userMenuOpen = false;
+      this.userMenuOpen = false
+      this.changePasswordVisible = true
+      this.passwordForm = {
+        old_password: '',
+        new_password: '',
+        confirm_password: ''
+      }
     },
     handleLogout() {
       this.userMenuOpen = false;
@@ -85,6 +174,43 @@ export default {
       localStorage.removeItem('previousTab');
       localStorage.removeItem('aiPageState');
       this.$router.push('/');
+    },
+
+    // 提交修改密码
+    async submitChangePassword() {
+      if (!this.$refs.passwordFormRef) return
+      
+      try {
+        await this.$refs.passwordFormRef.validate()
+        
+        this.submitting = true
+        const response = await fetch('/api/users/change_password/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            old_password: this.passwordForm.old_password,
+            new_password: this.passwordForm.new_password,
+            confirm_password: this.passwordForm.confirm_password
+          })
+        })
+
+        const data = await response.json()
+        
+        if (data.success) {
+          ElMessage.success('密码修改成功')
+          this.changePasswordVisible = false
+        } else {
+          ElMessage.error(data.message || '密码修改失败')
+        }
+      } catch (error) {
+        console.error('修改密码失败:', error)
+        ElMessage.error('修改密码失败，请重试')
+      } finally {
+        this.submitting = false
+      }
     }
   },
   mounted() {
@@ -97,6 +223,20 @@ export default {
 </script>
 
 <style scoped>
+.teacher-header-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  z-index: 200;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 64px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 0 40px;
+}
 .teacher-header {
   position: fixed;
   top: 0;
@@ -231,5 +371,11 @@ export default {
 }
 .logout-option:hover {
   background-color: #fff1f0 !important;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style> 

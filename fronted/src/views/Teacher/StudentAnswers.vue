@@ -162,9 +162,16 @@ const loadAnswers = async () => {
       page_size: pageSize.value
     })
     
+    console.log('API响应数据:', response)
+    
     if (response.success && response.status_code === 200) {
+      console.log('答题记录数据:', response.data.results)
+      console.log('总记录数:', response.data.count)
+      
       answers.value = response.data.results || []
       total.value = response.data.count || 0
+      
+      console.log('更新后的answers:', answers.value)
     } else {
       ElMessage.error(response.message || '获取答题记录失败')
     }
