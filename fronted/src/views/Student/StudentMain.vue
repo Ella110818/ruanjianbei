@@ -33,7 +33,8 @@
           >
             <el-option label="简单" value="1" />
             <el-option label="中等" value="2" />
-            <el-option label="困难" value="3" />
+            <el-option label="较难" value="3" />
+            <el-option label="困难" value="4" />
           </el-select>
           <el-select
             v-model="filters.knowledge_point"
@@ -97,14 +98,14 @@
                 难度：
                 <el-rate
                   v-model="exercise.difficulty"
-                  :max="3"
+                  :max="4"
                   disabled
                   text-color="#ff9900"
                 />
               </span>
-            </div>
+      </div>
           </el-card>
-        </div>
+      </div>
 
         <!-- 分页器 -->
         <div class="pagination-container">

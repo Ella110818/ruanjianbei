@@ -163,8 +163,8 @@ const loadAnswers = async () => {
     })
     
     if (response.success && response.status_code === 200) {
-      answers.value = response.data ? [response.data] : []
-      total.value = answers.value.length
+      answers.value = response.data.results || []
+      total.value = response.data.count || 0
     } else {
       ElMessage.error(response.message || '获取答题记录失败')
     }
