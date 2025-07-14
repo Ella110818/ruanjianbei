@@ -175,7 +175,7 @@ const loadExercises = async () => {
       page: currentPage.value
     })
     
-    if (response.code === 0 && response.data) {
+    if (response.success && response.status_code === 200) {  // 修改判断条件
       exercises.value = response.data.results.map(exercise => ({
         ...exercise,
         studentAnswer: '',
@@ -185,7 +185,7 @@ const loadExercises = async () => {
       }))
       total.value = response.data.count || 0
     } else {
-      ElMessage.error(response.msg || '获取练习题失败')
+      ElMessage.error('获取练习题失败')
     }
   } catch (error) {
     console.error('加载练习题失败:', error)
@@ -205,10 +205,10 @@ const loadKnowledgePoints = async () => {
       ordering: 'title'
     })
     
-    if (response.code === 0 && response.data) {
+    if (response.success && response.status_code === 200) {  // 修改判断条件
       knowledgePoints.value = response.data.results || []
     } else {
-      ElMessage.error(response.msg || '获取知识点列表失败')
+      ElMessage.error('获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
