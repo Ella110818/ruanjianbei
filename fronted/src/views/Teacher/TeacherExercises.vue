@@ -232,11 +232,11 @@ const loadExercises = async () => {
       page: currentPage.value
     })
     
-    if (response.code === 0 && response.data) {
+    if (response.success && response.status_code === 200) {  // 修改判断条件
       exercises.value = response.data.results || []
       total.value = response.data.count || 0
     } else {
-      ElMessage.error(response.msg || '获取练习题失败')
+      ElMessage.error('获取练习题失败')
     }
   } catch (error) {
     console.error('加载练习题失败:', error)
@@ -256,15 +256,15 @@ const loadKnowledgePoints = async () => {
       ordering: 'title'  // 按标题排序
     })
     
-    if (response.code === 0 && response.data) {
+    if (response.success && response.status_code === 200) {  // 修改判断条件
       knowledgePoints.value = response.data.results.map(point => ({
         id: point.id,
-        title: point.title, // 使用 title 而不是 name
-        description: point.content // 使用 content 作为描述
+        title: point.title,
+        description: point.content
       })) || []
-      console.log('知识点列表:', knowledgePoints.value) // 添加日志
+      console.log('知识点列表:', knowledgePoints.value)
     } else {
-      ElMessage.error(response.msg || '获取知识点列表失败')
+      ElMessage.error('获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
@@ -278,8 +278,20 @@ const loadKnowledgePoints = async () => {
 const loadCourses = async () => {
   try {
     const response = await getCourseList()
-    if (response.code === 0) {
-      courses.value = response.data
+    console.log('课程列表响应:', response)
+    
+    if (response.success && response.status_code === 200) {
+      courses.value = response.data.results.map(course => ({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        subject: course.subject,
+        grade_level: course.grade_level,
+        teacher_name: course.teacher_name
+      }))
+      console.log('处理后的课程列表:', courses.value)
+    } else {
+      console.warn('获取课程列表失败:', response)
     }
   } catch (error) {
     console.error('加载课程失败:', error)
@@ -416,9 +428,13 @@ const toggleExercise = (exerciseId) => {
 // 组件挂载时加载数据
 onMounted(() => {
   restorePreviousState() // 先恢复状态
-  loadExercises()
-  loadKnowledgePoints()
-  loadCourses()
+  Promise.all([
+    loadExercises(),
+    loadKnowledgePoints(),
+    loadCourses()
+  ]).catch(error => {
+    console.error('初始化数据加载失败:', error)
+  })
 })
 </script>
 
@@ -568,6 +584,23 @@ onMounted(() => {
 
 .option-text {
   color: #606266;
+}
+
+/* 添加课程菜单样式 */
+.course-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.course-title {
+  font-weight: 500;
+  color: #333;
+}
+
+.course-info {
+  color: #999;
+  font-size: 12px;
 }
 
 @media screen and (max-width: 1366px) {
