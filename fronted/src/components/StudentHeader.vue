@@ -1,61 +1,113 @@
 <template>
-  <header class="student-header">
-    <!-- 左侧标题 -->
-    <div class="header-left">
-      <span class="project-name">智慧教育</span>
-      <nav class="main-nav">
-        <router-link 
-          to="/student/ai-assistant" 
-          class="nav-link"
-          :class="{ active: activeMenu === 'ai-assistant' }"
-        >
-          AI助手
-        </router-link>
-        <router-link 
-          to="/student/classroom" 
-          class="nav-link"
-          :class="{ active: activeMenu === 'my-learning' }"
-        >
-          练习题库
-        </router-link>
-      </nav>
-    </div>
+  <div class="student-header-container">
+    <header class="student-header">
+      <!-- 左侧标题 -->
+      <div class="header-left">
+        <span class="project-name">智慧教育</span>
+        <nav class="main-nav">
+          <router-link 
+            to="/student/ai-assistant" 
+            class="nav-link"
+            :class="{ active: activeMenu === 'ai-assistant' }"
+          >
+            AI助手
+          </router-link>
+          <router-link 
+            to="/student/classroom" 
+            class="nav-link"
+            :class="{ active: activeMenu === 'my-learning' }"
+          >
+            练习题库
+          </router-link>
+        </nav>
+      </div>
 
-    <!-- 右侧用户信息 -->
-    <div class="header-right">
-      <div class="user-dropdown" @click="toggleUserMenu" ref="userDropdown">
-        <img class="avatar" src="@/assets/avatar.png" alt="用户头像">
-        <span class="username">{{ userInfo.name }}</span>
-        <span class="arrow" :class="{open: userMenuOpen}"></span>
-        <!-- 下拉菜单 -->
-        <div class="dropdown-menu" v-show="userMenuOpen">
-          <a href="#" @click.prevent="handleCommand('profile')">
-            <i class="menu-icon user-icon"></i>
-            个人信息
-          </a>
-          <a href="#" @click.prevent="handleCommand('changePassword')">
-            <i class="menu-icon password-icon"></i>
-            修改密码
-          </a>
-          <div class="menu-divider"></div>
-          <a href="#" @click.prevent="handleCommand('logout')" class="logout-option">
-            <i class="menu-icon logout-icon"></i>
-            退出登录
-          </a>
+      <!-- 右侧用户信息 -->
+      <div class="header-right">
+        <div class="user-dropdown" @click="toggleUserMenu" ref="userDropdown">
+          <img class="avatar" src="@/assets/avatar.png" alt="用户头像">
+          <span class="username">{{ userInfo.name }}</span>
+          <span class="arrow" :class="{open: userMenuOpen}"></span>
+          <!-- 下拉菜单 -->
+          <div class="dropdown-menu" v-show="userMenuOpen">
+            <a href="#" @click.prevent="handleCommand('profile')">
+              <i class="menu-icon user-icon"></i>
+              个人信息
+            </a>
+            <a href="#" @click.prevent="handleCommand('changePassword')">
+              <i class="menu-icon password-icon"></i>
+              修改密码
+            </a>
+            <div class="menu-divider"></div>
+            <a href="#" @click.prevent="handleCommand('logout')" class="logout-option">
+              <i class="menu-icon logout-icon"></i>
+              退出登录
+            </a>
+          </div>
         </div>
       </div>
-    </div>
-  </header>
+    </header>
+
+    <!-- 修改密码对话框 -->
+    <el-dialog
+      v-model="changePasswordVisible"
+      title="修改密码"
+      width="400px"
+    >
+      <el-form
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-width="100px"
+      >
+        <el-form-item label="原密码" prop="old_password">
+          <el-input
+            v-model="passwordForm.old_password"
+            type="password"
+            placeholder="请输入原密码"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="新密码" prop="new_password">
+          <el-input
+            v-model="passwordForm.new_password"
+            type="password"
+            placeholder="请输入新密码"
+            show-password
+          />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirm_password">
+          <el-input
+            v-model="passwordForm.confirm_password"
+            type="password"
+            placeholder="请再次输入新密码"
+            show-password
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="changePasswordVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitChangePassword" :loading="submitting">
+            确认
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElForm } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
 const userMenuOpen = ref(false)
+const changePasswordVisible = ref(false)
+const submitting = ref(false)
+const passwordFormRef = ref(null)
 
 // 用户信息
 const userInfo = ref({
@@ -84,17 +136,91 @@ const handleClickOutside = (event) => {
   }
 }
 
+// 密码表单数据
+const passwordForm = ref({
+  old_password: '',
+  new_password: '',
+  confirm_password: ''
+})
+
+// 密码验证规则
+const validateConfirmPassword = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== passwordForm.value.new_password) {
+    callback(new Error('两次输入密码不一致!'))
+  } else {
+    callback()
+  }
+}
+
+const passwordRules = {
+  old_password: [
+    { required: true, message: '请输入原密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
+  ],
+  new_password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
+  ],
+  confirm_password: [
+    { required: true, validator: validateConfirmPassword, trigger: 'blur' }
+  ]
+}
+
 // 处理下拉菜单命令
-const handleCommand = (command) => {
+const handleCommand = async (command) => {
   userMenuOpen.value = false
   if (command === 'profile') {
-      router.push('/student/profile')
+    router.push('/student/profile')
   } else if (command === 'logout') {
-      localStorage.removeItem('studentName')
-      router.push('/login')
-      ElMessage.success('已退出登录')
+    localStorage.removeItem('studentName')
+    router.push('/login')
+    ElMessage.success('已退出登录')
   } else if (command === 'changePassword') {
-    ElMessage.info('修改密码功能开发中')
+    changePasswordVisible.value = true
+    passwordForm.value = {
+      old_password: '',
+      new_password: '',
+      confirm_password: ''
+    }
+  }
+}
+
+// 提交修改密码
+const submitChangePassword = async () => {
+  if (!passwordFormRef.value) return
+  
+  try {
+    await passwordFormRef.value.validate()
+    
+    submitting.value = true
+    const response = await fetch('/api/users/change_password/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        old_password: passwordForm.value.old_password,
+        new_password: passwordForm.value.new_password,
+        confirm_password: passwordForm.value.confirm_password
+      })
+    })
+
+    const data = await response.json()
+    
+    if (data.success) {
+      ElMessage.success('密码修改成功')
+      changePasswordVisible.value = false
+    } else {
+      ElMessage.error(data.message || '密码修改失败')
+    }
+  } catch (error) {
+    console.error('修改密码失败:', error)
+    ElMessage.error('修改密码失败，请重试')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -109,6 +235,21 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.student-header-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  z-index: 200;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 64px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 0 40px;
+}
+
 .student-header {
   position: fixed;
   top: 0;
@@ -265,5 +406,11 @@ onUnmounted(() => {
 
 .logout-option:hover {
   background-color: #fff1f0 !important;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style> 
