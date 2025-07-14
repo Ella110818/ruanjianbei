@@ -52,7 +52,7 @@
               <div class="knowledge-point-option">
                 <span>{{ point.title }}</span>
                 <small v-if="point.content" class="knowledge-point-desc">
-                  {{ point.content.length > 50 ? point.content.slice(0, 50) + '...' : point.content }}
+                  {{ point.content && point.content.length > 50 ? point.content.slice(0, 50) + '...' : point.content }}
                 </small>
               </div>
             </el-option>
