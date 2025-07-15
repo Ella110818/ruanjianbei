@@ -206,8 +206,16 @@ const API_BASE_URL = 'https://990dad7dbad9.ngrok-free.app/api';
 
 // 修改sendMessage函数
 const sendMessage = async (message = null) => {
-  const userInput = message || inputMessage.value;
-  if (!userInput.trim()) return;
+  console.log('sendMessage函数被调用', { message, inputMessage: inputMessage.value });
+  
+  // 确保输入是字符串类型
+  const userInput = String(message || inputMessage.value || '');
+  if (!userInput.trim()) {
+    console.log('输入为空，不发送请求');
+    return;
+  }
+
+  console.log('准备发送消息:', userInput);
 
   // 添加用户消息
   const messageId = messages.value.length + 1;
@@ -224,6 +232,7 @@ const sendMessage = async (message = null) => {
 
   try {
     loading.value = true;
+    console.log('设置loading状态为true');
     
     // 简化请求参数，完全匹配API文档
     const requestData = {
@@ -233,23 +242,27 @@ const sendMessage = async (message = null) => {
     };
 
     console.log('发送请求参数:', requestData);
+    console.log('请求URL:', `${API_BASE_URL}/ai/student-dialogue/`);
     
     // 直接使用fetch调用AI助手API
     const response = await fetch(`${API_BASE_URL}/ai/student-dialogue/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'  // 添加ngrok请求头
+        'ngrok-skip-browser-warning': 'true',  // 添加ngrok请求头
+        'Authorization': localStorage.getItem('token') || ''  // 添加token
       },
       body: JSON.stringify(requestData)
     });
+
+    console.log('收到响应:', response);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('AI助手响应:', data);
+    console.log('AI助手响应数据:', data);
 
     if (data && data.data) {
       // 直接使用API返回的answer
@@ -277,6 +290,7 @@ const sendMessage = async (message = null) => {
     });
   } finally {
     loading.value = false;
+    console.log('设置loading状态为false');
   }
 }
 
@@ -502,16 +516,24 @@ const generateExercises = async () => {
 
   try {
     loading.value = true
-    const response = await fetch('https://de566d16a53d.ngrok-free.app/api/ai/generate-exercises/', {
+    const response = await fetch(`${API_BASE_URL}/ai/generate-exercises/`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': localStorage.getItem('token') || ''
       },
       body: JSON.stringify(exerciseParams.value)
     })
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json()
-    if (data.code === 0) {
+    console.log('生成题目响应:', data)
+
+    if (data.code === 0 && data.data) {
       showExerciseDialog.value = false
       // 显示生成的题目
       messages.value.push({
@@ -527,7 +549,7 @@ const generateExercises = async () => {
         time: formatTime(new Date())
       })
     } else {
-      ElMessage.error(data.msg || '生成题目失败')
+      throw new Error(data.msg || '生成题目失败')
     }
   } catch (error) {
     console.error('生成题目失败:', error)
@@ -1170,7 +1192,7 @@ const generateExercises = async () => {
 /* 输入框容器样式 */
 .chat-input-container {
   position: fixed;
-  bottom: 800px; /* 增加到 80px，让输入框更明显地往上移 */
+  bottom: 20px; /* 修改为20px，确保输入框在屏幕底部可见 */
   left: 0;
   right: 0;
   padding: 20px;
