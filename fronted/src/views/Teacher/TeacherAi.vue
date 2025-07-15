@@ -322,30 +322,58 @@ const handleGeneratePPT = async (knowledgePoints) => {
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
-    const response = await fetch('https://990dad7dbad9.ngrok-free.app/api/courses/', {
-      method: 'GET',
+    const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://990dad7dbad9.ngrok-free.app'
+    const response = await fetch(`${API_BASE_URL}/api/courses/`, {
       headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
-        'Authorization': localStorage.getItem('token') || ''
+        'ngrok-skip-browser-warning': 'true'
       }
     })
     
-    if (!response.ok) {
-      throw new Error('获取课程列表失败')
-    }
-    
     const data = await response.json()
+    console.log('课程列表响应:', data)
     
-    if (data.code === 0 && data.data) {
-      coursesList.value = data.data.results || []
-      console.log('课程列表加载成功:', coursesList.value)
+    if (response.ok) {
+      let courseList = []
+      if (data.success && data.status_code === 200 && data.data) {
+        // 处理分页格式
+        if (Array.isArray(data.data.results)) {
+          courseList = data.data.results
+        } 
+        // 处理直接数组格式
+        else if (Array.isArray(data.data)) {
+          courseList = data.data
+        }
+      } else if (data.code === 0 && data.data) {
+        // 处理新的API格式
+        if (Array.isArray(data.data.results)) {
+          courseList = data.data.results
+        } else if (Array.isArray(data.data)) {
+          courseList = data.data
+        }
+      }
+
+      if (courseList.length > 0) {
+        coursesList.value = courseList.map(course => ({
+          id: course.id,
+          title: course.name || course.title,
+          description: course.description,
+          subject: course.subject,
+          grade_level: course.grade_level,
+          teacher_name: course.teacher_name
+        }))
+        console.log('课程列表加载成功:', coursesList.value)
+      } else {
+        console.warn('课程列表为空')
+        ElMessage.warning('暂无可用课程')
+      }
     } else {
-      ElMessage.error(data.msg || '获取课程列表失败')
+      throw new Error(data.message || data.msg || '获取课程列表失败')
     }
   } catch (error) {
     console.error('加载课程失败:', error)
-    ElMessage.error('加载课程列表失败，请稍后重试')
+    ElMessage.error(error.message || '加载课程列表失败，请稍后重试')
   } finally {
     coursesLoading.value = false
   }
