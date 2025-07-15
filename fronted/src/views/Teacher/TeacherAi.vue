@@ -274,13 +274,18 @@ const handleGeneratePPT = async (knowledgePoints) => {
         
         try {
           // 使用handleRequest获取文件内容
-          const fileResponse = await handleRequest(fileUrl, {
+          const fileResponse = await fetch(fileUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': localStorage.getItem('token') || ''
+            },
             responseType: 'blob'  // 指定响应类型为blob
           })
           
-          if (fileResponse instanceof Blob) {
+          if (fileResponse.ok) {
+            const blob = await fileResponse.blob()
             // 创建下载链接
-            const url = window.URL.createObjectURL(fileResponse)
+            const url = window.URL.createObjectURL(blob)
             const link = document.createElement('a')
             link.href = url
             link.download = response.data.filename || '知识点PPT.pptx'
@@ -317,7 +322,6 @@ const handleGeneratePPT = async (knowledgePoints) => {
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
-    console.log('开始加载课程列表')
     const response = await fetch('https://990dad7dbad9.ngrok-free.app/api/courses/', {
       method: 'GET',
       headers: {
@@ -328,33 +332,20 @@ const loadCourses = async () => {
     })
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      throw new Error('获取课程列表失败')
     }
     
     const data = await response.json()
-    console.log('课程列表响应:', data)
     
-    if (data.success && data.status_code === 200) {
-      if (data.data && Array.isArray(data.data.results)) {
-        coursesList.value = data.data.results.map(course => ({
-          id: course.id,
-          title: course.title
-        }))
-        console.log('处理后的课程列表:', coursesList.value)
-      } else {
-        throw new Error('课程数据格式不正确')
-      }
+    if (data.code === 0 && data.data) {
+      coursesList.value = data.data.results || []
+      console.log('课程列表加载成功:', coursesList.value)
     } else {
-      if (data.status_code === 401) {
-        ElMessage.error('登录已过期，请重新登录')
-        // 可以在这里添加重定向到登录页面的逻辑
-      } else {
-        throw new Error(data.message || '获取课程列表失败')
-      }
+      ElMessage.error(data.msg || '获取课程列表失败')
     }
   } catch (error) {
     console.error('加载课程失败:', error)
-    ElMessage.error(error.message || '加载课程列表失败')
+    ElMessage.error('加载课程列表失败，请稍后重试')
   } finally {
     coursesLoading.value = false
   }
@@ -371,29 +362,21 @@ const restorePreviousState = () => {
   }
 }
 
-const updateSideTab = (tab) => {
-  sideTab.value = tab
-  localStorage.setItem('sideTab', tab)
-      
-  if (tab.startsWith('course-')) {
-    const courseIndex = parseInt(tab.split('-')[1])
-    const selectedCourse = courses.value[courseIndex]
-    if (selectedCourse) {
-      localStorage.setItem('currentCourseName', selectedCourse.name)
-      localStorage.setItem('currentCourseId', selectedCourse.id)
-    }
-  }
+// 更新侧边栏状态
+const updateSideTab = (value) => {
+  sideTab.value = value
 }
 
-const updateCourseMenuOpen = (open) => {
-  courseMenuOpen.value = open
+const updateCourseMenuOpen = (value) => {
+  courseMenuOpen.value = value
 }
 
-// 组件挂载时初始化数据
-onMounted(() => {
-  loadCourses()
-  loadKnowledgePoints()
-  restorePreviousState()
+// 组件挂载时加载数据
+onMounted(async () => {
+  await Promise.all([
+    loadKnowledgePoints(),
+    loadCourses()
+  ])
 })
 </script>
 
