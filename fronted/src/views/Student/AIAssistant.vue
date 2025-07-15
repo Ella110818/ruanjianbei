@@ -661,28 +661,20 @@ const fetchKnowledgePoints = async () => {
     }
 
     const data = await response.json();
-    console.log('Knowledge points API response:', data); // 添加日志
+    console.log('Knowledge points API response:', data);
 
-    // 处理两种可能的响应格式
-    if (data.success && data.status_code === 200 && Array.isArray(data.data)) {
-      knowledgePoints.value = data.data;
-    } else if (data.code === 0 && Array.isArray(data.data)) {
-      knowledgePoints.value = data.data;
-    } else if (data.data && Array.isArray(data.data.items)) {
-      // 处理分页数据格式
-      knowledgePoints.value = data.data.items;
+    // 处理分页响应格式
+    if (data.success && data.status_code === 200 && data.data && Array.isArray(data.data.results)) {
+      knowledgePoints.value = data.data.results.map(point => ({
+        id: point.id,
+        name: point.title // API返回的是title字段，我们映射为name
+      }));
     } else {
-      console.error('Unexpected API response format:', data); // 添加错误日志
+      console.error('Unexpected API response format:', data);
       throw new Error('知识点数据格式不正确');
     }
 
-    // 验证数据格式
-    if (!knowledgePoints.value.every(point => point && typeof point.id === 'number' && typeof point.name === 'string')) {
-      console.error('Invalid knowledge point data format:', knowledgePoints.value); // 添加错误日志
-      throw new Error('知识点数据格式不正确');
-    }
-
-    console.log('Processed knowledge points:', knowledgePoints.value); // 添加日志
+    console.log('Processed knowledge points:', knowledgePoints.value);
   } catch (error) {
     console.error('获取知识点列表失败:', error);
     ElMessage.error(error.message || '获取知识点列表失败，请稍后重试');
