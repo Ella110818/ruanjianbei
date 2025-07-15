@@ -75,8 +75,10 @@
                   <span class="message-sender">{{ message.type === 'user' ? '我' : 'AI助手' }}</span>
                   <span class="message-time">{{ message.time }}</span>
                 </div>
+                <!-- 修改消息内容的显示 -->
                 <div class="message-content" :class="{ 'user-message': message.type === 'user' }">
-                  <div class="text-content">{{ message.content }}</div>
+                  <div class="text-content" v-if="message.type === 'user'">{{ message.content }}</div>
+                  <div class="text-content markdown-content" v-else v-html="formatMessageContent(message.content)"></div>
                 </div>
               </div>
             </div>
@@ -100,7 +102,8 @@
                   @keyup.shift.enter="inputMessage += '\n'"
                 ></textarea>
               </div>
-              <button class="send-button" @click="sendMessage" :disabled="loading">
+              <!-- 修改发送按钮的点击事件 -->
+              <button class="send-button" @click="() => sendMessage()" :disabled="loading">
                 <el-icon class="send-icon"><Position /></el-icon>
               </button>
             </div>
@@ -133,20 +136,24 @@
           <el-form-item label="题目类型">
             <el-select v-model="exerciseParams.question_types" multiple placeholder="请选择题目类型">
               <el-option label="单选题" value="single_choice"></el-option>
-              <el-option label="多选题" value="multiple_choice"></el-option>
-              <el-option label="判断题" value="true_false"></el-option>
+              <el-option label="简答题" value="short_answer"></el-option>
             </el-select>
           </el-form-item>
           
           <el-form-item label="题目数量">
-            <el-input-number v-model="exerciseParams.quantity" :min="1" :max="10"></el-input-number>
+            <el-input-number 
+              v-model="exerciseParams.quantity" 
+              :min="1" 
+              :max="10"
+              :step="1"
+            ></el-input-number>
           </el-form-item>
           
           <el-form-item label="难度等级">
             <el-rate
               v-model="exerciseParams.difficulty"
-              :max="3"
-              :texts="['简单', '中等', '困难']"
+              :max="5"
+              :texts="['极易', '简单', '中等', '较难', '困难']"
               show-text
             ></el-rate>
           </el-form-item>
@@ -171,6 +178,13 @@ import StudentHeader from '@/components/StudentHeader.vue'
 import { getCurrentUser } from '@/api/index.js'  // 移除handleRequest导入
 import { ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElInputNumber, ElRate, ElButton } from 'element-plus'
 import { User, Position } from '@element-plus/icons-vue'
+import MarkdownIt from 'markdown-it'  // 添加markdown-it导入
+
+// 创建markdown解析器
+const md = new MarkdownIt({
+  breaks: true,  // 支持换行
+  linkify: true  // 自动转换链接
+})
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
@@ -208,8 +222,8 @@ const API_BASE_URL = 'https://990dad7dbad9.ngrok-free.app/api';
 const sendMessage = async (message = null) => {
   console.log('sendMessage函数被调用', { message, inputMessage: inputMessage.value });
   
-  // 确保输入是字符串类型
-  const userInput = String(message || inputMessage.value || '');
+  // 如果没有传入message，则使用输入框的值
+  const userInput = message || inputMessage.value || '';
   if (!userInput.trim()) {
     console.log('输入为空，不发送请求');
     return;
@@ -226,6 +240,7 @@ const sendMessage = async (message = null) => {
     time: formatTime(new Date())
   });
 
+  // 清空输入框
   if (!message) {
     inputMessage.value = '';
   }
@@ -265,7 +280,7 @@ const sendMessage = async (message = null) => {
     console.log('AI助手响应数据:', data);
 
     if (data && data.data) {
-      // 直接使用API返回的answer
+      // 直接使用API返回的answer，并用markdown格式化
       messages.value.push({
         id: messages.value.length + 1,
         type: 'ai',
@@ -479,19 +494,21 @@ const currentFeatureRows = computed(() => {
 const showExerciseDialog = ref(false)
 const exerciseParams = ref({
   query: '',
-  knowledge_point_ids: [],
+  knowledge_point_ids: [], // 这里存储知识点ID（数字）
   question_types: [],
-  quantity: 2,
+  quantity: 3,
   difficulty: 1,
   session_id: ''
 })
 
-// 知识点列表（这里需要从后端获取，暂时使用模拟数据）
-const knowledgePoints = ref([
-  { id: 1, name: '函数' },
-  { id: 2, name: '方程' },
-  { id: 3, name: '几何' }
-])
+// 知识点列表
+const knowledgePoints = ref([]);
+
+// 在组件挂载时获取知识点列表
+onMounted(() => {
+  loadUserInfo();
+  fetchKnowledgePoints(); // 添加这行
+});
 
 // 修改输入框标题点击事件
 const handleTitleClick = () => {
@@ -499,23 +516,58 @@ const handleTitleClick = () => {
   exerciseParams.value.session_id = 'session-' + Date.now()
 }
 
-// 生成练习题的函数
+// 添加格式化练习题的函数
+const formatExercise = (exercise) => {
+  const difficultyText = ['极易', '简单', '中等', '较难', '困难'][exercise.difficulty - 1] || '未知';
+  const typeText = {
+    'single_choice': '单选题',
+    'short_answer': '简答题'
+  }[exercise.type] || '未知类型';
+  
+  let formattedContent = `### ${exercise.title}\n\n`;
+  formattedContent += `**难度**：${difficultyText} | **类型**：${typeText}\n\n`;
+  formattedContent += `${exercise.content}\n\n`;
+  
+  // 只有单选题才显示选项
+  if (exercise.type === 'single_choice' && exercise.answer_template && exercise.answer_template.length > 0) {
+    formattedContent += '选项：\n\n';
+    exercise.answer_template.forEach((option, index) => {
+      const optionLabel = String.fromCharCode(65 + index); // A, B, C, D...
+      formattedContent += `${optionLabel}. ${option}\n`;
+    });
+  }
+  
+  return formattedContent;
+}
+
+// 修改生成练习题函数中的显示逻辑
 const generateExercises = async () => {
   if (!exerciseParams.value.query.trim()) {
     ElMessage.warning('请输入查询内容')
     return
   }
-  if (exerciseParams.value.knowledge_point_ids.length === 0) {
+  
+  // 确保knowledge_point_ids是数字数组
+  if (!exerciseParams.value.knowledge_point_ids.length) {
     ElMessage.warning('请选择至少一个知识点')
     return
   }
-  if (exerciseParams.value.question_types.length === 0) {
+
+  if (!exerciseParams.value.question_types.length) {
     ElMessage.warning('请选择至少一种题目类型')
     return
   }
 
   try {
-    loading.value = true
+    loading.value = true;
+    // 确保发送的knowledge_point_ids是数字数组
+    const requestData = {
+      ...exerciseParams.value,
+      knowledge_point_ids: exerciseParams.value.knowledge_point_ids.map(Number),
+      difficulty: Number(exerciseParams.value.difficulty),
+      quantity: Number(exerciseParams.value.quantity)
+    };
+
     const response = await fetch(`${API_BASE_URL}/ai/generate-exercises/`, {
       method: 'POST',
       headers: {
@@ -523,7 +575,7 @@ const generateExercises = async () => {
         'ngrok-skip-browser-warning': 'true',
         'Authorization': localStorage.getItem('token') || ''
       },
-      body: JSON.stringify(exerciseParams.value)
+      body: JSON.stringify(requestData)
     })
 
     if (!response.ok) {
@@ -533,7 +585,7 @@ const generateExercises = async () => {
     const data = await response.json()
     console.log('生成题目响应:', data)
 
-    if (data.code === 0 && data.data) {
+    if (data.success && data.status_code === 200 && data.data) {
       showExerciseDialog.value = false
       // 显示生成的题目
       messages.value.push({
@@ -542,22 +594,72 @@ const generateExercises = async () => {
         content: `生成${exerciseParams.value.quantity}道${exerciseParams.value.difficulty}级难度的题目`,
         time: formatTime(new Date())
       })
-      messages.value.push({
-        id: messages.value.length + 1,
-        type: 'ai',
-        content: data.data,
-        time: formatTime(new Date())
-      })
+      
+      if (data.data.exercises && data.data.exercises.length > 0) {
+        // 格式化每道题目并用分隔符连接
+        const formattedExercises = data.data.exercises
+          .map((exercise, index) => `第${index + 1}题\n\n${formatExercise(exercise)}`)
+          .join('\n\n---\n\n');
+        
+        messages.value.push({
+          id: messages.value.length + 1,
+          type: 'ai',
+          content: formattedExercises,
+          time: formatTime(new Date())
+        })
+        
+        // 保存会话ID
+        if (data.data.session_id) {
+          currentSessionId.value = data.data.session_id;
+        }
+      } else {
+        throw new Error('没有生成任何题目');
+      }
     } else {
-      throw new Error(data.msg || '生成题目失败')
+      throw new Error(data.message || '生成题目失败')
     }
   } catch (error) {
     console.error('生成题目失败:', error)
-    ElMessage.error('生成题目失败，请稍后重试')
+    ElMessage.error(error.message || '生成题目失败，请稍后重试')
   } finally {
     loading.value = false
   }
 }
+
+// 修改消息显示部分
+const formatMessageContent = (content) => {
+  if (typeof content !== 'string') return content;
+  // 将markdown文本转换为HTML
+  return md.render(content);
+}
+
+// 添加知识点列表获取API
+const fetchKnowledgePoints = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/knowledge-points/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': localStorage.getItem('token') || ''
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.success && data.data) {
+      knowledgePoints.value = data.data;
+    } else {
+      throw new Error(data.message || '获取知识点列表失败');
+    }
+  } catch (error) {
+    console.error('获取知识点列表失败:', error);
+    ElMessage.error('获取知识点列表失败，请稍后重试');
+  }
+};
 
 </script>
 
@@ -1633,6 +1735,57 @@ const generateExercises = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+/* 添加Markdown内容样式 */
+.markdown-content {
+  line-height: 1.6;
+}
+
+.markdown-content :deep(h3) {
+  font-size: 1.2em;
+  margin: 1em 0 0.5em;
+  color: #333;
+}
+
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.markdown-content :deep(li) {
+  margin: 0.3em 0;
+}
+
+.markdown-content :deep(p) {
+  margin: 0.5em 0;
+}
+
+.markdown-content :deep(strong) {
+  font-weight: 600;
+  color: #409EFF;
+}
+
+.markdown-content :deep(code) {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.markdown-content :deep(pre) {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.markdown-content :deep(blockquote) {
+  border-left: 4px solid #ddd;
+  margin: 0;
+  padding-left: 1em;
+  color: #666;
 }
 </style> 
 
