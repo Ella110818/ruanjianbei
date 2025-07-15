@@ -161,7 +161,7 @@ const loadKnowledgePoints = async () => {
     const responseData = await response.json()
     console.log('知识点列表响应:', responseData)
 
-    if (response.ok && responseData.success) {
+    if (response.ok && responseData.code === 0) {
       const data = responseData.data
       knowledgePoints.value = data.results.map(point => ({
         ...point,
@@ -170,11 +170,11 @@ const loadKnowledgePoints = async () => {
       total.value = data.count
       console.log('处理后的知识点列表:', knowledgePoints.value)
     } else {
-      if (responseData.status_code === 401) {
+      if (responseData.code === 401) {
         ElMessage.error('登录已过期，请重新登录')
         // 可以在这里添加重定向到登录页面的逻辑
       } else {
-        ElMessage.error(responseData.message || '获取知识点列表失败')
+        ElMessage.error(responseData.msg || '获取知识点列表失败')
       }
     }
   } catch (error) {
@@ -341,7 +341,7 @@ const loadCourses = async () => {
     const responseData = await response.json()
     console.log('课程列表响应:', responseData)
     
-    if (response.ok && responseData.success) {
+    if (response.ok && responseData.code === 0) {
       const data = responseData.data
       coursesList.value = data.results.map(course => ({
         id: course.id,
@@ -349,11 +349,11 @@ const loadCourses = async () => {
       }))
       console.log('处理后的课程列表:', coursesList.value)
     } else {
-      if (responseData.status_code === 401) {
+      if (responseData.code === 401) {
         ElMessage.error('登录已过期，请重新登录')
         // 可以在这里添加重定向到登录页面的逻辑
       } else {
-        ElMessage.error(responseData.message || '获取课程列表失败')
+        ElMessage.error(responseData.msg || '获取课程列表失败')
       }
     }
   } catch (error) {

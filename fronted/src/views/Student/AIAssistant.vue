@@ -87,50 +87,7 @@
                   <span class="message-time">{{ message.time }}</span>
                 </div>
                 <div class="message-content" :class="{ 'user-message': message.type === 'user' }">
-                  <template v-if="message.type === 'ai'">
-                    <div v-if="isQuestionResponse(message.content)" class="question-response">
-                      <div class="question-list">
-                        <div v-for="question in message.content.questions" 
-                             :key="question.id" 
-                             class="question-item">
-                          <div class="question-header">
-                            <span class="question-number">题目 {{ question.id }}</span>
-                            <span class="question-type">{{ question.type }}</span>
-                            <span class="question-difficulty">难度: {{ question.difficulty }}</span>
-                          </div>
-                          <div class="question-title">{{ question.title }}</div>
-                          <div class="question-content">{{ question.content }}</div>
-                          <div class="question-options">
-                            <div v-for="option in question.options" 
-                                 :key="option.id"
-                                 class="option-item"
-                                 :class="{ 'selected': option.id === question.studentAnswer }"
-                                 @click="question.studentAnswer = option.id"
-                                 :disabled="question.isSubmitted">
-                              {{ option.content }}
-                            </div>
-                          </div>
-                          <div class="answer-actions" v-if="!question.isSubmitted">
-                            <button class="submit-button" 
-                                    @click="submitAnswer(question, question.studentAnswer)"
-                                    :disabled="!question.studentAnswer">
-                              提交答案
-                            </button>
-                          </div>
-                          <div class="feedback-section" v-if="question.isSubmitted">
-                            <div class="score">得分: {{ question.score }}</div>
-                            <div class="feedback">反馈: {{ question.feedback }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div v-else class="text-content">
-                      {{ message.content.error || message.content }}
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="text-content">{{ message.content }}</div>
-                  </template>
+                  <div class="text-content">{{ message.content }}</div>
                 </div>
               </div>
             </div>
@@ -162,7 +119,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
-import { generateQuestions, submitStudentAnswer, getCurrentUser } from '@/api/index.js'
+import { getCurrentUser } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
 import { User, Position } from '@element-plus/icons-vue'  // 移除 Monitor 图标
 
@@ -176,33 +133,10 @@ const messages = ref([
   {
     id: 1,
     type: 'ai',
-    content: {
-      questions: [],
-      session_key: '',
-      saved_exercises: [],
-      failed_exercises: 0,
-      error: '你好！我是你的AI学习助手，有什么我可以帮你的吗？'
-    },
+    content: '你好！我是你的AI学习助手，有什么我可以帮你的吗？',
     time: '刚刚'
   }
 ])
-
-// 判断是否为题目响应
-const isQuestionResponse = (content) => {
-  return content && 
-         typeof content === 'object' && 
-         Array.isArray(content.questions) && 
-         content.questions.length > 0 && 
-         !content.error;
-}
-
-// 当前选择的配置
-const currentConfig = ref({
-  knowledgePointIds: [1],  // 默认选择第一个知识点
-  selectedTypes: ['single_choice'],  // 默认单选题
-  quantity: 1,  // 改为1题
-  difficulty: 1  // 改为最简单难度
-})
 
 // 生成唯一的会话ID
 const generateSessionId = () => {
@@ -217,19 +151,32 @@ const generateQuestionsFromAPI = async (input) => {
   try {
     loading.value = true;
     const sessionId = currentSessionId.value;
-    const response = await generateQuestions({
-      knowledge_point_ids: currentConfig.value.knowledgePointIds,
-      question_types: currentConfig.value.selectedTypes,
-      quantity: currentConfig.value.quantity,
-      difficulty: currentConfig.value.difficulty,
-      chatInput: input,
-      sessionId: sessionId
+    
+    // 调用学生对话接口
+    const response = await fetch('https://de566d16a53d.ngrok-free.app/api/student-dialogue/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: input,
+        session_id: sessionId,
+        context: {
+          description: ''  // 可选的上下文信息
+        }
+      })
     });
 
-    console.log('API响应:', response);
-    return response;
+    const responseData = await response.json();
+    console.log('API响应:', responseData);
+    
+    if (!response.ok) {
+      throw new Error(responseData.message || '请求失败');
+    }
+    
+    return responseData;
   } catch (error) {
-    console.error('生成问题失败:', error);
+    console.error('生成回答失败:', error);
     throw error;
   } finally {
     loading.value = false;
@@ -240,53 +187,29 @@ const generateQuestionsFromAPI = async (input) => {
 const handleQuestionResponse = (response) => {
   if (!response) {
     console.error('响应为空');
-    return {
-      questions: [],
-      session_key: '',
-      saved_exercises: [],
-      failed_exercises: 0,
-      error: '抱歉，生成题目失败。'
-    };
+    return '抱歉，无法获取回答。';
   }
   
   try {
     // 检查API响应格式
-    if (!response.success || response.status_code !== 201) {
+    if (!response.success || response.status_code !== 200) {
       console.error('API响应失败:', response);
-      return {
-        questions: [],
-        session_key: '',
-        saved_exercises: [],
-        failed_exercises: 0,
-        error: response.message || '抱歉，生成题目失败。'
-      };
+      return response.message || '抱歉，无法获取回答。';
     }
 
-    // 检查data部分
-    if (!response.data || !Array.isArray(response.data.questions)) {
-      console.error('题目数据格式不正确:', response.data);
-      return {
-        questions: [],
-        session_key: '',
-        saved_exercises: [],
-        failed_exercises: 0,
-        error: '抱歉，题目格式不正确。'
-      };
+    // 返回AI的回答
+    const answer = response.data.answer;
+    if (typeof answer === 'string') {
+      // 尝试解析JSON字符串中的professional_answer
+      try {
+        const jsonAnswer = JSON.parse(answer);
+        return jsonAnswer.response.professional_answer || '抱歉，没有获取到有效回答。';
+      } catch (e) {
+        // 如果解析失败，直接返回原始答案
+        return answer;
+      }
     }
-
-    // 为每个题目添加答案字段
-    const questionsWithAnswers = response.data.questions.map(question => ({
-      ...question,
-      studentAnswer: '',  // 添加学生答案字段
-      isSubmitted: false, // 添加是否已提交字段
-      score: null,        // 添加得分字段
-      feedback: ''        // 添加反馈字段
-    }));
-
-    return {
-      ...response.data,
-      questions: questionsWithAnswers
-    };
+    return '抱歉，没有获取到有效回答。';
 
   } catch (error) {
     console.error('处理题目响应失败:', error);
@@ -322,68 +245,7 @@ const loadUserInfo = async () => {
   }
 };
 
-// 修改提交答案的方法
-const submitAnswer = async (question, answer) => {
-  try {
-    console.log('当前用户状态:', currentUser.value);
-    console.log('问题信息:', question);
-    console.log('答案内容:', answer);
 
-    // 确保用户已登录
-    if (!currentUser.value || !currentUser.value.id) {
-      console.error('用户未登录或ID不存在:', currentUser.value);
-      ElMessage.error('请先登录');
-      return;
-    }
-
-    // 确保问题ID存在
-    if (!question.id) {
-      console.error('问题ID不存在:', question);
-      ElMessage.error('题目信息不完整');
-      return;
-    }
-
-    const data = {
-      exercise: Number(question.id), // 使用 Number 确保是数字
-      content: String(answer || ''),  // 使用 String 并提供默认值
-      student: Number(currentUser.value.id) // 使用 Number 确保是数字
-    };
-
-    // 验证数据
-    if (isNaN(data.exercise) || isNaN(data.student)) {
-      console.error('数据转换失败:', data);
-      ElMessage.error('数据格式错误');
-      return;
-    }
-
-    console.log('准备提交的数据:', data);
-    console.log('数据类型检查:', {
-      exercise: typeof data.exercise,
-      content: typeof data.content,
-      student: typeof data.student,
-      exerciseValue: data.exercise,
-      studentValue: data.student
-    });
-
-    const response = await submitStudentAnswer(data);
-    console.log('提交答案响应:', response);
-
-    if (response.code === 0) {
-      ElMessage.success('提交答案成功');
-      // 更新问题状态
-      question.studentAnswer = answer;
-      question.isSubmitted = true;
-      question.score = response.data.score;
-      question.feedback = response.data.feedback;
-    } else {
-      console.error('提交答案失败:', response);
-      ElMessage.error(response.msg || '提交答案失败');
-    }
-  } catch (error) {
-    console.error('提交答案失败:', error);
-    ElMessage.error('提交答案失败');
-  }
-};
 
 // 组件挂载时加载用户信息
 onMounted(() => {
@@ -408,13 +270,7 @@ const handleSearch = async () => {
       messages.value.push({
         id: loadingMessageId,
         type: 'ai',
-        content: {
-          questions: [],
-          session_key: '',
-          saved_exercises: [],
-          failed_exercises: 0,
-          error: '正在生成题目...'
-        },
+        content: '正在思考中...',
         time: formatTime(new Date())
       });
 
@@ -437,13 +293,7 @@ const handleSearch = async () => {
       messages.value.push({
         id: messages.value.length + 1,
         type: 'ai',
-        content: {
-          questions: [],
-          session_key: '',
-          saved_exercises: [],
-          failed_exercises: 0,
-          error: '抱歉，生成题目时发生错误。'
-        },
+        content: '抱歉，我现在无法回答你的问题。',
         time: formatTime(new Date())
       });
     } finally {
