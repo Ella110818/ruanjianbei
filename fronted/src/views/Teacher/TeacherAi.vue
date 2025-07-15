@@ -142,41 +142,63 @@ console.log('当前API基础URL:', API_BASE_URL) // 添加日志
 const loadKnowledgePoints = async () => {
   loading.value = true
   try {
-    const params = {
-      page: currentPage.value,
-      page_size: pageSize.value,
-      search: searchQuery.value,
-      course: selectedCourse.value
-    }
+    let allKnowledgePoints = []
+    let nextPage = 1
+    let hasMore = true
 
-    console.log('加载知识点参数:', params)
-
-    const response = await fetch(`${API_BASE_URL}/api/knowledge-points/`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
+    while (hasMore) {
+      const params = {
+        page: nextPage,
+        page_size: pageSize.value,
+        search: searchQuery.value,
+        course: selectedCourse.value
       }
-    })
-    const responseData = await response.json()
-    console.log('知识点列表响应:', responseData)
 
-    if (response.ok && responseData.code === 0) {
-      const data = responseData.data
-      knowledgePoints.value = data.results.map(point => ({
-        ...point,
-        course_name: coursesList.value.find(c => c.id === point.course)?.title || `课程${point.course}`
-      }))
-      total.value = data.count
-      console.log('处理后的知识点列表:', knowledgePoints.value)
-    } else {
-      if (responseData.code === 401) {
-        ElMessage.error('登录已过期，请重新登录')
-        // 可以在这里添加重定向到登录页面的逻辑
+      console.log(`加载第${nextPage}页知识点，参数:`, params)
+
+      const response = await fetch(`${API_BASE_URL}/api/knowledge-points/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        }
+      })
+      const responseData = await response.json()
+      console.log(`第${nextPage}页知识点响应:`, responseData)
+
+      if (response.ok && responseData.code === 0) {
+        const data = responseData.data
+        if (data && Array.isArray(data.results)) {
+          const processedPoints = data.results.map(point => ({
+            ...point,
+            course_name: coursesList.value.find(c => c.id === point.course)?.title || `课程${point.course}`
+          }))
+          allKnowledgePoints = [...allKnowledgePoints, ...processedPoints]
+          
+          // 更新总数
+          total.value = data.count
+          
+          // 检查是否还有下一页
+          hasMore = !!data.next
+          nextPage++
+        } else {
+          console.error('知识点数据格式不正确:', data)
+          ElMessage.error('知识点数据格式不正确')
+          break
+        }
       } else {
-        ElMessage.error(responseData.msg || '获取知识点列表失败')
+        if (responseData.code === 401) {
+          ElMessage.error('登录已过期，请重新登录')
+          // 可以在这里添加重定向到登录页面的逻辑
+        } else {
+          ElMessage.error(responseData.msg || '获取知识点列表失败')
+        }
+        break
       }
     }
+
+    knowledgePoints.value = allKnowledgePoints
+    console.log('知识点加载完成，总数：', knowledgePoints.value.length)
   } catch (error) {
     console.error('加载知识点失败:', error)
     ElMessage.error('加载知识点失败，请稍后重试')
