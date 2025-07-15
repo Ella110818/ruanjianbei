@@ -112,18 +112,39 @@ export default {
           }
         })
         const data = await response.json()
+        console.log('课程列表响应:', data) // 添加日志
         
-        if (response.ok && data.success) {
-          this.courses = data.data.map(course => ({
-            value: course.id,
-            label: course.title
-          }))
+        // 处理不同的响应格式
+        if (response.ok) {
+          let courseList = []
+          if (data.success && data.status_code === 200 && data.data) {
+            // 处理分页格式
+            if (Array.isArray(data.data.results)) {
+              courseList = data.data.results
+            } 
+            // 处理直接数组格式
+            else if (Array.isArray(data.data)) {
+              courseList = data.data
+            }
+          } else if (data.code === 0 && Array.isArray(data.data)) {
+            courseList = data.data
+          }
+
+          if (courseList.length > 0) {
+            this.courses = courseList.map(course => ({
+              value: course.id,
+              label: course.name || course.title // 支持name或title字段
+            }))
+          } else {
+            console.error('课程列表为空')
+            ElMessage.warning('暂无可用课程')
+          }
         } else {
-          ElMessage.error('获取课程列表失败')
+          throw new Error(data.message || '获取课程列表失败')
         }
       } catch (error) {
         console.error('加载课程失败:', error)
-        ElMessage.error('加载课程列表失败')
+        ElMessage.error(error.message || '加载课程列表失败')
       } finally {
         this.coursesLoading = false
       }
