@@ -2710,11 +2710,16 @@ export async function submitStudentAnswer(data) {
         // 检查传入的数据
         console.log('提交答案的原始数据:', data);
 
-        // 构造请求数据
+        // 验证必要字段
+        if (!data.exercise || !data.content || !data.student) {
+            throw new Error('缺少必要的字段：exercise, content, student');
+        }
+
+        // 构造请求数据 - 直接使用原始数据，不做字段名转换
         const requestData = {
-            exercise: parseInt(data.exercise_id), // 转换练习题ID
-            content: String(data.answer_content), // 转换答案内容
-            student: parseInt(data.student_id)    // 转换学生ID
+            exercise: data.exercise,
+            content: data.content,
+            student: data.student
         };
 
         console.log('发送到服务器的数据:', requestData);
@@ -2729,8 +2734,9 @@ export async function submitStudentAnswer(data) {
     } catch (error) {
         console.error('提交答案失败:', error);
         return {
-            code: 1,
-            msg: error.message || '提交答案失败',
+            success: false,
+            status_code: 400,
+            message: error.message || '提交答案失败',
             data: null
         };
     }

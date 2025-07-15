@@ -315,12 +315,17 @@ const requestAIGrade = async () => {
   
   aiGrading.value = true
   try {
+    // 生成唯一的会话ID
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
     // 构造请求数据
     const requestData = {
-      exercise_id: selectedAnswer.value.exercise_id, // 修正字段名
+      exercise_id: selectedAnswer.value.exercise,
       student_answer: selectedAnswer.value.content,
-      session_id: `session_${Date.now()}`
+      session_id: sessionId  // 使用生成的唯一会话ID
     }
+    
+    console.log('AI批改请求数据:', requestData)
     
     // 发送请求到AI批改接口
     const response = await fetch('https://990dad7dbad9.ngrok-free.app/api/ai/correct-answer/', {
@@ -334,46 +339,52 @@ const requestAIGrade = async () => {
     })
 
     const data = await response.json()
+    console.log('AI批改响应数据:', data)
     
     if (data.success && data.status_code === 200) {
-      // 解析返回的JSON字符串
-      try {
-        let parsedData = data.data
-        // 如果返回的是字符串，尝试解析JSON
-        if (typeof parsedData === 'string') {
-          try {
-            parsedData = JSON.parse(parsedData)
-          } catch (e) {
-            // 如果解析失败，说明可能是普通字符串，不需要特殊处理
-            console.warn('AI返回数据不是JSON格式:', e)
-          }
-        }
-        
-        // 更新AI评分结果
-        aiGradeResult.value = parsedData
-        
-        // 如果AI评分成功，自动填入分数和反馈
-        if (!isEditing.value) {
-          startEdit()
-        }
-        
-        // 只更新当前选中的答案
-        if (selectedAnswer.value) {
-          selectedAnswer.value.score = parsedData.score
-          selectedAnswer.value.feedback = parsedData.feedback
-        }
-        
-        ElMessage.success('AI批改完成')
-      } catch (error) {
-        console.error('处理AI评分数据失败:', error)
-        ElMessage.error('处理AI评分数据失败')
+      // 直接使用返回的data数据
+      aiGradeResult.value = {
+        is_correct: data.data.is_correct,
+        score: data.data.score,
+        feedback: data.data.feedback,
+        improvement_suggestions: data.data.improvement_suggestions,
+        explanation: data.data.explanation
       }
+      
+      // 如果AI评分成功，自动填入分数和反馈
+      if (!isEditing.value) {
+        startEdit()
+      }
+      
+      // 只更新当前选中的答案
+      if (selectedAnswer.value) {
+        selectedAnswer.value.score = data.data.score
+        // 如果feedback是JSON字符串，需要解析出实际的反馈内容
+        try {
+          const feedbackArray = JSON.parse(data.data.feedback)
+          if (Array.isArray(feedbackArray) && feedbackArray.length > 0) {
+            const firstFeedback = feedbackArray[0]
+            if (firstFeedback.answer) {
+              try {
+                const answerJson = JSON.parse(firstFeedback.answer)
+                selectedAnswer.value.feedback = answerJson.feedback || data.data.feedback
+              } catch (e) {
+                selectedAnswer.value.feedback = firstFeedback.answer
+              }
+            }
+          }
+        } catch (e) {
+          selectedAnswer.value.feedback = data.data.feedback
+        }
+      }
+      
+      ElMessage.success('AI批改完成')
     } else {
-      ElMessage.error(data.message || 'AI批改失败')
+      throw new Error(data.message || 'AI批改失败')
     }
   } catch (error) {
     console.error('AI批改失败:', error)
-    ElMessage.error('AI批改失败，请稍后重试')
+    ElMessage.error(error.message || 'AI批改失败，请稍后重试')
   } finally {
     aiGrading.value = false
   }
