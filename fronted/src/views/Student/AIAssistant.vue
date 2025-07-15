@@ -8,7 +8,7 @@
       <div class="content-wrapper" v-if="!hasStartedChat">
         <div class="welcome-section">
           <h1>学伴AI</h1>
-          <p class="subtitle">你的AI学习助手</p>
+          <p class="subtitle">你的AI学习助</p>
         </div>
 
         <!-- 搜索框部分 -->
