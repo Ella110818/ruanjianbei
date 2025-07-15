@@ -169,11 +169,8 @@ const loadKnowledgePoints = async () => {
       if (response.ok && responseData.code === 0) {
         const data = responseData.data
         if (data && Array.isArray(data.results)) {
-          const processedPoints = data.results.map(point => ({
-            ...point,
-            course_name: coursesList.value.find(c => c.id === point.course)?.title || `课程${point.course}`
-          }))
-          allKnowledgePoints = [...allKnowledgePoints, ...processedPoints]
+          // 直接使用API返回的数据结构，不做额外处理
+          allKnowledgePoints = [...allKnowledgePoints, ...data.results]
           
           // 更新总数
           total.value = data.count

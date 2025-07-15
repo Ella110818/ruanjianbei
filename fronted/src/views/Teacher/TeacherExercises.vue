@@ -256,11 +256,11 @@ const loadKnowledgePoints = async () => {
       ordering: 'title'  // 按标题排序
     })
     
-    if (response.success && response.status_code === 200) {  // 修改判断条件
+    if (response.code === 0) {  // 修改判断条件以匹配API响应格式
       knowledgePoints.value = response.data.results || []
       console.log('知识点列表:', knowledgePoints.value)
     } else {
-      ElMessage.error('获取知识点列表失败')
+      ElMessage.error(response.msg || '获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)

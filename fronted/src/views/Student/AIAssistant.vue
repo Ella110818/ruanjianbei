@@ -86,10 +86,10 @@
         <!-- 底部输入框 -->
         <div class="chat-input-container">
           <div class="chat-input-wrapper">
-            <!-- 修改输入框标题部分 -->
+            <!-- 修改输入框标题部分，添加点击事件 -->
             <div class="input-box">
               <div class="input-area">
-                <div class="input-title">
+                <div class="input-title" @click="handleTitleClick">
                   <i class="icon">✎</i>AI生题
                 </div>
                 <textarea 
@@ -107,6 +107,60 @@
           </div>
         </div>
       </div>
+
+      <!-- 添加参数设置对话框 -->
+      <el-dialog
+        v-model="showExerciseDialog"
+        title="生成练习题参数设置"
+        width="500px"
+      >
+        <el-form :model="exerciseParams" label-width="120px">
+          <el-form-item label="查询内容">
+            <el-input v-model="exerciseParams.query" placeholder="请输入查询内容，例如：函数、方程等"></el-input>
+          </el-form-item>
+          
+          <el-form-item label="知识点">
+            <el-select v-model="exerciseParams.knowledge_point_ids" multiple placeholder="请选择知识点">
+              <el-option
+                v-for="point in knowledgePoints"
+                :key="point.id"
+                :label="point.name"
+                :value="point.id"
+              ></el-option>
+            </el-select>
+          </el-form-item>
+          
+          <el-form-item label="题目类型">
+            <el-select v-model="exerciseParams.question_types" multiple placeholder="请选择题目类型">
+              <el-option label="单选题" value="single_choice"></el-option>
+              <el-option label="多选题" value="multiple_choice"></el-option>
+              <el-option label="判断题" value="true_false"></el-option>
+            </el-select>
+          </el-form-item>
+          
+          <el-form-item label="题目数量">
+            <el-input-number v-model="exerciseParams.quantity" :min="1" :max="10"></el-input-number>
+          </el-form-item>
+          
+          <el-form-item label="难度等级">
+            <el-rate
+              v-model="exerciseParams.difficulty"
+              :max="3"
+              :texts="['简单', '中等', '困难']"
+              show-text
+            ></el-rate>
+          </el-form-item>
+        </el-form>
+        
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="showExerciseDialog = false">取消</el-button>
+            <el-button type="primary" @click="generateExercises" :loading="loading">
+              生成题目
+            </el-button>
+          </span>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -115,7 +169,7 @@
 import { ref, computed, onMounted } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
 import { getCurrentUser } from '@/api/index.js'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElInputNumber, ElRate, ElButton } from 'element-plus'
 import { User, Position } from '@element-plus/icons-vue'  // 移除 Edit 图标导入
 
 const searchQuery = ref('')
@@ -133,97 +187,53 @@ const messages = ref([
   }
 ])
 
-// 生成唯一的会话ID
-const generateSessionId = () => {
-  return 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-}
-
-// 当前会话ID
-const currentSessionId = ref(generateSessionId());
-
-// API调用函数
-const generateQuestionsFromAPI = async (input) => {
-  try {
-    loading.value = true;
-    const sessionId = currentSessionId.value;
-    
-    // 调用学生对话接口
-    const response = await fetch('https://de566d16a53d.ngrok-free.app/api/ai/student-dialogue/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: input,
-        session_id: sessionId,
-        context: {
-          description: ''  // 可选的上下文信息
-        }
-      })
+// 移除API调用相关代码
+const handleSearch = async () => {
+  if (searchQuery.value.trim()) {
+    hasStartedChat.value = true;
+    messages.value.push({
+      id: messages.value.length + 1,
+      type: 'user',
+      content: searchQuery.value,
+      time: formatTime(new Date())
     });
-
-    const responseData = await response.json();
-    console.log('API响应:', responseData);
-    
-    // 检查响应状态（支持两种格式）
-    const isSuccess = (responseData.success && responseData.status_code === 200) || 
-                     (responseData.code === 0 && responseData.msg);
-                     
-    if (!isSuccess) {
-      throw new Error(responseData.message || responseData.msg || '请求失败');
-    }
-    
-    return responseData;
-  } catch (error) {
-    console.error('生成回答失败:', error);
-    throw error;
-  } finally {
-    loading.value = false;
+    searchQuery.value = '';
   }
 }
 
-// 修改 generateQuestions 函数的响应处理
-const handleQuestionResponse = (response) => {
-  if (!response) {
-    console.error('响应为空');
-    return '抱歉，无法获取回答。';
-  }
-  
-  try {
-    // 检查API响应格式（支持两种格式）
-    const isSuccess = (response.success && response.status_code === 200) || 
-                     (response.code === 0 && response.msg === '获取知识点列表成功');
-                     
-    if (!isSuccess) {
-      console.error('API响应失败:', response);
-      return response.message || response.msg || '抱歉，无法获取回答。';
-    }
+// 修改发送消息函数
+const sendMessage = async (message = null) => {
+  const userInput = message || inputMessage.value;
+  if (!userInput.trim()) return;
 
-    // 返回AI的回答
-    const answer = response.data.answer;
-    if (typeof answer === 'string') {
-      // 尝试解析JSON字符串中的professional_answer
-      try {
-        const jsonAnswer = JSON.parse(answer);
-        return jsonAnswer.response.professional_answer || '抱歉，没有获取到有效回答。';
-      } catch (e) {
-        // 如果解析失败，直接返回原始答案
-        return answer;
-      }
-    }
-    return '抱歉，没有获取到有效回答。';
+  const messageId = messages.value.length + 1;
+  messages.value.push({
+    id: messageId,
+    type: 'user',
+    content: userInput,
+    time: formatTime(new Date())
+  });
 
-  } catch (error) {
-    console.error('处理题目响应失败:', error);
-    return {
-      questions: [],
-      session_key: '',
-      saved_exercises: [],
-      failed_exercises: 0,
-      error: '抱歉，处理题目数据时出错。'
-    };
+  if (!message) {
+    inputMessage.value = '';
   }
+
+  // 添加AI默认回复
+  messages.value.push({
+    id: messages.value.length + 1,
+    type: 'ai',
+    content: '抱歉，该功能暂时不可用。',
+    time: formatTime(new Date())
+  });
 }
+
+// 移除不需要的函数
+// const generateQuestionsFromAPI = async (input) => { ... }
+// const handleQuestionResponse = (response) => { ... }
+// const generateSessionId = () => { ... }
+
+// 移除不需要的变量
+// const currentSessionId = ref(generateSessionId());
 
 // 添加用户状态管理
 const currentUser = ref(null);
@@ -258,56 +268,6 @@ onMounted(() => {
   loadUserInfo();
 });
 
-// 修改 handleSearch 函数
-const handleSearch = async () => {
-  if (searchQuery.value.trim()) {
-    hasStartedChat.value = true; // 设置为对话状态
-    try {
-      loading.value = true;
-      const messageId = messages.value.length + 1;
-      messages.value.push({
-        id: messageId,
-        type: 'user',
-        content: searchQuery.value,
-        time: formatTime(new Date())
-      });
-
-      const loadingMessageId = messages.value.length + 1;
-      messages.value.push({
-        id: loadingMessageId,
-        type: 'ai',
-        content: '正在思考中...',
-        time: formatTime(new Date())
-      });
-
-      const response = await generateQuestionsFromAPI(searchQuery.value);
-      const processedResponse = handleQuestionResponse(response);
-      
-      const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
-      if (messageIndex !== -1) {
-        messages.value[messageIndex] = {
-          id: loadingMessageId,
-          type: 'ai',
-          content: processedResponse,
-          time: formatTime(new Date())
-        };
-      }
-
-      searchQuery.value = '';
-    } catch (error) {
-      console.error('生成题目失败:', error);
-      messages.value.push({
-        id: messages.value.length + 1,
-        type: 'ai',
-        content: '抱歉，我现在无法回答你的问题。',
-        time: formatTime(new Date())
-      });
-    } finally {
-      loading.value = false;
-    }
-  }
-}
-
 // 添加时间格式化函数
 const formatTime = (date) => {
   const hours = date.getHours().toString().padStart(2, '0');
@@ -322,65 +282,65 @@ const handleFeatureClick = (feature) => {
 }
 
 // 聊天相关逻辑
-const sendMessage = async (message = null) => {
-  const userInput = message || inputMessage.value;
-  if (!userInput.trim()) return;
+// const sendMessage = async (message = null) => {
+//   const userInput = message || inputMessage.value;
+//   if (!userInput.trim()) return;
 
-  const messageId = messages.value.length + 1;
-  messages.value.push({
-    id: messageId,
-    type: 'user',
-    content: userInput,
-    time: formatTime(new Date())
-  });
+//   const messageId = messages.value.length + 1;
+//   messages.value.push({
+//     id: messageId,
+//     type: 'user',
+//     content: userInput,
+//     time: formatTime(new Date())
+//   });
 
-  if (!message) {
-    inputMessage.value = '';
-  }
+//   if (!message) {
+//     inputMessage.value = '';
+//   }
 
-  try {
-    const loadingMessageId = messages.value.length + 1;
-    messages.value.push({
-      id: loadingMessageId,
-      type: 'ai',
-      content: {
-        questions: [],
-        session_key: '',
-        saved_exercises: [],
-        failed_exercises: 0,
-        error: '正在生成题目...'
-      },
-      time: formatTime(new Date())
-    });
+//   try {
+//     const loadingMessageId = messages.value.length + 1;
+//     messages.value.push({
+//       id: loadingMessageId,
+//       type: 'ai',
+//       content: {
+//         questions: [],
+//         session_key: '',
+//         saved_exercises: [],
+//         failed_exercises: 0,
+//         error: '正在生成题目...'
+//       },
+//       time: formatTime(new Date())
+//     });
 
-    const response = await generateQuestionsFromAPI(userInput);
-    const processedResponse = handleQuestionResponse(response);
+//     const response = await generateQuestionsFromAPI(userInput);
+//     const processedResponse = handleQuestionResponse(response);
     
-    const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
-    if (messageIndex !== -1) {
-      messages.value[messageIndex] = {
-        id: loadingMessageId,
-        type: 'ai',
-        content: processedResponse,
-        time: formatTime(new Date())
-      };
-    }
-  } catch (error) {
-    console.error('生成题目失败:', error);
-    messages.value.push({
-      id: messages.value.length + 1,
-      type: 'ai',
-      content: {
-        questions: [],
-        session_key: '',
-        saved_exercises: [],
-        failed_exercises: 0,
-        error: '抱歉，生成题目时发生错误。'
-      },
-      time: formatTime(new Date())
-    });
-  }
-}
+//     const messageIndex = messages.value.findIndex(m => m.id === loadingMessageId);
+//     if (messageIndex !== -1) {
+//       messages.value[messageIndex] = {
+//         id: loadingMessageId,
+//         type: 'ai',
+//         content: processedResponse,
+//         time: formatTime(new Date())
+//       };
+//     }
+//   } catch (error) {
+//     console.error('生成题目失败:', error);
+//     messages.value.push({
+//       id: messages.value.length + 1,
+//       type: 'ai',
+//       content: {
+//         questions: [],
+//         session_key: '',
+//         saved_exercises: [],
+//         failed_exercises: 0,
+//         error: '抱歉，生成题目时发生错误。'
+//       },
+//       time: formatTime(new Date())
+//     });
+//   }
+// }
 
 // 移除历史记录数据
 // const historyList = ref([])
@@ -447,6 +407,82 @@ const currentFeatureRows = computed(() => {
   }
   return []
 })
+
+// 添加练习题参数相关的响应式数据
+const showExerciseDialog = ref(false)
+const exerciseParams = ref({
+  query: '',
+  knowledge_point_ids: [],
+  question_types: [],
+  quantity: 2,
+  difficulty: 1,
+  session_id: ''
+})
+
+// 知识点列表（这里需要从后端获取，暂时使用模拟数据）
+const knowledgePoints = ref([
+  { id: 1, name: '函数' },
+  { id: 2, name: '方程' },
+  { id: 3, name: '几何' }
+])
+
+// 修改输入框标题点击事件
+const handleTitleClick = () => {
+  showExerciseDialog.value = true
+  exerciseParams.value.session_id = 'session-' + Date.now()
+}
+
+// 生成练习题的函数
+const generateExercises = async () => {
+  if (!exerciseParams.value.query.trim()) {
+    ElMessage.warning('请输入查询内容')
+    return
+  }
+  if (exerciseParams.value.knowledge_point_ids.length === 0) {
+    ElMessage.warning('请选择至少一个知识点')
+    return
+  }
+  if (exerciseParams.value.question_types.length === 0) {
+    ElMessage.warning('请选择至少一种题目类型')
+    return
+  }
+
+  try {
+    loading.value = true
+    const response = await fetch('https://de566d16a53d.ngrok-free.app/api/ai/generate-exercises/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(exerciseParams.value)
+    })
+
+    const data = await response.json()
+    if (data.code === 0) {
+      showExerciseDialog.value = false
+      // 显示生成的题目
+      messages.value.push({
+        id: messages.value.length + 1,
+        type: 'user',
+        content: `生成${exerciseParams.value.quantity}道${exerciseParams.value.difficulty}级难度的题目`,
+        time: formatTime(new Date())
+      })
+      messages.value.push({
+        id: messages.value.length + 1,
+        type: 'ai',
+        content: data.data,
+        time: formatTime(new Date())
+      })
+    } else {
+      ElMessage.error(data.msg || '生成题目失败')
+    }
+  } catch (error) {
+    console.error('生成题目失败:', error)
+    ElMessage.error('生成题目失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
+}
 
 </script>
 
@@ -1506,6 +1542,22 @@ const currentFeatureRows = computed(() => {
   font-style: normal;
   font-size: 16px;
   margin-right: 2px;
+}
+
+/* 添加新的样式 */
+.input-title {
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.input-title:hover {
+  color: #409EFF;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style> 
 
