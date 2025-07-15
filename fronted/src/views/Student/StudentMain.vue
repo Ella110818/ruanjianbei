@@ -217,37 +217,19 @@ const loadKnowledgePoints = async () => {
       ordering: 'title'
     })
     
-    console.log('API 原始响应:', response)
-    console.log('响应状态:', {
-      success: response.success,
-      status_code: response.status_code
-    })
-    console.log('响应数据结构:', {
-      hasData: !!response.data,
-      isDataArray: response.data && Array.isArray(response.data.results),
-      dataLength: response.data?.results?.length
-    })
+    console.log('API响应:', response)
     
-    if (response.success && response.status_code === 200) {
+    if (response.code === 0) {
       if (response.data && Array.isArray(response.data.results)) {
         knowledgePoints.value = response.data.results
-        console.log('成功设置知识点列表:', knowledgePoints.value)
-        
-        // 检查数据结构是否符合模板要求
-        if (knowledgePoints.value.length > 0) {
-          console.log('第一个知识点数据示例:', {
-            id: knowledgePoints.value[0].id,
-            title: knowledgePoints.value[0].title,
-            content: knowledgePoints.value[0].content
-          })
-        }
+        console.log('知识点加载成功，总数：', knowledgePoints.value.length)
       } else {
         console.error('知识点数据格式不正确:', response.data)
         ElMessage.error('知识点数据格式不正确')
       }
     } else {
       console.error('获取知识点列表失败:', response)
-      ElMessage.error(response.message || '获取知识点列表失败')
+      ElMessage.error(response.msg || '获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
