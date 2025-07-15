@@ -113,7 +113,7 @@
           <span>{{ formatDate(selectedAnswer.submitted_at) }}</span>
         </div>
         
-        <!-- 添加AI评分结果展示 -->
+        <!-- AI评分结果展示 -->
         <div v-if="aiGradeResult" class="ai-grade-result">
           <h3>AI评分建议</h3>
           <div class="ai-grade-item">
@@ -124,10 +124,12 @@
           </div>
           <div class="ai-grade-item">
             <label>建议得分：</label>
-            <span>{{ aiGradeResult.score }}</span>
+            <span :class="{ 'score-high': aiGradeResult.score >= 80, 'score-medium': aiGradeResult.score >= 60 && aiGradeResult.score < 80, 'score-low': aiGradeResult.score < 60 }">
+              {{ aiGradeResult.score }}分
+            </span>
           </div>
           <div class="ai-grade-item">
-            <label>AI反馈：</label>
+            <label>评价反馈：</label>
             <div class="ai-feedback">{{ aiGradeResult.feedback }}</div>
           </div>
           <div v-if="aiGradeResult.improvement_suggestions" class="ai-grade-item">
@@ -137,6 +139,10 @@
           <div v-if="aiGradeResult.explanation" class="ai-grade-item">
             <label>详细解释：</label>
             <div class="ai-explanation">{{ aiGradeResult.explanation }}</div>
+          </div>
+          <div class="ai-grade-item">
+            <label>参考来源：</label>
+            <div class="ai-sources">{{ aiGradeResult.sources }}</div>
           </div>
         </div>
       </div>
@@ -342,43 +348,49 @@ const requestAIGrade = async () => {
     console.log('AI批改响应数据:', data)
     
     if (data.success && data.status_code === 200) {
-      // 直接使用返回的data数据
-      aiGradeResult.value = {
-        is_correct: data.data.is_correct,
-        score: data.data.score,
-        feedback: data.data.feedback,
-        improvement_suggestions: data.data.improvement_suggestions,
-        explanation: data.data.explanation
-      }
-      
-      // 如果AI评分成功，自动填入分数和反馈
-      if (!isEditing.value) {
-        startEdit()
-      }
-      
-      // 只更新当前选中的答案
-      if (selectedAnswer.value) {
-        selectedAnswer.value.score = data.data.score
-        // 如果feedback是JSON字符串，需要解析出实际的反馈内容
-        try {
-          const feedbackArray = JSON.parse(data.data.feedback)
-          if (Array.isArray(feedbackArray) && feedbackArray.length > 0) {
-            const firstFeedback = feedbackArray[0]
-            if (firstFeedback.answer) {
-              try {
-                const answerJson = JSON.parse(firstFeedback.answer)
-                selectedAnswer.value.feedback = answerJson.feedback || data.data.feedback
-              } catch (e) {
-                selectedAnswer.value.feedback = firstFeedback.answer
+      try {
+        // 解析feedback中的JSON字符串
+        const feedbackArray = JSON.parse(data.data.feedback)
+        if (Array.isArray(feedbackArray) && feedbackArray.length > 0) {
+          const firstFeedback = feedbackArray[0]
+          if (firstFeedback.answer) {
+            // 提取JSON字符串（在```json和```之间的内容）
+            const jsonMatch = firstFeedback.answer.match(/```json\n([\s\S]*?)\n```/)
+            if (jsonMatch && jsonMatch[1]) {
+              // 解析提取出的JSON字符串
+              const answerJson = JSON.parse(jsonMatch[1])
+              
+              // 更新AI评分结果
+              aiGradeResult.value = {
+                is_correct: answerJson.is_correct,
+                score: answerJson.score,
+                feedback: answerJson.feedback,
+                improvement_suggestions: answerJson.improvement_suggestions,
+                explanation: answerJson.explanation,
+                sources: firstFeedback.sources || '无'
               }
+              
+              // 如果AI评分成功，自动填入分数和反馈
+              if (!isEditing.value) {
+                startEdit()
+              }
+              
+              // 更新当前选中的答案
+              if (selectedAnswer.value) {
+                selectedAnswer.value.score = answerJson.score
+                selectedAnswer.value.feedback = answerJson.feedback
+              }
+            } else {
+              throw new Error('无法解析答案中的JSON数据')
             }
           }
-        } catch (e) {
-          selectedAnswer.value.feedback = data.data.feedback
         }
+        
+        ElMessage.success('AI批改完成')
+      } catch (error) {
+        console.error('解析AI评分数据失败:', error)
+        ElMessage.error('解析AI评分数据失败')
       }
-      
-      ElMessage.success('AI批改完成')
     } else {
       throw new Error(data.message || 'AI批改失败')
     }
@@ -467,47 +479,90 @@ onMounted(() => {
 /* 添加AI评分结果样式 */
 .ai-grade-result {
   margin-top: 20px;
-  padding: 16px;
+  padding: 20px;
   background: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #e4e7ed;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .ai-grade-result h3 {
-  margin: 0 0 16px 0;
+  margin: 0 0 20px 0;
   color: #409EFF;
-  font-size: 16px;
+  font-size: 18px;
+  border-bottom: 2px solid #409EFF;
+  padding-bottom: 10px;
 }
 
 .ai-grade-item {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding: 8px 0;
 }
 
 .ai-grade-item label {
+  display: inline-block;
+  min-width: 80px;
   color: #606266;
-  font-weight: 500;
-  margin-right: 8px;
+  font-weight: 600;
+  margin-right: 12px;
 }
 
 .ai-grade-item .correct {
   color: #67C23A;
-  font-weight: 500;
+  font-weight: 600;
+  background: rgba(103, 194, 58, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .ai-grade-item .incorrect {
   color: #F56C6C;
-  font-weight: 500;
+  font-weight: 600;
+  background: rgba(245, 108, 108, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.ai-grade-item .score-high {
+  color: #67C23A;
+  font-weight: 600;
+  background: rgba(103, 194, 58, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.ai-grade-item .score-medium {
+  color: #E6A23C;
+  font-weight: 600;
+  background: rgba(230, 162, 60, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.ai-grade-item .score-low {
+  color: #F56C6C;
+  font-weight: 600;
+  background: rgba(245, 108, 108, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .ai-feedback,
 .ai-suggestions,
-.ai-explanation {
+.ai-explanation,
+.ai-sources {
   margin-top: 8px;
-  padding: 8px;
+  padding: 12px;
   background: white;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #606266;
   line-height: 1.6;
+  border: 1px solid #EBEEF5;
+}
+
+.ai-sources {
+  color: #909399;
+  font-style: italic;
 }
 
 .dialog-footer {
