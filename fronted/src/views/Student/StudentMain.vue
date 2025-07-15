@@ -301,7 +301,7 @@ const selectAnswer = (exercise, answer) => {
 
 // 提交答案
 const submitAnswer = async (exercise) => {
-  if (!exercise.studentAnswer) {
+  if (!exercise.studentAnswer || exercise.studentAnswer.length < 1) {
     ElMessage.warning('请先选择答案')
     return
   }
@@ -313,21 +313,35 @@ const submitAnswer = async (exercise) => {
   }
 
   try {
-    // 确保数据类型正确
+    // 严格按照接口要求验证数据类型
     const submitData = {
-      exercise: Number(exercise.id),  // 确保是数字类型
-      content: String(exercise.studentAnswer),  // 确保是字符串类型
-      student: Number(currentUser.value.id)  // 确保是数字类型
+      exercise: parseInt(exercise.id), // 确保是integer
+      content: String(exercise.studentAnswer).trim(), // 确保是string且有内容
+      student: parseInt(currentUser.value.id) // 确保是integer
     }
 
-    console.log('提交答案参数:', submitData)
+    // 验证数据
+    if (isNaN(submitData.exercise)) {
+      ElMessage.error('练习题ID格式错误')
+      return
+    }
+    if (isNaN(submitData.student)) {
+      ElMessage.error('学生ID格式错误')
+      return
+    }
+    if (!submitData.content) {
+      ElMessage.error('答案内容不能为空')
+      return
+    }
+
+    console.log('提交答案数据:', submitData)
 
     const response = await submitStudentAnswer(submitData)
 
-    if (response.code === 0 && response.data) {  // 修改判断条件
+    if (response.success && response.status_code === 201) {  // 修改判断条件
       exercise.isSubmitted = true
-      exercise.score = response.data.score
-      exercise.feedback = response.data.feedback || '提交成功'
+      exercise.score = response.data.score || 0  // 如果没有score则默认为0
+      exercise.feedback = response.data.feedback || '答案提交成功'  // 如果没有feedback则显示默认消息
       ElMessage.success('提交成功')
     } else {
       ElMessage.error(response.msg || '提交失败')

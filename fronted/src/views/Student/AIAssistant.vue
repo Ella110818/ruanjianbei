@@ -2021,27 +2021,25 @@ const fetchKnowledgePoints = async () => {
   gap: 16px;
   align-items: center;
   margin: 12px 0;
-  padding: 8px 16px;
-  background: rgba(64, 158, 255, 0.05);
-  border-radius: 6px;
+  padding: 8px 0;  /* 移除左右padding */
   font-size: 0.95em;
 }
 
 :deep(.markdown-content .exercise-info .difficulty) {
-  color: #E6A23C;  /* 使用暖色调 */
+  color: #E6A23C;  /* 使用黄色 */
 }
 
 :deep(.markdown-content .exercise-info .difficulty strong) {
-  color: #F56C6C;  /* 使用红色系 */
+  color: #E6A23C;  /* 使用相同的黄色 */
   font-weight: 600;
 }
 
 :deep(.markdown-content .exercise-info .question-type) {
-  color: #409EFF;  /* 使用主题蓝色 */
+  color: #E6A23C;  /* 使用黄色 */
 }
 
 :deep(.markdown-content .exercise-info .question-type strong) {
-  color: #67C23A;  /* 使用绿色系 */
+  color: #E6A23C;  /* 使用相同的黄色 */
   font-weight: 600;
 }
 
@@ -2119,13 +2117,13 @@ const fetchKnowledgePoints = async () => {
 
 /* 添加难度等级样式 */
 :deep(.markdown-content .difficulty) {
-  color: #f56c6c;
+  color: #E6A23C;  /* 使用黄色 */
   font-weight: 500;
 }
 
 /* 添加题目类型样式 */
 :deep(.markdown-content .question-type) {
-  color: #67c23a;
+  color: #E6A23C;  /* 使用黄色 */
   font-weight: 500;
 }
 </style> 
