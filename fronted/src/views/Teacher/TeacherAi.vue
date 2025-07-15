@@ -111,7 +111,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { generateKnowledgePointsPPT, getKnowledgePoints, handleRequest } from '@/api'  // 添加handleRequest导入
+import { generateKnowledgePointsPPT, getKnowledgePoints } from '@/api'  // 移除handleRequest导入
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
@@ -313,32 +313,48 @@ const handleGeneratePPT = async (knowledgePoints) => {
   }
 }
 
-// 加载课程数据
+// 修改加载课程数据的函数
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
     console.log('开始加载课程列表')
-    const response = await handleRequest('courses/')  // 使用handleRequest，移除重复的api路径
-    console.log('课程列表响应:', response)
+    const response = await fetch('https://990dad7dbad9.ngrok-free.app/api/courses/', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': localStorage.getItem('token') || ''
+      }
+    })
     
-    if (response.success && response.status_code === 200) {
-      const data = response.data
-      coursesList.value = data.results.map(course => ({
-        id: course.id,
-        title: course.title
-      }))
-      console.log('处理后的课程列表:', coursesList.value)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    console.log('课程列表响应:', data)
+    
+    if (data.success && data.status_code === 200) {
+      if (data.data && Array.isArray(data.data.results)) {
+        coursesList.value = data.data.results.map(course => ({
+          id: course.id,
+          title: course.title
+        }))
+        console.log('处理后的课程列表:', coursesList.value)
+      } else {
+        throw new Error('课程数据格式不正确')
+      }
     } else {
-      if (response.status_code === 401) {
+      if (data.status_code === 401) {
         ElMessage.error('登录已过期，请重新登录')
         // 可以在这里添加重定向到登录页面的逻辑
       } else {
-        ElMessage.error(response.message || '获取课程列表失败')
+        throw new Error(data.message || '获取课程列表失败')
       }
     }
   } catch (error) {
     console.error('加载课程失败:', error)
-    ElMessage.error('加载课程列表失败')
+    ElMessage.error(error.message || '加载课程列表失败')
   } finally {
     coursesLoading.value = false
   }
