@@ -278,7 +278,8 @@ const getExerciseTagType = (type) => {
   const types = {
     'single_choice': 'primary',
     'multiple_choice': 'success',
-    'true_false': 'warning'
+    'true_false': 'warning',
+    'short_answer': 'info'  // 添加简答题类型
   }
   return types[type] || 'info'
 }
@@ -288,7 +289,8 @@ const getExerciseTypeName = (type) => {
   const types = {
     'single_choice': '单选题',
     'multiple_choice': '多选题',
-    'true_false': '判断题'
+    'true_false': '判断题',
+    'short_answer': '简答题'  // 添加简答题类型
   }
   return types[type] || '未知类型'
 }
@@ -313,46 +315,31 @@ const submitAnswer = async (exercise) => {
   }
 
   try {
-    // 严格按照接口要求验证数据类型
+    // 构造提交数据
     const submitData = {
-      exercise: parseInt(exercise.id), // 确保是integer
-      content: String(exercise.studentAnswer).trim(), // 确保是string且有内容
-      student: parseInt(currentUser.value.id) // 确保是integer
+      exercise: exercise.id,
+      content: exercise.studentAnswer,
+      student: currentUser.value.id
     }
 
-    // 验证数据
-    if (isNaN(submitData.exercise)) {
-      ElMessage.error('练习题ID格式错误')
-      return
-    }
-    if (isNaN(submitData.student)) {
-      ElMessage.error('学生ID格式错误')
-      return
-    }
-    if (!submitData.content) {
-      ElMessage.error('答案内容不能为空')
-      return
-    }
-
+    // 打印提交的数据，用于调试
     console.log('提交答案数据:', submitData)
 
     const response = await submitStudentAnswer(submitData)
+    
+    console.log('服务器响应:', response)  // 添加响应日志
 
-    if (response.success && response.status_code === 201) {  // 修改判断条件
+    if (response.success && response.status_code === 201) {
       exercise.isSubmitted = true
-      exercise.score = response.data.score || 0  // 如果没有score则默认为0
-      exercise.feedback = response.data.feedback || '答案提交成功'  // 如果没有feedback则显示默认消息
+      exercise.score = response.data.score || 0
+      exercise.feedback = response.data.feedback || '答案提交成功'
       ElMessage.success('提交成功')
     } else {
-      ElMessage.error(response.msg || '提交失败')
+      throw new Error(response.message || '提交失败')
     }
   } catch (error) {
     console.error('提交答案失败:', error)
-    if (error.response?.data?.message) {
-      ElMessage.error(error.response.data.message)
-    } else {
-      ElMessage.error('提交答案失败，请稍后重试')
-    }
+    ElMessage.error(error.message || '提交答案失败，请稍后重试')
   }
 }
 
