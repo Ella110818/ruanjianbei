@@ -114,6 +114,7 @@ import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import { generateKnowledgePointsPPT, getKnowledgePoints } from '@/api'  // 添加 getKnowledgePoints 导入
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
+import { API_CONFIG } from '@/api'  // 导入API配置
 
 const sideTab = ref('lesson-prep')
 const courseMenuOpen = ref(false)
@@ -134,9 +135,8 @@ const selectedCourse = ref('')
 const coursesList = ref([])
 const coursesLoading = ref(false)
 
-// 定义API基础URL
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
-console.log('当前API基础URL:', API_BASE_URL) // 添加日志
+// 使用API_CONFIG中的基础URL
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 // 加载知识点列表
 const loadKnowledgePoints = async () => {
