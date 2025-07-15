@@ -111,10 +111,9 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { generateKnowledgePointsPPT, getKnowledgePoints } from '@/api'  // 添加 getKnowledgePoints 导入
+import { generateKnowledgePointsPPT, getKnowledgePoints, handleRequest } from '@/api'  // 添加handleRequest导入
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { API_CONFIG } from '@/api'  // 导入API配置
 
 const sideTab = ref('lesson-prep')
 const courseMenuOpen = ref(false)
@@ -134,9 +133,6 @@ const selectedCourse = ref('')
 // 加载课程列表
 const coursesList = ref([])
 const coursesLoading = ref(false)
-
-// 使用API_CONFIG中的基础URL
-const API_BASE_URL = API_CONFIG.BASE_URL
 
 // 加载知识点列表
 const loadKnowledgePoints = async () => {
@@ -277,40 +273,33 @@ const handleGeneratePPT = async (knowledgePoints) => {
         window.URL.revokeObjectURL(url)
         ElMessage.success('PPT下载成功！')
       } else if (response.data?.file_url) {
-        // 如果返回的是URL，构建完整的文件URL并下载
-        const fileUrl = `${API_BASE_URL}/api${response.data.file_url}`
+        // 如果返回的是URL，使用handleRequest下载文件
+        const fileUrl = response.data.file_url.replace(/^\/api/, '')  // 移除开头的/api（如果存在）
         console.log('下载文件URL:', fileUrl)
         
         try {
-          // 使用fetch获取文件内容
-          const token = localStorage.getItem('token')
-          const fileResponse = await fetch(fileUrl, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'ngrok-skip-browser-warning': 'true'
-            }
+          // 使用handleRequest获取文件内容
+          const fileResponse = await handleRequest(fileUrl, {
+            responseType: 'blob'  // 指定响应类型为blob
           })
           
-          if (!fileResponse.ok) {
-            throw new Error(`HTTP error! status: ${fileResponse.status}`)
+          if (fileResponse instanceof Blob) {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(fileResponse)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = response.data.filename || '知识点PPT.pptx'
+            document.body.appendChild(link)
+            link.click()
+            
+            // 清理
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(url)
+            
+            ElMessage.success('PPT下载成功！')
+          } else {
+            throw new Error('文件下载响应格式不正确')
           }
-          
-          // 获取文件blob
-          const blob = await fileResponse.blob()
-          
-          // 创建下载链接
-          const url = window.URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = response.data.filename || '知识点PPT.pptx'
-          document.body.appendChild(link)
-          link.click()
-          
-          // 清理
-          document.body.removeChild(link)
-          window.URL.revokeObjectURL(url)
-          
-          ElMessage.success('PPT下载成功！')
         } catch (downloadError) {
           console.error('下载文件失败:', downloadError)
           ElMessage.error('下载文件失败，请稍后重试')
@@ -334,29 +323,22 @@ const loadCourses = async () => {
   coursesLoading.value = true
   try {
     console.log('开始加载课程列表')
-    const response = await fetch(`${API_BASE_URL}/api/courses/`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
-      }
-    })
-    const responseData = await response.json()
-    console.log('课程列表响应:', responseData)
+    const response = await handleRequest('courses/')  // 使用handleRequest，移除重复的api路径
+    console.log('课程列表响应:', response)
     
-    if (response.ok && responseData.code === 0) {
-      const data = responseData.data
+    if (response.success && response.status_code === 200) {
+      const data = response.data
       coursesList.value = data.results.map(course => ({
         id: course.id,
         title: course.title
       }))
       console.log('处理后的课程列表:', coursesList.value)
     } else {
-      if (responseData.code === 401) {
+      if (response.status_code === 401) {
         ElMessage.error('登录已过期，请重新登录')
         // 可以在这里添加重定向到登录页面的逻辑
       } else {
-        ElMessage.error(responseData.msg || '获取课程列表失败')
+        ElMessage.error(response.message || '获取课程列表失败')
       }
     }
   } catch (error) {
