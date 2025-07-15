@@ -159,14 +159,20 @@ const loadKnowledgePoints = async () => {
     
     console.log('获取知识点列表响应:', response)
 
-    if (response.code === 0 && response.data) {
+    if (response.success && response.status_code === 200 && response.data) {
       console.log('知识点数据:', response.data)
-      knowledgePoints.value = response.data.results
+      // 修改表格显示的字段名
+      knowledgePoints.value = response.data.results.map(point => ({
+        id: point.id,
+        name: point.title,
+        subject: point.course_title || '未分类',
+        description: point.content
+      }))
       total.value = response.data.count
       console.log('设置后的知识点数据:', knowledgePoints.value)
     } else {
       console.error('获取知识点列表失败:', response)
-      ElMessage.error(response.msg || '获取知识点列表失败')
+      ElMessage.error(response.message || '获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)

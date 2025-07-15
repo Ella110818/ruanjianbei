@@ -170,8 +170,12 @@ const generateQuestionsFromAPI = async (input) => {
     const responseData = await response.json();
     console.log('API响应:', responseData);
     
-    if (!response.ok) {
-      throw new Error(responseData.message || '请求失败');
+    // 检查响应状态（支持两种格式）
+    const isSuccess = (responseData.success && responseData.status_code === 200) || 
+                     (responseData.code === 0 && responseData.msg);
+                     
+    if (!isSuccess) {
+      throw new Error(responseData.message || responseData.msg || '请求失败');
     }
     
     return responseData;
@@ -191,10 +195,13 @@ const handleQuestionResponse = (response) => {
   }
   
   try {
-    // 检查API响应格式
-    if (!response.success || response.status_code !== 200) {
+    // 检查API响应格式（支持两种格式）
+    const isSuccess = (response.success && response.status_code === 200) || 
+                     (response.code === 0 && response.msg === '获取知识点列表成功');
+                     
+    if (!isSuccess) {
       console.error('API响应失败:', response);
-      return response.message || '抱歉，无法获取回答。';
+      return response.message || response.msg || '抱歉，无法获取回答。';
     }
 
     // 返回AI的回答
@@ -233,12 +240,16 @@ const loadUserInfo = async () => {
     const response = await getCurrentUser();
     console.log('获取用户信息响应:', response);
     
-    if (response.code === 0 && response.data) {
+    // 检查响应状态（支持两种格式）
+    const isSuccess = (response.success && response.status_code === 200) || 
+                     (response.code === 0 && response.data);
+                     
+    if (isSuccess) {
       currentUser.value = response.data;
       console.log('当前用户信息:', currentUser.value);
     } else {
-      console.error('获取用户信息失败:', response.msg);
-      ElMessage.error('获取用户信息失败');
+      console.error('获取用户信息失败:', response);
+      ElMessage.error(response.message || response.msg || '获取用户信息失败');
     }
   } catch (error) {
     console.error('获取用户信息失败:', error);
