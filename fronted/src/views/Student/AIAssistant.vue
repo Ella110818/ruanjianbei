@@ -170,7 +170,10 @@ import { ref, computed, onMounted } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
 import { getCurrentUser } from '@/api/index.js'
 import { ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElInputNumber, ElRate, ElButton } from 'element-plus'
-import { User, Position } from '@element-plus/icons-vue'  // 移除 Edit 图标导入
+import { User, Position } from '@element-plus/icons-vue'
+
+// 添加API基础URL
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
@@ -201,11 +204,82 @@ const handleSearch = async () => {
   }
 }
 
-// 修改发送消息函数
+// 添加解析JSON字符串的函数
+const parseJsonString = (jsonString) => {
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error('JSON解析失败:', error);
+    return null;
+  }
+}
+
+// 格式化AI回复内容
+const formatAIResponse = (responseData) => {
+  try {
+    // 解析answer字段中的JSON字符串
+    const parsedAnswer = parseJsonString(responseData.answer);
+    if (!parsedAnswer) return '抱歉，解析回答时出现错误。';
+
+    const response = parsedAnswer.response;
+    let formattedContent = '';
+
+    // 添加专业回答
+    if (response.professional_answer) {
+      formattedContent += response.professional_answer + '\n\n';
+    }
+
+    // 添加关键概念
+    if (response.key_concepts && response.key_concepts.length > 0) {
+      formattedContent += '关键概念：\n';
+      response.key_concepts.forEach(concept => {
+        formattedContent += `• ${concept}\n`;
+      });
+      formattedContent += '\n';
+    }
+
+    // 添加示例代码
+    if (response.practical_examples && response.practical_examples.length > 0) {
+      formattedContent += '示例代码：\n';
+      response.practical_examples.forEach(example => {
+        formattedContent += `${example.language}:\n${example.code}\n`;
+      });
+      formattedContent += '\n';
+    }
+
+    // 添加常见误解
+    if (response.common_misconceptions) {
+      formattedContent += '注意事项：\n';
+      if (response.common_misconceptions.note) {
+        formattedContent += `• ${response.common_misconceptions.note}\n`;
+      }
+      if (response.common_misconceptions.warning) {
+        formattedContent += `• ${response.common_misconceptions.warning}\n`;
+      }
+      formattedContent += '\n';
+    }
+
+    // 添加后续问题
+    if (response.follow_up_questions && response.follow_up_questions.length > 0) {
+      formattedContent += '你可能还想了解：\n';
+      response.follow_up_questions.forEach(question => {
+        formattedContent += `• ${question}\n`;
+      });
+    }
+
+    return formattedContent.trim();
+  } catch (error) {
+    console.error('格式化AI回复失败:', error);
+    return '抱歉，处理回答时出现错误。';
+  }
+}
+
+// 修改发送消息函数中处理响应的部分
 const sendMessage = async (message = null) => {
   const userInput = message || inputMessage.value;
   if (!userInput.trim()) return;
 
+  // 添加用户消息
   const messageId = messages.value.length + 1;
   messages.value.push({
     id: messageId,
@@ -218,22 +292,72 @@ const sendMessage = async (message = null) => {
     inputMessage.value = '';
   }
 
-  // 添加AI默认回复
-  messages.value.push({
-    id: messages.value.length + 1,
-    type: 'ai',
-    content: '抱歉，该功能暂时不可用。',
-    time: formatTime(new Date())
-  });
+  try {
+    loading.value = true;
+    
+    // 准备请求参数
+    const requestData = {
+      query: userInput,
+      session_id: currentSessionId.value,
+      context: {
+        description: '学生当前的学习对话'
+      }
+    };
+
+    console.log('发送请求参数:', requestData);
+    
+    // 调用AI助手API
+    const response = await fetch(`${API_BASE_URL}/api/ai/student-dialogue/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true'
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    const data = await response.json();
+    console.log('AI助手响应:', data);
+
+    if (data.success && data.status_code === 200 && data.data) {
+      // 格式化并添加AI回复
+      const formattedResponse = formatAIResponse(data.data);
+      messages.value.push({
+        id: messages.value.length + 1,
+        type: 'ai',
+        content: formattedResponse,
+        time: formatTime(new Date())
+      });
+
+      // 更新会话ID
+      if (data.data.session_id) {
+        currentSessionId.value = data.data.session_id;
+      }
+    } else {
+      throw new Error(data.message || '获取AI回复失败');
+    }
+  } catch (error) {
+    console.error('AI助手对话失败:', error);
+    messages.value.push({
+      id: messages.value.length + 1,
+      type: 'ai',
+      content: '抱歉，服务出现了问题，请稍后再试。',
+      time: formatTime(new Date())
+    });
+    ElMessage.error(error.message || '对话失败，请稍后重试');
+  } finally {
+    loading.value = false;
+  }
 }
 
-// 移除不需要的函数
-// const generateQuestionsFromAPI = async (input) => { ... }
-// const handleQuestionResponse = (response) => { ... }
-// const generateSessionId = () => { ... }
+// 添加会话ID生成函数
+const generateSessionId = () => {
+  return 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+}
 
-// 移除不需要的变量
-// const currentSessionId = ref(generateSessionId());
+// 添加会话ID
+const currentSessionId = ref(generateSessionId());
 
 // 添加用户状态管理
 const currentUser = ref(null);
