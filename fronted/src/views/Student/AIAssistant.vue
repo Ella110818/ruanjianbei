@@ -130,6 +130,7 @@
             <el-select 
               v-model="exerciseParams.knowledge_point_ids" 
               multiple 
+              filterable
               placeholder="请选择知识点"
               :loading="!knowledgePoints.length"
             >
@@ -251,6 +252,15 @@ const sendMessage = async (message = null) => {
     time: formatTime(new Date())
   });
 
+  // 添加AI加载消息
+  const loadingMessageId = messages.value.length + 1;
+  messages.value.push({
+    id: loadingMessageId,
+    type: 'ai',
+    content: '<div class="ai-loading"><span class="loading-dots">AI正在思考中</span></div>',
+    time: formatTime(new Date())
+  });
+
   // 清空输入框
   if (!message) {
     inputMessage.value = '';
@@ -291,13 +301,16 @@ const sendMessage = async (message = null) => {
     console.log('AI助手响应数据:', data);
 
     if (data && data.data) {
-      // 直接使用API返回的answer，并用markdown格式化
-      messages.value.push({
-        id: messages.value.length + 1,
-        type: 'ai',
-        content: data.data.answer || '抱歉，我没有找到合适的答案',
-        time: formatTime(new Date())
-      });
+      // 替换加载消息为实际回复
+      const messageIndex = messages.value.findIndex(msg => msg.id === loadingMessageId);
+      if (messageIndex !== -1) {
+        messages.value[messageIndex] = {
+          id: loadingMessageId,
+          type: 'ai',
+          content: data.data.answer || '抱歉，我没有找到合适的答案',
+          time: formatTime(new Date())
+        };
+      }
 
       // 更新会话ID
       if (data.data.session_id) {
@@ -308,12 +321,16 @@ const sendMessage = async (message = null) => {
     }
   } catch (error) {
     console.error('AI助手对话失败:', error);
-    messages.value.push({
-      id: messages.value.length + 1,
-      type: 'ai',
-      content: '抱歉，服务出现了问题，请稍后再试。\n错误信息：' + error.message,
-      time: formatTime(new Date())
-    });
+    // 替换加载消息为错误消息
+    const messageIndex = messages.value.findIndex(msg => msg.id === loadingMessageId);
+    if (messageIndex !== -1) {
+      messages.value[messageIndex] = {
+        id: loadingMessageId,
+        type: 'ai',
+        content: '抱歉，服务出现了问题，请稍后再试。\n错误信息：' + error.message,
+        time: formatTime(new Date())
+      };
+    }
   } finally {
     loading.value = false;
     console.log('设置loading状态为false');
@@ -536,16 +553,16 @@ const formatExercise = (exercise) => {
   }[exercise.type] || '未知类型';
   
   let formattedContent = `### ${exercise.title}\n\n`;
-  formattedContent += `**难度**：${difficultyText} | **类型**：${typeText}\n\n`;
+  formattedContent += `<div class="exercise-info">难度：${difficultyText} | 类型：${typeText}</div>\n\n`;
   formattedContent += `${exercise.content}\n\n`;
   
   // 只有单选题才显示选项
   if (exercise.type === 'single_choice' && exercise.answer_template && exercise.answer_template.length > 0) {
-    formattedContent += '选项：\n\n';
-    exercise.answer_template.forEach((option, index) => {
-      const optionLabel = String.fromCharCode(65 + index); // A, B, C, D...
-      formattedContent += `${optionLabel}. ${option}\n`;
+    formattedContent += '<div class="exercise-options">\n';
+    exercise.answer_template.forEach(option => {
+      formattedContent += `- ${option}\n`;
     });
+    formattedContent += '</div>\n';
   }
   
   return formattedContent;
@@ -557,12 +574,6 @@ const generateExercises = async () => {
     ElMessage.warning('请输入查询内容')
     return
   }
-  
-  // 确保knowledge_point_ids是数字数组
-  if (!exerciseParams.value.knowledge_point_ids.length) {
-    ElMessage.warning('请选择至少一个知识点')
-    return
-  }
 
   if (!exerciseParams.value.question_types.length) {
     ElMessage.warning('请选择至少一种题目类型')
@@ -571,7 +582,7 @@ const generateExercises = async () => {
 
   try {
     loading.value = true;
-    // 确保发送的knowledge_point_ids是数字数组
+    // 构建请求数据，如果知识点为空数组，API会使用默认逻辑
     const requestData = {
       ...exerciseParams.value,
       knowledge_point_ids: exerciseParams.value.knowledge_point_ids.map(Number),
@@ -647,34 +658,46 @@ const formatMessageContent = (content) => {
 // 添加知识点列表获取API
 const fetchKnowledgePoints = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/knowledge-points/`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
-        'Authorization': localStorage.getItem('token') || ''
+    let allPoints = [];
+    let nextUrl = `${API_BASE_URL}/knowledge-points/`;
+
+    while (nextUrl) {
+      const response = await fetch(nextUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'Authorization': localStorage.getItem('token') || ''
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      console.log('Knowledge points API response:', data);
+
+      if (data.success && data.status_code === 200 && data.data) {
+        // 将当前页的结果添加到总列表中
+        if (Array.isArray(data.data.results)) {
+          allPoints = [...allPoints, ...data.data.results];
+        }
+        
+        // 获取下一页的URL，如果没有下一页则为null
+        nextUrl = data.data.next;
+      } else {
+        throw new Error('知识点数据格式不正确');
+      }
     }
 
-    const data = await response.json();
-    console.log('Knowledge points API response:', data);
+    // 处理所有获取到的知识点
+    knowledgePoints.value = allPoints.map(point => ({
+      id: point.id,
+      name: point.title // API返回的是title字段，我们映射为name
+    }));
 
-    // 处理分页响应格式
-    if (data.success && data.status_code === 200 && data.data && Array.isArray(data.data.results)) {
-      knowledgePoints.value = data.data.results.map(point => ({
-        id: point.id,
-        name: point.title // API返回的是title字段，我们映射为name
-      }));
-    } else {
-      console.error('Unexpected API response format:', data);
-      throw new Error('知识点数据格式不正确');
-    }
-
-    console.log('Processed knowledge points:', knowledgePoints.value);
+    console.log('Total knowledge points loaded:', knowledgePoints.value.length);
   } catch (error) {
     console.error('获取知识点列表失败:', error);
     ElMessage.error(error.message || '获取知识点列表失败，请稍后重试');
@@ -1807,6 +1830,124 @@ const fetchKnowledgePoints = async () => {
   margin: 0;
   padding-left: 1em;
   color: #666;
+}
+
+/* 添加练习题相关样式 */
+:deep(.markdown-content) {
+  color: #333;
+  line-height: 1.6;
+}
+
+:deep(.markdown-content h3) {
+  font-size: 1.2em;
+  margin: 1em 0 0.5em;
+  color: #333;
+  font-weight: 600;
+}
+
+:deep(.markdown-content .exercise-info) {
+  color: #666;
+  font-size: 0.9em;
+  margin-bottom: 1em;
+  padding: 4px 0;
+}
+
+:deep(.markdown-content .exercise-options) {
+  margin-top: 1em;
+}
+
+:deep(.markdown-content .exercise-options li) {
+  color: #333;
+  margin: 8px 0;
+  list-style-type: none;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+:deep(.markdown-content .exercise-options li:hover) {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:deep(.markdown-content strong) {
+  font-weight: 500;
+  color: #333;
+}
+
+:deep(.markdown-content hr) {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin: 2em 0;
+}
+
+:deep(.markdown-content p) {
+  margin: 1em 0;
+  color: #333;
+}
+
+:deep(.markdown-content code) {
+  background-color: rgba(0, 0, 0, 0.04);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  color: #333;
+}
+
+:deep(.markdown-content pre) {
+  background-color: rgba(0, 0, 0, 0.04);
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+  color: #333;
+}
+
+:deep(.markdown-content blockquote) {
+  border-left: 4px solid #ddd;
+  margin: 0;
+  padding-left: 1em;
+  color: #666;
+}
+
+/* AI加载动画样式 */
+.ai-loading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px;
+}
+
+.loading-dots {
+  color: #666;
+  font-size: 14px;
+  position: relative;
+}
+
+.loading-dots::after {
+  content: '';
+  animation: loading-dots 1.5s infinite;
+}
+
+@keyframes loading-dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+  100% { content: ''; }
+}
+
+/* 确保加载动画在AI消息框内正确显示 */
+:deep(.markdown-content .ai-loading) {
+  background: none;
+  padding: 0;
+  margin: 0;
+}
+
+:deep(.markdown-content .loading-dots) {
+  font-family: inherit;
+  background: none;
+  padding: 0;
+  margin: 0;
 }
 </style> 
 
