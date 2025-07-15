@@ -203,7 +203,7 @@ const loadExercises = async () => {
   }
 }
 
-// 加载知识点
+  // 加载知识点
 const loadKnowledgePoints = async () => {
   knowledgePointsLoading.value = true
   try {
@@ -213,10 +213,19 @@ const loadKnowledgePoints = async () => {
       ordering: 'title'
     })
     
-    if (response.success && response.status_code === 200) {  // 修改判断条件
-      knowledgePoints.value = response.data.results || []
+    console.log('知识点列表响应:', response)
+    
+    if (response.success && response.status_code === 200) {
+      if (response.data && Array.isArray(response.data.results)) {
+        knowledgePoints.value = response.data.results
+        console.log('处理后的知识点列表:', knowledgePoints.value)
+      } else {
+        console.error('知识点数据格式不正确:', response.data)
+        ElMessage.error('知识点数据格式不正确')
+      }
     } else {
-      ElMessage.error('获取知识点列表失败')
+      console.error('获取知识点列表失败:', response)
+      ElMessage.error(response.message || '获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
