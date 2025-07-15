@@ -286,13 +286,19 @@ const submitAnswer = async (exercise) => {
   }
 
   try {
+    console.log('提交答案参数:', {
+      exercise: exercise.id,
+      content: exercise.studentAnswer,
+      student: currentUser.value.id
+    });
+
     const response = await submitStudentAnswer({
-      exercise_id: exercise.id,         // 修改参数名称
-      answer_content: exercise.studentAnswer,  // 修改参数名称
-      student_id: currentUser.value.id  // 修改参数名称
+      exercise: exercise.id,
+      content: exercise.studentAnswer,
+      student: currentUser.value.id
     })
 
-    if (response.code === 0 && response.data) {
+    if (response.success && response.status_code === 200) {
       exercise.isSubmitted = true
       exercise.score = response.data.score
       exercise.feedback = response.data.feedback
