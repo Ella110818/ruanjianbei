@@ -351,17 +351,6 @@ const loadCourses = async () => {
   }
 }
 
-// 恢复之前的课程上下文
-const restorePreviousState = () => {
-  const previousTab = localStorage.getItem('previousTab')
-  if (previousTab) {
-    sideTab.value = previousTab
-    if (previousTab.startsWith('course-')) {
-      courseMenuOpen.value = true
-    }
-  }
-}
-
 // 更新侧边栏状态
 const updateSideTab = (value) => {
   sideTab.value = value
@@ -376,7 +365,10 @@ onMounted(async () => {
   await Promise.all([
     loadKnowledgePoints(),
     loadCourses()
-  ])
+  ]).catch(error => {
+    console.error('初始化数据加载失败:', error)
+    ElMessage.error('加载数据失败，请刷新页面重试')
+  })
 })
 </script>
 

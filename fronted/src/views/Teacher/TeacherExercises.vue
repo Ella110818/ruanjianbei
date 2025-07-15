@@ -32,8 +32,7 @@
             class="filter-item"
           >
             <el-option label="单选题" value="single_choice" />
-            <el-option label="多选题" value="multiple_choice" />
-            <el-option label="判断题" value="true_false" />
+            <el-option label="简答题" value="short_answer" />
           </el-select>
           <el-select
             v-model="filters.difficulty"
@@ -73,8 +72,8 @@
           <el-card v-for="exercise in exercises" :key="exercise.id" class="exercise-card">
             <div class="exercise-header" @click="toggleExercise(exercise.id)">
               <span class="exercise-title">{{ exercise.title }}</span>
-              <el-tag size="small" :type="exercise.type === 'single_choice' ? 'primary' : 'success'">
-                {{ exercise.type === 'single_choice' ? '单选题' : '多选题' }}
+              <el-tag size="small" :type="getExerciseTagType(exercise.type)">
+                {{ getExerciseTypeName(exercise.type) }}
               </el-tag>
             </div>
             <div class="exercise-content">{{ exercise.content }}</div>
@@ -143,8 +142,7 @@
             <el-form-item label="题目类型" prop="type">
               <el-select v-model="exerciseForm.type" placeholder="请选择题目类型">
                 <el-option label="单选题" value="single_choice" />
-                <el-option label="多选题" value="multiple_choice" />
-                <el-option label="判断题" value="true_false" />
+                <el-option label="简答题" value="short_answer" />
               </el-select>
             </el-form-item>
             
@@ -217,8 +215,8 @@ const total = ref(0)
 // 筛选条件
 const filters = ref({
   search: '',
-  type: 'single_choice',
-  difficulty: '1',
+  type: 'single_choice',  // 默认选择单选题
+  difficulty: '',
   knowledge_point: '',
   ordering: '1'
 })
@@ -227,17 +225,41 @@ const filters = ref({
 const loadExercises = async () => {
   loading.value = true
   try {
-    const response = await getExercises({
-      ...filters.value,
-      page: currentPage.value
-    })
-    
-    if (response.success && response.status_code === 200) {  // 修改判断条件
-      exercises.value = response.data.results || []
-      total.value = response.data.count || 0
-    } else {
-      ElMessage.error('获取练习题失败')
+    let allExercises = []
+    let nextPage = 1
+    let hasMore = true
+
+    while (hasMore) {
+      const response = await getExercises({
+        ...filters.value,
+        page: nextPage,
+        page_size: 100  // 每页获取100条数据
+      })
+      
+      console.log(`加载第${nextPage}页练习题:`, response)
+      
+      if (response.success && response.status_code === 200) {
+        if (response.data && Array.isArray(response.data.results)) {
+          allExercises = [...allExercises, ...response.data.results]
+          
+          // 检查是否还有下一页
+          hasMore = !!response.data.next
+          nextPage++
+        } else {
+          console.error('练习题数据格式不正确:', response.data)
+          ElMessage.error('练习题数据格式不正确')
+          break
+        }
+      } else {
+        console.error('获取练习题列表失败:', response)
+        ElMessage.error(response.message || '获取练习题失败')
+        break
+      }
     }
+
+    exercises.value = allExercises
+    total.value = allExercises.length
+    console.log('练习题加载完成，总数：', total.value)
   } catch (error) {
     console.error('加载练习题失败:', error)
     ElMessage.error('加载练习题失败，请稍后重试')
@@ -250,18 +272,40 @@ const loadExercises = async () => {
 const loadKnowledgePoints = async () => {
   knowledgePointsLoading.value = true
   try {
-    const response = await getKnowledgePoints({
-      page: 1,
-      page_size: 100,  // 获取更多知识点
-      ordering: 'title'  // 按标题排序
-    })
-    
-    if (response.code === 0) {  // 修改判断条件以匹配API响应格式
-      knowledgePoints.value = response.data.results || []
-      console.log('知识点列表:', knowledgePoints.value)
-    } else {
-      ElMessage.error(response.msg || '获取知识点列表失败')
+    let allKnowledgePoints = []
+    let nextPage = 1
+    let hasMore = true
+
+    while (hasMore) {
+      const response = await getKnowledgePoints({
+        page: nextPage,
+        page_size: 100,  // 每页获取100条数据
+        ordering: 'title'  // 按标题排序
+      })
+      
+      console.log(`加载第${nextPage}页知识点:`, response)
+      
+      if (response.code === 0) {
+        if (response.data && Array.isArray(response.data.results)) {
+          allKnowledgePoints = [...allKnowledgePoints, ...response.data.results]
+          
+          // 检查是否还有下一页
+          hasMore = !!response.data.next
+          nextPage++
+        } else {
+          console.error('知识点数据格式不正确:', response.data)
+          ElMessage.error('知识点数据格式不正确')
+          break
+        }
+      } else {
+        console.error('获取知识点列表失败:', response)
+        ElMessage.error(response.msg || '获取知识点列表失败')
+        break
+      }
     }
+
+    knowledgePoints.value = allKnowledgePoints
+    console.log('知识点加载完成，总数：', knowledgePoints.value.length)
   } catch (error) {
     console.error('加载知识点失败:', error)
     ElMessage.error('加载知识点失败，请稍后重试')
@@ -346,7 +390,7 @@ const createForm = ref(null)
 const exerciseForm = ref({
   title: '',
   content: '',
-  type: 'single_choice',
+  type: 'single_choice',  // 默认选择单选题
   difficulty: 1,
   knowledge_point: '',
   answer_template: ''
@@ -419,6 +463,24 @@ const expandedExerciseId = ref(null)
 // 切换练习题展开/折叠状态
 const toggleExercise = (exerciseId) => {
   expandedExerciseId.value = expandedExerciseId.value === exerciseId ? null : exerciseId
+}
+
+// 获取题目类型标签样式
+const getExerciseTagType = (type) => {
+  const types = {
+    'single_choice': 'primary',
+    'short_answer': 'success'
+  }
+  return types[type] || 'info'
+}
+
+// 获取题目类型名称
+const getExerciseTypeName = (type) => {
+  const types = {
+    'single_choice': '单选题',
+    'short_answer': '简答题'
+  }
+  return types[type] || '未知类型'
 }
 
 // 组件挂载时加载数据
