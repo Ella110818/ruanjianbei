@@ -173,7 +173,7 @@ import { ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElOption, E
 import { User, Position } from '@element-plus/icons-vue'
 
 // 添加API基础URL
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
+const API_BASE_URL = 'https://de566d16a53d.ngrok-free.app'  // 使用当前的ngrok URL
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
@@ -205,76 +205,10 @@ const handleSearch = async () => {
 }
 
 // 添加解析JSON字符串的函数
-const parseJsonString = (jsonString) => {
-  try {
-    return JSON.parse(jsonString);
-  } catch (error) {
-    console.error('JSON解析失败:', error);
-    return null;
-  }
-}
 
-// 格式化AI回复内容
-const formatAIResponse = (responseData) => {
-  try {
-    // 解析answer字段中的JSON字符串
-    const parsedAnswer = parseJsonString(responseData.answer);
-    if (!parsedAnswer) return '抱歉，解析回答时出现错误。';
+// 移除formatAIResponse函数
 
-    const response = parsedAnswer.response;
-    let formattedContent = '';
-
-    // 添加专业回答
-    if (response.professional_answer) {
-      formattedContent += response.professional_answer + '\n\n';
-    }
-
-    // 添加关键概念
-    if (response.key_concepts && response.key_concepts.length > 0) {
-      formattedContent += '关键概念：\n';
-      response.key_concepts.forEach(concept => {
-        formattedContent += `• ${concept}\n`;
-      });
-      formattedContent += '\n';
-    }
-
-    // 添加示例代码
-    if (response.practical_examples && response.practical_examples.length > 0) {
-      formattedContent += '示例代码：\n';
-      response.practical_examples.forEach(example => {
-        formattedContent += `${example.language}:\n${example.code}\n`;
-      });
-      formattedContent += '\n';
-    }
-
-    // 添加常见误解
-    if (response.common_misconceptions) {
-      formattedContent += '注意事项：\n';
-      if (response.common_misconceptions.note) {
-        formattedContent += `• ${response.common_misconceptions.note}\n`;
-      }
-      if (response.common_misconceptions.warning) {
-        formattedContent += `• ${response.common_misconceptions.warning}\n`;
-      }
-      formattedContent += '\n';
-    }
-
-    // 添加后续问题
-    if (response.follow_up_questions && response.follow_up_questions.length > 0) {
-      formattedContent += '你可能还想了解：\n';
-      response.follow_up_questions.forEach(question => {
-        formattedContent += `• ${question}\n`;
-      });
-    }
-
-    return formattedContent.trim();
-  } catch (error) {
-    console.error('格式化AI回复失败:', error);
-    return '抱歉，处理回答时出现错误。';
-  }
-}
-
-// 修改发送消息函数中处理响应的部分
+// 修改发送消息函数
 const sendMessage = async (message = null) => {
   const userInput = message || inputMessage.value;
   if (!userInput.trim()) return;
@@ -295,13 +229,11 @@ const sendMessage = async (message = null) => {
   try {
     loading.value = true;
     
-    // 准备请求参数
+    // 简化请求参数，完全匹配API文档
     const requestData = {
-      query: userInput,
-      session_id: currentSessionId.value,
-      context: {
-        description: '学生当前的学习对话'
-      }
+      query: userInput.trim(),
+      session_id: currentSessionId.value || '',
+      context: {}  // 空对象，符合API文档
     };
 
     console.log('发送请求参数:', requestData);
@@ -310,23 +242,22 @@ const sendMessage = async (message = null) => {
     const response = await fetch(`${API_BASE_URL}/api/ai/student-dialogue/`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify(requestData)
     });
 
+    console.log('API响应状态:', response.status);
     const data = await response.json();
     console.log('AI助手响应:', data);
 
-    if (data.success && data.status_code === 200 && data.data) {
-      // 格式化并添加AI回复
-      const formattedResponse = formatAIResponse(data.data);
+    if (response.ok && data.data) {
+      // 直接使用API返回的answer
       messages.value.push({
         id: messages.value.length + 1,
         type: 'ai',
-        content: formattedResponse,
+        content: data.data.answer || '抱歉，我没有找到合适的答案',
         time: formatTime(new Date())
       });
 
@@ -342,10 +273,9 @@ const sendMessage = async (message = null) => {
     messages.value.push({
       id: messages.value.length + 1,
       type: 'ai',
-      content: '抱歉，服务出现了问题，请稍后再试。',
+      content: '抱歉，服务出现了问题，请稍后再试。\n错误信息：' + error.message,
       time: formatTime(new Date())
     });
-    ElMessage.error(error.message || '对话失败，请稍后重试');
   } finally {
     loading.value = false;
   }
