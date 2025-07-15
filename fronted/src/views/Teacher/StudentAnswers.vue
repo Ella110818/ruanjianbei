@@ -212,6 +212,8 @@ const handlePageChange = (page) => {
 // 查看详情
 const handleViewDetail = (row) => {
   selectedAnswer.value = { ...row }
+  // 重置AI评分结果
+  aiGradeResult.value = null
   detailDialogVisible.value = true
 }
 
@@ -315,9 +317,9 @@ const requestAIGrade = async () => {
   try {
     // 构造请求数据
     const requestData = {
-      exercise_id: selectedAnswer.value.exercise,
+      exercise_id: selectedAnswer.value.exercise_id, // 修正字段名
       student_answer: selectedAnswer.value.content,
-      session_id: `session_${Date.now()}`  // 生成一个临时的session_id
+      session_id: `session_${Date.now()}`
     }
     
     // 发送请求到AI批改接口
@@ -334,16 +336,38 @@ const requestAIGrade = async () => {
     const data = await response.json()
     
     if (data.success && data.status_code === 200) {
-      aiGradeResult.value = data.data
-      
-      // 如果AI评分成功，自动填入分数和反馈
-      if (!isEditing.value) {
-        startEdit()
+      // 解析返回的JSON字符串
+      try {
+        let parsedData = data.data
+        // 如果返回的是字符串，尝试解析JSON
+        if (typeof parsedData === 'string') {
+          try {
+            parsedData = JSON.parse(parsedData)
+          } catch (e) {
+            // 如果解析失败，说明可能是普通字符串，不需要特殊处理
+            console.warn('AI返回数据不是JSON格式:', e)
+          }
+        }
+        
+        // 更新AI评分结果
+        aiGradeResult.value = parsedData
+        
+        // 如果AI评分成功，自动填入分数和反馈
+        if (!isEditing.value) {
+          startEdit()
+        }
+        
+        // 只更新当前选中的答案
+        if (selectedAnswer.value) {
+          selectedAnswer.value.score = parsedData.score
+          selectedAnswer.value.feedback = parsedData.feedback
+        }
+        
+        ElMessage.success('AI批改完成')
+      } catch (error) {
+        console.error('处理AI评分数据失败:', error)
+        ElMessage.error('处理AI评分数据失败')
       }
-      selectedAnswer.value.score = data.data.score
-      selectedAnswer.value.feedback = data.data.feedback
-      
-      ElMessage.success('AI批改完成')
     } else {
       ElMessage.error(data.message || 'AI批改失败')
     }
