@@ -45,7 +45,7 @@
           </div>
 
           <!-- 功能卡片区域 -->
-          <div class="features-grid" v-if="activeMainTab === 'features'">
+          <div class="features-grid">
             <div class="feature-row" v-for="(row, rowIndex) in currentFeatureRows" :key="rowIndex">
               <div class="feature-card" 
                    v-for="feature in row" 
@@ -54,17 +54,6 @@
                 <h3>{{ feature.title }}</h3>
                 <p>{{ feature.description }}</p>
               </div>
-            </div>
-          </div>
-
-          <!-- 历史记录区域 -->
-          <div class="history-list" v-if="activeMainTab === 'history'">
-            <div class="history-item" v-for="item in historyList" :key="item.id">
-              <div class="history-header">
-                <h3>{{ item.title }}</h3>
-                <span class="history-time">{{ item.time }}</span>
-              </div>
-              <p class="history-content">{{ item.content }}</p>
             </div>
           </div>
         </div>
@@ -97,14 +86,20 @@
         <!-- 底部输入框 -->
         <div class="chat-input-container">
           <div class="chat-input-wrapper">
+            <!-- 修改输入框标题部分 -->
             <div class="input-box">
-              <input 
-                type="text" 
-                v-model="inputMessage"
-                placeholder="输入你的问题..."
-                class="chat-input"
-                @keyup.enter="sendMessage"
-              >
+              <div class="input-area">
+                <div class="input-title">
+                  <i class="icon">✎</i>AI生题
+                </div>
+                <textarea 
+                  v-model="inputMessage"
+                  placeholder="输入你的问题..."
+                  class="chat-input"
+                  @keyup.enter.exact="sendMessage"
+                  @keyup.shift.enter="inputMessage += '\n'"
+                ></textarea>
+              </div>
               <button class="send-button" @click="sendMessage" :disabled="loading">
                 <el-icon class="send-icon"><Position /></el-icon>
               </button>
@@ -121,7 +116,7 @@ import { ref, computed, onMounted } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
 import { getCurrentUser } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
-import { User, Position } from '@element-plus/icons-vue'  // 移除 Monitor 图标
+import { User, Position } from '@element-plus/icons-vue'  // 移除 Edit 图标导入
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
@@ -153,7 +148,7 @@ const generateQuestionsFromAPI = async (input) => {
     const sessionId = currentSessionId.value;
     
     // 调用学生对话接口
-    const response = await fetch('https://de566d16a53d.ngrok-free.app/api/student-dialogue/', {
+    const response = await fetch('https://de566d16a53d.ngrok-free.app/api/ai/student-dialogue/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -387,21 +382,8 @@ const sendMessage = async (message = null) => {
   }
 }
 
-// 历史记录数据
-const historyList = ref([
-  {
-    id: 1,
-    title: '知识点解析',
-    time: '2024-03-20 14:30',
-    content: '完成了数学函数相关知识点的解析'
-  },
-  {
-    id: 2,
-    title: '练习题生成',
-    time: '2024-03-19 16:45',
-    content: '生成了一套数学练习题'
-  }
-])
+// 移除历史记录数据
+// const historyList = ref([])
 
 // 定义功能特性
 const features = ref({
@@ -453,10 +435,9 @@ const features = ref({
   ]
 })
 
-// 定义主选项卡
+// 移除历史记录选项卡
 const mainTabs = ref([
-  { id: 'features', name: '功能助手' },
-  { id: 'history', name: '历史记录' }
+  { id: 'features', name: '功能助手' }
 ])
 
 // 根据当前选项卡获取对应的功能特性（按行分组）
@@ -790,49 +771,13 @@ const currentFeatureRows = computed(() => {
   border-top: 1px solid #ebeef5;
 }
 
-/* 历史记录样式 */
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.history-item {
-  background: rgba(255, 255, 255, 0.7);
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  transition: all 0.3s;
-}
-
-.history-item:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 12px rgba(31, 38, 135, 0.1);
-}
-
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.history-header h3 {
-  font-size: 16px;
-  color: #333;
-  font-weight: 500;
-}
-
-.history-time {
-  font-size: 14px;
-  color: #666;
-}
-
+/* 移除历史记录相关样式 */
+.history-list,
+.history-item,
+.history-header,
+.history-time,
 .history-content {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.5;
+  display: none;
 }
 
 /* 添加新的样式 */
@@ -1154,7 +1099,7 @@ const currentFeatureRows = computed(() => {
 
 .input-box {
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* 改为flex-start以适应更高的输入框 */
   background: rgba(255, 255, 255, 0.1);
   border-radius: 24px;
   padding: 12px 16px;
@@ -1162,17 +1107,10 @@ const currentFeatureRows = computed(() => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
-  min-height: 52px;
+  min-height: 120px; /* 设置容器最小高度 */
   position: relative;
   z-index: 12;
   width: 100%;
-}
-
-.input-box:hover,
-.input-box:focus-within {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(64, 158, 255, 0.5);
-  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.1);
 }
 
 .chat-input {
@@ -1183,18 +1121,17 @@ const currentFeatureRows = computed(() => {
   font-size: 14px;
   background: transparent;
   color: #333;
-  min-height: 24px;
-  line-height: 1.5;
+  height: 100px !important; /* 使用!important确保高度生效 */
+  min-height: 100px !important; /* 使用!important确保最小高度生效 */
+  line-height: 2;
   width: 100%;
   position: relative;
   z-index: 13;
-}
-
-.chat-input::placeholder {
-  color: rgba(144, 147, 153, 0.6);
+  resize: none;
 }
 
 .send-button {
+  align-self: flex-end; /* 将发送按钮对齐到底部 */
   min-width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -1207,7 +1144,7 @@ const currentFeatureRows = computed(() => {
   justify-content: center;
   transition: all 0.3s ease;
   padding: 0;
-  margin-right: 4px;
+  margin: 0 4px;
   position: relative;
   z-index: 13;
 }
@@ -1439,6 +1376,136 @@ const currentFeatureRows = computed(() => {
 
 .message-content {
   background: none !important;
+}
+
+/* 修改输入框容器样式 */
+.input-box-container {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.input-box-header {
+  margin-bottom: 12px;
+  padding: 0 8px;
+}
+
+.input-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+  padding-left: 8px;
+}
+
+.input-subtitle {
+  font-size: 12px;
+  color: #666;
+}
+
+/* 修改输入框样式 */
+.input-box {
+  display: flex;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.input-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-title {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 4px;
+  text-align: left;
+}
+
+.chat-input {
+  border: none;
+  outline: none;
+  padding: 8px 0;
+  font-size: 14px;
+  background: transparent;
+  color: #333;
+  min-height: 60px;
+  resize: vertical;
+  line-height: 1.5;
+  width: 100%;
+}
+
+.chat-input::placeholder {
+  color: rgba(144, 147, 153, 0.6);
+}
+
+/* 调整发送按钮位置 */
+.send-button {
+  align-self: flex-end;
+  margin-bottom: 8px;
+}
+
+/* 添加AI标题样式 */
+.ai-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1B1B61;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* 调整输入框容器样式 */
+.chat-input-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: transparent;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+}
+
+.chat-input-wrapper {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 11;
+}
+
+/* 恢复输入框标题样式 */
+.input-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+  padding-left: 8px;
+}
+
+/* 移除之前添加的ai-title样式 */
+.input-title {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.input-title .icon {
+  font-style: normal;
+  font-size: 16px;
+  margin-right: 2px;
 }
 </style> 
 
