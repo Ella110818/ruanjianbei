@@ -257,7 +257,7 @@ const sendMessage = async (message = null) => {
   messages.value.push({
     id: loadingMessageId,
     type: 'ai',
-    content: '<div class="ai-loading"><span class="loading-dots">AI正在思考中</span></div>',
+    content: '正在思考中...',
     time: formatTime(new Date())
   });
 
@@ -270,23 +270,21 @@ const sendMessage = async (message = null) => {
     loading.value = true;
     console.log('设置loading状态为true');
     
-    // 简化请求参数，完全匹配API文档
     const requestData = {
       query: userInput.trim(),
       session_id: currentSessionId.value || '',
-      context: {}  // 空对象，符合API文档
+      context: {}
     };
 
     console.log('发送请求参数:', requestData);
     console.log('请求URL:', `${API_BASE_URL}/ai/student-dialogue/`);
     
-    // 直接使用fetch调用AI助手API
     const response = await fetch(`${API_BASE_URL}/ai/student-dialogue/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',  // 添加ngrok请求头
-        'Authorization': localStorage.getItem('token') || ''  // 添加token
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': localStorage.getItem('token') || ''
       },
       body: JSON.stringify(requestData)
     });
@@ -651,8 +649,22 @@ const generateExercises = async () => {
 // 修改消息显示部分
 const formatMessageContent = (content) => {
   if (typeof content !== 'string') return content;
-  // 将markdown文本转换为HTML
-  return md.render(content);
+  
+  // 如果是加载消息，直接返回HTML
+  if (content === '正在思考中...') {
+    return `<div class="ai-loading"><span class="loading-dots">${content}</span></div>`;
+  }
+  
+  // 对markdown内容进行安全处理
+  const sanitizedContent = content
+    .replace(/<(?!\/?(strong|em|p|code|pre|blockquote|h[1-6]|ul|ol|li|hr|br)(?=>|\s.*>))\/?(?:.*?)>/gi, '') // 只允许特定的HTML标签
+    .replace(/&(?!amp;|lt;|gt;|quot;|#39;)/g, '&amp;'); // 转义特殊字符
+  
+  // 使用markdown渲染
+  const renderedContent = md.render(sanitizedContent);
+  
+  // 移除可能存在的script标签
+  return renderedContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
 }
 
 // 添加知识点列表获取API
@@ -1891,7 +1903,6 @@ const fetchKnowledgePoints = async () => {
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-family: monospace;
-  color: #333;
 }
 
 :deep(.markdown-content pre) {
@@ -1899,7 +1910,6 @@ const fetchKnowledgePoints = async () => {
   padding: 1em;
   border-radius: 4px;
   overflow-x: auto;
-  color: #333;
 }
 
 :deep(.markdown-content blockquote) {
@@ -1948,6 +1958,159 @@ const fetchKnowledgePoints = async () => {
   background: none;
   padding: 0;
   margin: 0;
+}
+
+/* 加载动画样式 */
+:deep(.ai-loading) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+}
+
+:deep(.loading-dots) {
+  color: #666;
+  font-size: 14px;
+  position: relative;
+  padding: 10px;
+}
+
+:deep(.loading-dots::after) {
+  content: '';
+  animation: loading-dots 1.5s infinite;
+}
+
+@keyframes loading-dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+  100% { content: ''; }
+}
+
+/* 练习题相关样式 */
+:deep(.markdown-content .exercise-info) {
+  color: #666;
+  font-size: 0.9em;
+  margin-bottom: 1em;
+  padding: 4px 0;
+}
+
+/* 修改练习题相关样式 */
+:deep(.markdown-content) {
+  color: #333;
+  line-height: 1.8;
+}
+
+:deep(.markdown-content h3) {
+  font-size: 1.4em;
+  margin: 1.2em 0 0.8em;
+  color: #1B1B61;  /* 深蓝色标题 */
+  font-weight: 600;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(27, 27, 97, 0.1);
+}
+
+:deep(.markdown-content .exercise-info) {
+  display: flex;
+  gap: 16px;
+  color: #666;
+  font-size: 0.95em;
+  margin: 12px 0;
+  padding: 8px 12px;
+  background: rgba(64, 158, 255, 0.05);
+  border-radius: 6px;
+}
+
+:deep(.markdown-content .exercise-info strong) {
+  color: #409EFF;  /* 使用主题蓝色 */
+  font-weight: 500;
+}
+
+:deep(.markdown-content .exercise-options) {
+  margin-top: 1.2em;
+}
+
+:deep(.markdown-content .exercise-options li) {
+  color: #333;
+  margin: 12px 0;
+  list-style-type: none;
+  padding: 12px 16px;
+  background: rgba(64, 158, 255, 0.03);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(64, 158, 255, 0.05);
+}
+
+:deep(.markdown-content .exercise-options li:hover) {
+  background: rgba(64, 158, 255, 0.08);
+  border-color: rgba(64, 158, 255, 0.1);
+  transform: translateX(4px);
+}
+
+:deep(.markdown-content strong) {
+  color: #409EFF;
+  font-weight: 500;
+}
+
+:deep(.markdown-content hr) {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, rgba(64, 158, 255, 0.1), rgba(64, 158, 255, 0.3), rgba(64, 158, 255, 0.1));
+  margin: 2em 0;
+}
+
+:deep(.markdown-content p) {
+  margin: 1em 0;
+  color: #333;
+  line-height: 1.8;
+}
+
+:deep(.markdown-content code) {
+  background-color: rgba(64, 158, 255, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: monospace;
+  color: #409EFF;
+}
+
+:deep(.markdown-content pre) {
+  background-color: rgba(64, 158, 255, 0.03);
+  padding: 1.2em;
+  border-radius: 8px;
+  overflow-x: auto;
+  border: 1px solid rgba(64, 158, 255, 0.05);
+}
+
+:deep(.markdown-content blockquote) {
+  border-left: 4px solid #409EFF;
+  margin: 1em 0;
+  padding: 0.8em 1.2em;
+  background: rgba(64, 158, 255, 0.03);
+  color: #666;
+  border-radius: 0 4px 4px 0;
+}
+
+/* 添加题目序号样式 */
+:deep(.markdown-content h3::before) {
+  content: attr(data-question-number);
+  color: #409EFF;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+/* 添加难度等级样式 */
+:deep(.markdown-content .difficulty) {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+/* 添加题目类型样式 */
+:deep(.markdown-content .question-type) {
+  color: #67c23a;
+  font-weight: 500;
 }
 </style> 
 
