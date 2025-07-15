@@ -551,7 +551,10 @@ const formatExercise = (exercise) => {
   }[exercise.type] || '未知类型';
   
   let formattedContent = `### ${exercise.title}\n\n`;
-  formattedContent += `<div class="exercise-info">难度：${difficultyText} | 类型：${typeText}</div>\n\n`;
+  formattedContent += `<div class="exercise-info">
+    <span class="difficulty">难度：<strong>${difficultyText}</strong></span> | 
+    <span class="question-type">类型：<strong>${typeText}</strong></span>
+  </div>\n\n`;
   formattedContent += `${exercise.content}\n\n`;
   
   // 只有单选题才显示选项
@@ -2016,17 +2019,30 @@ const fetchKnowledgePoints = async () => {
 :deep(.markdown-content .exercise-info) {
   display: flex;
   gap: 16px;
-  color: #666;
-  font-size: 0.95em;
+  align-items: center;
   margin: 12px 0;
-  padding: 8px 12px;
+  padding: 8px 16px;
   background: rgba(64, 158, 255, 0.05);
   border-radius: 6px;
+  font-size: 0.95em;
 }
 
-:deep(.markdown-content .exercise-info strong) {
+:deep(.markdown-content .exercise-info .difficulty) {
+  color: #E6A23C;  /* 使用暖色调 */
+}
+
+:deep(.markdown-content .exercise-info .difficulty strong) {
+  color: #F56C6C;  /* 使用红色系 */
+  font-weight: 600;
+}
+
+:deep(.markdown-content .exercise-info .question-type) {
   color: #409EFF;  /* 使用主题蓝色 */
-  font-weight: 500;
+}
+
+:deep(.markdown-content .exercise-info .question-type strong) {
+  color: #67C23A;  /* 使用绿色系 */
+  font-weight: 600;
 }
 
 :deep(.markdown-content .exercise-options) {
