@@ -43,6 +43,9 @@
             class="filter-item"
             :loading="knowledgePointsLoading"
           >
+            <template #prefix>
+              <small>{{ knowledgePoints.length }}个知识点</small>
+            </template>
             <el-option
               v-for="point in knowledgePoints"
               :key="point.id"
@@ -50,7 +53,8 @@
               :value="point.id"
             >
               <div class="knowledge-point-option">
-                <span>{{ point.title }}</span>
+                <span class="knowledge-point-title">{{ point.title }}</span>
+                <span class="knowledge-point-course" v-if="point.course_title">({{ point.course_title }})</span>
                 <small v-if="point.content" class="knowledge-point-desc">
                   {{ point.content && point.content.length > 50 ? point.content.slice(0, 50) + '...' : point.content }}
                 </small>
@@ -151,7 +155,7 @@ const filters = ref({
   search: '',
   type: '',
   difficulty: '',
-  knowledge_point: '',
+  knowledge_point: '',  // 确保这个字段被初始化为空字符串
   ordering: '1'
 })
 
@@ -213,12 +217,30 @@ const loadKnowledgePoints = async () => {
       ordering: 'title'
     })
     
-    console.log('知识点列表响应:', response)
+    console.log('API 原始响应:', response)
+    console.log('响应状态:', {
+      success: response.success,
+      status_code: response.status_code
+    })
+    console.log('响应数据结构:', {
+      hasData: !!response.data,
+      isDataArray: response.data && Array.isArray(response.data.results),
+      dataLength: response.data?.results?.length
+    })
     
     if (response.success && response.status_code === 200) {
       if (response.data && Array.isArray(response.data.results)) {
         knowledgePoints.value = response.data.results
-        console.log('处理后的知识点列表:', knowledgePoints.value)
+        console.log('成功设置知识点列表:', knowledgePoints.value)
+        
+        // 检查数据结构是否符合模板要求
+        if (knowledgePoints.value.length > 0) {
+          console.log('第一个知识点数据示例:', {
+            id: knowledgePoints.value[0].id,
+            title: knowledgePoints.value[0].title,
+            content: knowledgePoints.value[0].content
+          })
+        }
       } else {
         console.error('知识点数据格式不正确:', response.data)
         ElMessage.error('知识点数据格式不正确')
@@ -511,6 +533,17 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   padding: 4px 0;
+}
+
+.knowledge-point-title {
+  font-weight: 500;
+  color: #333;
+}
+
+.knowledge-point-course {
+  font-size: 12px;
+  color: #666;
+  margin-left: 8px;
 }
 
 .knowledge-point-desc {
