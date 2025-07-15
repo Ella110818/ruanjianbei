@@ -122,14 +122,25 @@
             <el-input v-model="exerciseParams.query" placeholder="请输入查询内容，例如：函数、方程等"></el-input>
           </el-form-item>
           
-          <el-form-item label="知识点">
-            <el-select v-model="exerciseParams.knowledge_point_ids" multiple placeholder="请选择知识点">
+          <el-form-item>
+            <template #label>
+              知识点
+              <el-tag size="small" type="info" effect="plain" class="ml-2" style="margin-left: 4px;">选填</el-tag>
+            </template>
+            <el-select 
+              v-model="exerciseParams.knowledge_point_ids" 
+              multiple 
+              placeholder="请选择知识点"
+              :loading="!knowledgePoints.length"
+            >
               <el-option
                 v-for="point in knowledgePoints"
                 :key="point.id"
                 :label="point.name"
                 :value="point.id"
-              ></el-option>
+              >
+                {{ point.name }}
+              </el-option>
             </el-select>
           </el-form-item>
           
@@ -494,7 +505,7 @@ const currentFeatureRows = computed(() => {
 const showExerciseDialog = ref(false)
 const exerciseParams = ref({
   query: '',
-  knowledge_point_ids: [], // 这里存储知识点ID（数字）
+  knowledge_point_ids: [], // 确保初始化为空数组
   question_types: [],
   quantity: 3,
   difficulty: 1,
@@ -650,14 +661,32 @@ const fetchKnowledgePoints = async () => {
     }
 
     const data = await response.json();
-    if (data.success && data.data) {
+    console.log('Knowledge points API response:', data); // 添加日志
+
+    // 处理两种可能的响应格式
+    if (data.success && data.status_code === 200 && Array.isArray(data.data)) {
       knowledgePoints.value = data.data;
+    } else if (data.code === 0 && Array.isArray(data.data)) {
+      knowledgePoints.value = data.data;
+    } else if (data.data && Array.isArray(data.data.items)) {
+      // 处理分页数据格式
+      knowledgePoints.value = data.data.items;
     } else {
-      throw new Error(data.message || '获取知识点列表失败');
+      console.error('Unexpected API response format:', data); // 添加错误日志
+      throw new Error('知识点数据格式不正确');
     }
+
+    // 验证数据格式
+    if (!knowledgePoints.value.every(point => point && typeof point.id === 'number' && typeof point.name === 'string')) {
+      console.error('Invalid knowledge point data format:', knowledgePoints.value); // 添加错误日志
+      throw new Error('知识点数据格式不正确');
+    }
+
+    console.log('Processed knowledge points:', knowledgePoints.value); // 添加日志
   } catch (error) {
     console.error('获取知识点列表失败:', error);
-    ElMessage.error('获取知识点列表失败，请稍后重试');
+    ElMessage.error(error.message || '获取知识点列表失败，请稍后重试');
+    knowledgePoints.value = []; // 确保发生错误时设置为空数组
   }
 };
 

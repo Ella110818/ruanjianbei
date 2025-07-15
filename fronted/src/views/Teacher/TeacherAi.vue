@@ -134,53 +134,48 @@ const selectedCourse = ref('')
 const coursesList = ref([])
 const coursesLoading = ref(false)
 
-// 加载知识点列表
+// 修改加载知识点列表函数
 const loadKnowledgePoints = async () => {
   loading.value = true
   try {
-    let allKnowledgePoints = []
-    let nextPage = 1
-    let hasMore = true
-
-    while (hasMore) {
-      const response = await getKnowledgePoints({
-        page: nextPage,
-        page_size: 100,
-        search: searchQuery.value,
-        course: selectedCourse.value,
-        ordering: 'title'
-      })
+    const response = await getKnowledgePoints({
+      page: currentPage.value,
+      page_size: pageSize.value,
+      search: searchQuery.value,
+      course: selectedCourse.value,
+      ordering: 'title'
+    })
+    
+    console.log('知识点响应:', response)
+    
+    // 检查两种可能的成功响应格式
+    const isSuccess = (response.success && response.status_code === 200) || 
+                     (response.code === 0 && response.msg);
+                     
+    if (isSuccess) {
+      const responseData = response.data;
       
-      console.log(`第${nextPage}页知识点响应:`, response)
-      
-      if (response.success && response.status_code === 200) {
-        if (response.data && Array.isArray(response.data.results)) {
-          allKnowledgePoints = [...allKnowledgePoints, ...response.data.results]
-          
-          // 更新总数
-          total.value = response.data.count
-          
-          // 检查是否还有下一页
-          hasMore = !!response.data.next
-          nextPage++
-        } else {
-          console.error('知识点数据格式不正确:', response.data)
-          ElMessage.error('知识点数据格式不正确')
-          break
-        }
+      if (responseData && Array.isArray(responseData.results)) {
+        // 更新数据
+        knowledgePoints.value = responseData.results;
+        // 更新总数
+        total.value = responseData.count;
+        
+        console.log('知识点加载完成，总数：', total.value);
+        console.log('当前页数据：', knowledgePoints.value);
       } else {
-        ElMessage.error(response.message || '获取知识点列表失败')
-        break
+        console.error('知识点数据格式不正确:', responseData);
+        ElMessage.error('知识点数据格式不正确');
       }
+    } else {
+      const errorMsg = response.message || response.msg || '获取知识点列表失败';
+      ElMessage.error(errorMsg);
     }
-
-    knowledgePoints.value = allKnowledgePoints
-    console.log('知识点加载完成，总数：', knowledgePoints.value.length)
   } catch (error) {
-    console.error('加载知识点失败:', error)
-    ElMessage.error('加载知识点失败，请稍后重试')
+    console.error('加载知识点失败:', error);
+    ElMessage.error('加载知识点失败，请稍后重试');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
