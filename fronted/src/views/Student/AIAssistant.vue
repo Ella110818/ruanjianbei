@@ -168,13 +168,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
-import { getCurrentUser } from '@/api/index.js'
-import { API_CONFIG } from '@/api'  // 导入API配置
+import { getCurrentUser } from '@/api/index.js'  // 移除handleRequest导入
 import { ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElInputNumber, ElRate, ElButton } from 'element-plus'
 import { User, Position } from '@element-plus/icons-vue'
-
-// 使用API_CONFIG中的基础URL
-const API_BASE_URL = API_CONFIG.BASE_URL
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
@@ -195,12 +191,8 @@ const messages = ref([
 const handleSearch = async () => {
   if (searchQuery.value.trim()) {
     hasStartedChat.value = true;
-    messages.value.push({
-      id: messages.value.length + 1,
-      type: 'user',
-      content: searchQuery.value,
-      time: formatTime(new Date())
-    });
+    // 直接调用sendMessage函数处理搜索请求
+    await sendMessage(searchQuery.value);
     searchQuery.value = '';
   }
 }
@@ -209,7 +201,10 @@ const handleSearch = async () => {
 
 // 移除formatAIResponse函数
 
-// 修改发送消息函数
+// 添加API基础URL
+const API_BASE_URL = 'https://990dad7dbad9.ngrok-free.app/api';
+
+// 修改sendMessage函数
 const sendMessage = async (message = null) => {
   const userInput = message || inputMessage.value;
   if (!userInput.trim()) return;
@@ -239,21 +234,24 @@ const sendMessage = async (message = null) => {
 
     console.log('发送请求参数:', requestData);
     
-    // 调用AI助手API
-    const response = await fetch(`${API_BASE_URL}/api/ai/student-dialogue/`, {
+    // 直接使用fetch调用AI助手API
+    const response = await fetch(`${API_BASE_URL}/ai/student-dialogue/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
+        'ngrok-skip-browser-warning': 'true'  // 添加ngrok请求头
       },
       body: JSON.stringify(requestData)
     });
 
-    console.log('API响应状态:', response.status);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
     console.log('AI助手响应:', data);
 
-    if (response.ok && data.data) {
+    if (data && data.data) {
       // 直接使用API返回的answer
       messages.value.push({
         id: messages.value.length + 1,
