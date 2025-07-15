@@ -313,25 +313,24 @@ const submitAnswer = async (exercise) => {
   }
 
   try {
-    console.log('提交答案参数:', {
-      exercise: exercise.id,
-      content: exercise.studentAnswer,
-      student: currentUser.value.id
-    });
+    // 确保数据类型正确
+    const submitData = {
+      exercise: Number(exercise.id),  // 确保是数字类型
+      content: String(exercise.studentAnswer),  // 确保是字符串类型
+      student: Number(currentUser.value.id)  // 确保是数字类型
+    }
 
-    const response = await submitStudentAnswer({
-      exercise: exercise.id,
-      content: exercise.studentAnswer,
-      student: currentUser.value.id
-    })
+    console.log('提交答案参数:', submitData)
 
-    if (response.success && response.status_code === 200) {
+    const response = await submitStudentAnswer(submitData)
+
+    if (response.code === 0 && response.data) {  // 修改判断条件
       exercise.isSubmitted = true
       exercise.score = response.data.score
-      exercise.feedback = response.data.feedback
+      exercise.feedback = response.data.feedback || '提交成功'
       ElMessage.success('提交成功')
     } else {
-      ElMessage.error(response.message || '提交失败')
+      ElMessage.error(response.msg || '提交失败')
     }
   } catch (error) {
     console.error('提交答案失败:', error)
