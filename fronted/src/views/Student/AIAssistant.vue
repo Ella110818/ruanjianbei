@@ -169,11 +169,12 @@
 import { ref, computed, onMounted } from 'vue'
 import StudentHeader from '@/components/StudentHeader.vue'
 import { getCurrentUser } from '@/api/index.js'
+import { API_CONFIG } from '@/api'  // 导入API配置
 import { ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElInputNumber, ElRate, ElButton } from 'element-plus'
 import { User, Position } from '@element-plus/icons-vue'
 
-// 添加API基础URL
-const API_BASE_URL = 'https://de566d16a53d.ngrok-free.app'  // 使用当前的ngrok URL
+// 使用API_CONFIG中的基础URL
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 const searchQuery = ref('')
 const activeMainTab = ref('features')
