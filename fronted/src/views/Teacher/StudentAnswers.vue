@@ -112,10 +112,38 @@
           <label>提交时间：</label>
           <span>{{ formatDate(selectedAnswer.submitted_at) }}</span>
         </div>
+        
+        <!-- 添加AI评分结果展示 -->
+        <div v-if="aiGradeResult" class="ai-grade-result">
+          <h3>AI评分建议</h3>
+          <div class="ai-grade-item">
+            <label>正确性：</label>
+            <span :class="{ 'correct': aiGradeResult.is_correct, 'incorrect': !aiGradeResult.is_correct }">
+              {{ aiGradeResult.is_correct ? '正确' : '错误' }}
+            </span>
+          </div>
+          <div class="ai-grade-item">
+            <label>建议得分：</label>
+            <span>{{ aiGradeResult.score }}</span>
+          </div>
+          <div class="ai-grade-item">
+            <label>AI反馈：</label>
+            <div class="ai-feedback">{{ aiGradeResult.feedback }}</div>
+          </div>
+          <div v-if="aiGradeResult.improvement_suggestions" class="ai-grade-item">
+            <label>改进建议：</label>
+            <div class="ai-suggestions">{{ aiGradeResult.improvement_suggestions }}</div>
+          </div>
+          <div v-if="aiGradeResult.explanation" class="ai-grade-item">
+            <label>详细解释：</label>
+            <div class="ai-explanation">{{ aiGradeResult.explanation }}</div>
+          </div>
+        </div>
       </div>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <el-button type="info" @click="requestAIGrade" :loading="aiGrading">AI批改</el-button>
           <template v-if="!isEditing">
             <el-button type="primary" @click="startEdit">编辑评分</el-button>
           </template>
@@ -275,6 +303,58 @@ const loadAnswers = async () => {
   }
 }
 
+// 添加AI批改相关状态
+const aiGrading = ref(false)
+const aiGradeResult = ref(null)
+
+// 请求AI批改
+const requestAIGrade = async () => {
+  if (!selectedAnswer.value) return
+  
+  aiGrading.value = true
+  try {
+    // 构造请求数据
+    const requestData = {
+      exercise_id: selectedAnswer.value.exercise,
+      student_answer: selectedAnswer.value.content,
+      session_id: `session_${Date.now()}`  // 生成一个临时的session_id
+    }
+    
+    // 发送请求到AI批改接口
+    const response = await fetch('https://990dad7dbad9.ngrok-free.app/api/ai/correct-answer/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': localStorage.getItem('token') || ''
+      },
+      body: JSON.stringify(requestData)
+    })
+
+    const data = await response.json()
+    
+    if (data.success && data.status_code === 200) {
+      aiGradeResult.value = data.data
+      
+      // 如果AI评分成功，自动填入分数和反馈
+      if (!isEditing.value) {
+        startEdit()
+      }
+      selectedAnswer.value.score = data.data.score
+      selectedAnswer.value.feedback = data.data.feedback
+      
+      ElMessage.success('AI批改完成')
+    } else {
+      ElMessage.error(data.message || 'AI批改失败')
+    }
+  } catch (error) {
+    console.error('AI批改失败:', error)
+    ElMessage.error('AI批改失败，请稍后重试')
+  } finally {
+    aiGrading.value = false
+  }
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
   loadAnswers()
@@ -347,6 +427,52 @@ onMounted(() => {
 
 .detail-item .el-textarea {
   width: 400px;
+}
+
+/* 添加AI评分结果样式 */
+.ai-grade-result {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.ai-grade-result h3 {
+  margin: 0 0 16px 0;
+  color: #409EFF;
+  font-size: 16px;
+}
+
+.ai-grade-item {
+  margin-bottom: 12px;
+}
+
+.ai-grade-item label {
+  color: #606266;
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+.ai-grade-item .correct {
+  color: #67C23A;
+  font-weight: 500;
+}
+
+.ai-grade-item .incorrect {
+  color: #F56C6C;
+  font-weight: 500;
+}
+
+.ai-feedback,
+.ai-suggestions,
+.ai-explanation {
+  margin-top: 8px;
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+  color: #606266;
+  line-height: 1.6;
 }
 
 .dialog-footer {
