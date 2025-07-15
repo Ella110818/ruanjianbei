@@ -111,7 +111,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { generateKnowledgePointsPPT } from '@/api'
+import { generateKnowledgePointsPPT, getKnowledgePoints } from '@/api'  // 添加 getKnowledgePoints 导入
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
@@ -147,49 +147,33 @@ const loadKnowledgePoints = async () => {
     let hasMore = true
 
     while (hasMore) {
-      const params = {
+      const response = await getKnowledgePoints({
         page: nextPage,
-        page_size: pageSize.value,
+        page_size: 100,
         search: searchQuery.value,
-        course: selectedCourse.value
-      }
-
-      console.log(`加载第${nextPage}页知识点，参数:`, params)
-
-      const response = await fetch(`${API_BASE_URL}/api/knowledge-points/`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        }
+        course: selectedCourse.value,
+        ordering: 'title'
       })
-      const responseData = await response.json()
-      console.log(`第${nextPage}页知识点响应:`, responseData)
-
-      if (response.ok && responseData.code === 0) {
-        const data = responseData.data
-        if (data && Array.isArray(data.results)) {
-          // 直接使用API返回的数据结构，不做额外处理
-          allKnowledgePoints = [...allKnowledgePoints, ...data.results]
+      
+      console.log(`第${nextPage}页知识点响应:`, response)
+      
+      if (response.success && response.status_code === 200) {
+        if (response.data && Array.isArray(response.data.results)) {
+          allKnowledgePoints = [...allKnowledgePoints, ...response.data.results]
           
           // 更新总数
-          total.value = data.count
+          total.value = response.data.count
           
           // 检查是否还有下一页
-          hasMore = !!data.next
+          hasMore = !!response.data.next
           nextPage++
         } else {
-          console.error('知识点数据格式不正确:', data)
+          console.error('知识点数据格式不正确:', response.data)
           ElMessage.error('知识点数据格式不正确')
           break
         }
       } else {
-        if (responseData.code === 401) {
-          ElMessage.error('登录已过期，请重新登录')
-          // 可以在这里添加重定向到登录页面的逻辑
-        } else {
-          ElMessage.error(responseData.msg || '获取知识点列表失败')
-        }
+        ElMessage.error(response.message || '获取知识点列表失败')
         break
       }
     }
