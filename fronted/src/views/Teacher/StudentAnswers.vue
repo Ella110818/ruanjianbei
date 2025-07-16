@@ -109,6 +109,24 @@
           />
         </div>
         <div class="detail-item">
+          <label>详细解释：</label>
+          <el-input
+            v-model="selectedAnswer.explanation"
+            type="textarea"
+            :rows="3"
+            placeholder="答案的详细解释"
+            :disabled="!isEditing"
+          />
+        </div>
+        <div class="detail-item">
+          <label>参考来源：</label>
+          <el-input
+            v-model="selectedAnswer.sources"
+            placeholder="参考资料来源"
+            :disabled="!isEditing"
+          />
+        </div>
+        <div class="detail-item">
           <label>提交时间：</label>
           <span>{{ formatDate(selectedAnswer.submitted_at) }}</span>
         </div>
@@ -263,7 +281,9 @@ const saveGrade = async () => {
   try {
     const response = await updateStudentAnswer(selectedAnswer.value.id, {
       score: selectedAnswer.value.score,
-      feedback: selectedAnswer.value.feedback
+      feedback: selectedAnswer.value.feedback,
+      explanation: selectedAnswer.value.explanation,
+      sources: selectedAnswer.value.sources
     })
     
     if (response.success && response.status_code === 200) {
@@ -350,56 +370,45 @@ const requestAIGrade = async () => {
     
     if (data.success && data.status_code === 200) {
       try {
-        // 1. 处理Python格式的字符串为标准JSON格式
-        const feedback = data.data.feedback
-          .replace(/'/g, '"')  // 将单引号替换为双引号
-          .replace(/\\n/g, '\\n')  // 保持换行符的转义
-          .replace(/\\"/g, '\\"')  // 保持引号的转义
-
-        // 2. 解析处理后的字符串
-        const feedbackArray = JSON.parse(feedback)
+        // 1. 从feedback字符串中提取JSON部分
+        const feedback = data.data.feedback;
+        const jsonMatch = feedback.match(/```json\n([\s\S]*?)\n```/);
         
-        if (Array.isArray(feedbackArray) && feedbackArray.length > 0) {
-          const firstFeedback = feedbackArray[0]
+        if (jsonMatch && jsonMatch[1]) {
+          // 2. 解析JSON部分
+          const answerJson = JSON.parse(jsonMatch[1]);
           
-          // 3. 提取JSON字符串（在```json和```之间的内容）
-          if (firstFeedback.answer) {
-            const jsonMatch = firstFeedback.answer.match(/```json\n([\s\S]*?)\n```/)
-            if (jsonMatch && jsonMatch[1]) {
-              // 4. 解析最终的评分数据
-              const answerJson = JSON.parse(jsonMatch[1])
-              
-              // 5. 更新AI评分结果
-              aiGradeResult.value = {
-                is_correct: answerJson.is_correct,
-                score: answerJson.score,
-                feedback: answerJson.feedback,
-                improvement_suggestions: answerJson.improvement_suggestions,
-                explanation: answerJson.explanation,
-                sources: firstFeedback.sources || '无'
-              }
-              
-              // 如果AI评分成功，自动填入分数和反馈
-              if (!isEditing.value) {
-                startEdit()
-              }
-              
-              // 更新当前选中的答案
-              if (selectedAnswer.value) {
-                selectedAnswer.value.score = answerJson.score
-                selectedAnswer.value.feedback = answerJson.feedback
-              }
-            } else {
-              throw new Error('无法在答案中找到JSON数据')
-            }
-          } else {
-            throw new Error('答案格式不正确')
+          // 3. 提取sources
+          const sourcesMatch = feedback.match(/sources': '([^']*?)'/);
+          const sources = sourcesMatch ? sourcesMatch[1] : '无';
+          
+          // 4. 更新AI评分结果
+          aiGradeResult.value = {
+            is_correct: answerJson.is_correct,
+            score: answerJson.score,
+            feedback: answerJson.feedback,
+            improvement_suggestions: answerJson.improvement_suggestions,
+            explanation: answerJson.explanation,
+            sources: sources
           }
+          
+          // 如果AI评分成功，自动填入分数和反馈
+          if (!isEditing.value) {
+            startEdit()
+          }
+          
+          // 更新当前选中的答案
+          if (selectedAnswer.value) {
+            selectedAnswer.value.score = answerJson.score
+            selectedAnswer.value.feedback = answerJson.improvement_suggestions || answerJson.feedback
+            selectedAnswer.value.explanation = answerJson.explanation || ''
+            selectedAnswer.value.sources = sources
+          }
+          
+          ElMessage.success('AI批改完成')
         } else {
-          throw new Error('反馈数据格式不正确')
+          throw new Error('无法解析AI评分数据')
         }
-        
-        ElMessage.success('AI批改完成')
       } catch (error) {
         console.error('解析AI评分数据失败:', error)
         ElMessage.error('解析AI评分数据失败：' + error.message)
@@ -483,6 +492,10 @@ onMounted(() => {
 .detail-item .el-input,
 .detail-item .el-input-number {
   width: 200px;
+}
+
+.detail-item .el-input {
+  width: 400px;
 }
 
 .detail-item .el-textarea {

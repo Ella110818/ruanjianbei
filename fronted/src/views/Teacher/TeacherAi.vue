@@ -130,7 +130,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import { generateKnowledgePointsPPT, getKnowledgePoints } from '@/api'  // 移除handleRequest导入
@@ -156,6 +156,15 @@ const selectedCourse = ref('')
 const coursesList = ref([])
 const coursesLoading = ref(false)
 
+// 添加课程ID到课程名称的映射
+const courseNameMap = computed(() => {
+  const map = {}
+  coursesList.value.forEach(course => {
+    map[course.id] = course.title
+  })
+  return map
+})
+
 // 修改加载知识点列表函数
 const loadKnowledgePoints = async () => {
   loading.value = true
@@ -178,8 +187,11 @@ const loadKnowledgePoints = async () => {
       const responseData = response.data;
       
       if (responseData && Array.isArray(responseData.results)) {
-        // 更新数据
-        knowledgePoints.value = responseData.results;
+        // 更新数据，添加课程名称
+        knowledgePoints.value = responseData.results.map(point => ({
+          ...point,
+          course_name: courseNameMap.value[point.course] || '未知课程'
+        }));
         // 更新总数
         total.value = responseData.count;
         
@@ -386,6 +398,8 @@ const loadCourses = async () => {
           teacher_name: course.teacher_name
         }))
         console.log('课程列表加载成功:', coursesList.value)
+        // 重新加载知识点列表以更新课程名称
+        loadKnowledgePoints()
       } else {
         console.warn('课程列表为空')
         ElMessage.warning('暂无可用课程')
