@@ -86,7 +86,7 @@
                 难度：
                 <el-rate
                   v-model="exercise.difficulty"
-                  :max="3"
+                  :max="5"
                   disabled
                   text-color="#ff9900"
                 />
@@ -141,9 +141,11 @@
             
             <el-form-item label="难度等级" prop="difficulty">
               <el-select v-model="exerciseForm.difficulty" placeholder="请选择难度等级">
-                <el-option label="简单" :value="1" />
-                <el-option label="中等" :value="2" />
-                <el-option label="困难" :value="3" />
+                <el-option label="非常简单" :value="1" />
+                <el-option label="简单" :value="2" />
+                <el-option label="中等" :value="3" />
+                <el-option label="困难" :value="4" />
+                <el-option label="非常困难" :value="5" />
               </el-select>
             </el-form-item>
             
@@ -381,7 +383,8 @@ const formRules = {
     { required: true, message: '请选择题目类型', trigger: 'change' }
   ],
   difficulty: [
-    { required: true, message: '请选择难度等级', trigger: 'change' }
+    { required: true, message: '请选择难度等级', trigger: 'change' },
+    { type: 'number', min: 1, max: 5, message: '难度等级必须在1-5之间', trigger: 'change' }
   ],
   knowledge_point: [
     { required: true, message: '请选择知识点', trigger: 'change' }
