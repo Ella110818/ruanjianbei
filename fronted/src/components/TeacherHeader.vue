@@ -6,6 +6,7 @@
         <nav class="main-nav">
           <a href="#" :class="{active: isActivePath('/teacher/course')}" @click.prevent="navigateTo('/teacher/course')">备课助手</a>
           <a href="#" :class="{active: isActivePath('/teacher/manage')}" @click.prevent="navigateTo('/teacher/manage')">习题中心</a>
+          <a href="#" :class="{active: isActivePath('/teacher/analysis')}" @click.prevent="navigateTo('/teacher/analysis')">学情分析</a>
         </nav>
       </div>
       <div class="header-right">

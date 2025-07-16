@@ -169,6 +169,7 @@ import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import { getStudentAnswers, getExercises, updateStudentAnswer } from '@/api'
 import { ElMessage } from 'element-plus'
+import { API_CONFIG } from '@/api'  // 添加导入
 
 // 状态管理
 const loading = ref(false)
@@ -328,13 +329,13 @@ const requestAIGrade = async () => {
     const requestData = {
       exercise_id: selectedAnswer.value.exercise,
       student_answer: selectedAnswer.value.content,
-      session_id: sessionId  // 使用生成的唯一会话ID
+      session_id: sessionId
     }
     
     console.log('AI批改请求数据:', requestData)
     
     // 发送请求到AI批改接口
-    const response = await fetch('https://e54d64a5eb55.ngrok-free.app/api/ai/correct-answer/', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/ai/correct-answer/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -349,18 +350,26 @@ const requestAIGrade = async () => {
     
     if (data.success && data.status_code === 200) {
       try {
-        // 解析feedback中的JSON字符串
-        const feedbackArray = JSON.parse(data.data.feedback)
+        // 1. 处理Python格式的字符串为标准JSON格式
+        const feedback = data.data.feedback
+          .replace(/'/g, '"')  // 将单引号替换为双引号
+          .replace(/\\n/g, '\\n')  // 保持换行符的转义
+          .replace(/\\"/g, '\\"')  // 保持引号的转义
+
+        // 2. 解析处理后的字符串
+        const feedbackArray = JSON.parse(feedback)
+        
         if (Array.isArray(feedbackArray) && feedbackArray.length > 0) {
           const firstFeedback = feedbackArray[0]
+          
+          // 3. 提取JSON字符串（在```json和```之间的内容）
           if (firstFeedback.answer) {
-            // 提取JSON字符串（在```json和```之间的内容）
             const jsonMatch = firstFeedback.answer.match(/```json\n([\s\S]*?)\n```/)
             if (jsonMatch && jsonMatch[1]) {
-              // 解析提取出的JSON字符串
+              // 4. 解析最终的评分数据
               const answerJson = JSON.parse(jsonMatch[1])
               
-              // 更新AI评分结果
+              // 5. 更新AI评分结果
               aiGradeResult.value = {
                 is_correct: answerJson.is_correct,
                 score: answerJson.score,
@@ -381,15 +390,19 @@ const requestAIGrade = async () => {
                 selectedAnswer.value.feedback = answerJson.feedback
               }
             } else {
-              throw new Error('无法解析答案中的JSON数据')
+              throw new Error('无法在答案中找到JSON数据')
             }
+          } else {
+            throw new Error('答案格式不正确')
           }
+        } else {
+          throw new Error('反馈数据格式不正确')
         }
         
         ElMessage.success('AI批改完成')
       } catch (error) {
         console.error('解析AI评分数据失败:', error)
-        ElMessage.error('解析AI评分数据失败')
+        ElMessage.error('解析AI评分数据失败：' + error.message)
       }
     } else {
       throw new Error(data.message || 'AI批改失败')

@@ -189,7 +189,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
-import { getExercises, getKnowledgePoints, getCourseList, createExercise } from '@/api'
+import { getExercises, getKnowledgePoints, getCourseList, createExercise, generateQuestions } from '@/api'
 import { ElMessage } from 'element-plus'
 
 // 状态管理
@@ -408,6 +408,28 @@ const handleCreateExercise = async () => {
     await createForm.value.validate()
     
     creating.value = true
+    
+    // 先调用AI生成题目接口
+    const generateResponse = await generateQuestions({
+      type: exerciseForm.value.type,
+      difficulty: exerciseForm.value.difficulty,
+      knowledge_point: exerciseForm.value.knowledge_point
+    })
+    
+    if (!generateResponse.success) {
+      ElMessage.error(generateResponse.message || 'AI生成题目失败')
+      return
+    }
+    
+    // 使用AI生成的题目内容更新表单
+    const generatedQuestion = generateResponse.data.questions[0]
+    if (generatedQuestion) {
+      exerciseForm.value.title = generatedQuestion.title || exerciseForm.value.title
+      exerciseForm.value.content = generatedQuestion.content || exerciseForm.value.content
+      exerciseForm.value.answer_template = generatedQuestion.answer_template || exerciseForm.value.answer_template
+    }
+    
+    // 创建练习题
     const response = await createExercise(exerciseForm.value)
     console.log('创建练习题响应:', response);
     

@@ -191,6 +191,7 @@ import { getCurrentUser } from '@/api/index.js'  // 移除handleRequest导入
 import { ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElInputNumber, ElRate, ElButton } from 'element-plus'
 import { User, Position } from '@element-plus/icons-vue'
 import MarkdownIt from 'markdown-it'  // 添加markdown-it导入
+import { API_CONFIG } from '@/api';
 
 // 创建markdown解析器
 const md = new MarkdownIt({
@@ -228,7 +229,7 @@ const handleSearch = async () => {
 // 移除formatAIResponse函数
 
 // 添加API基础URL
-const API_BASE_URL = 'https://990dad7dbad9.ngrok-free.app/api';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 // 修改sendMessage函数
 const sendMessage = async (message = null) => {

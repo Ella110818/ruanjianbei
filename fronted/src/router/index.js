@@ -131,6 +131,16 @@ const routes = [
     }
   },
   {
+    path: '/teacher/analysis',
+    name: 'TeacherAnalysis',
+    component: () => import('@/views/Teacher/TeacherAnalysis.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'teacher',
+      keepAlive: true
+    }
+  },
+  {
     path: '/admin',
     redirect: '/admin/dashboard',
     meta: { requiresAuth: true }
