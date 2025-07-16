@@ -4,8 +4,8 @@
       <div class="header-left">
         <span class="project-name">智慧教育</span>
         <nav class="main-nav">
-          <a href="#" :class="{active: isActivePath('/teacher/course')}" @click.prevent="navigateTo('/teacher/course')">课程管理</a>
-          <a href="#" :class="{active: isActivePath('/teacher/manage')}" @click.prevent="navigateTo('/teacher/manage')">学生管理</a>
+          <a href="#" :class="{active: isActivePath('/teacher/course')}" @click.prevent="navigateTo('/teacher/course')">备课助手</a>
+          <a href="#" :class="{active: isActivePath('/teacher/manage')}" @click.prevent="navigateTo('/teacher/manage')">习题中心</a>
         </nav>
       </div>
       <div class="header-right">

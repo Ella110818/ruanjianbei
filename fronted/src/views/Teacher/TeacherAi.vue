@@ -40,6 +40,15 @@
                 :value="course.id"
               />
             </el-select>
+             <el-button
+              type="primary"
+              :loading="isGeneratingPPT"
+              @click="handleGeneratePPT(selectedPoints)"
+              :disabled="selectedPoints.length === 0"
+              style="margin-left: 24px; min-width: 110px;"
+            >
+              生成PPT
+            </el-button>
           </div>
 
           <!-- 知识点列表 -->
@@ -56,24 +65,48 @@
               <el-table-column
                 prop="title"
                 label="知识点名称"
-                min-width="200"
-              />
+                min-width="50"
+              >
+                <template #header>
+                  <div class="header-content">
+                    <span>知识点名称</span>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column
                 prop="course_name"
                 label="所属课程"
                 width="150"
-              />
+              >
+                <template #header>
+                  <div class="header-content">
+                    <span>所属课程</span>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column
                 prop="importance"
                 label="重要程度"
                 width="100"
                 :formatter="formatImportance"
-              />
+              >
+                <template #header>
+                  <div class="header-content">
+                    <span>重要程度</span>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column
                 prop="content"
                 label="描述"
                 show-overflow-tooltip
-              />
+              >
+                <template #header>
+                  <div class="header-content">
+                    <span>描述</span>
+                  </div>
+                </template>
+              </el-table-column>
             </el-table>
 
             <!-- 分页器 -->
@@ -90,17 +123,6 @@
             </div>
           </div>
 
-          <!-- 操作按钮 -->
-          <div class="actions">
-            <el-button
-              type="primary"
-              :loading="isGeneratingPPT"
-              @click="handleGeneratePPT(selectedPoints)"
-              :disabled="selectedPoints.length === 0"
-            >
-              生成PPT
-            </el-button>
-          </div>
         </div>
       </div>
     </div>
@@ -419,10 +441,14 @@ onMounted(async () => {
 }
 
 .knowledge-points-container {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(99, 147, 244, 0.08), 0 0 0 2px rgba(99, 147, 244, 0.12);
+  padding: 20px 24px 24px 24px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
+  margin-top: 40px;
 }
 
 .knowledge-points-container h2 {
@@ -433,31 +459,109 @@ onMounted(async () => {
 
 .filter-section {
   display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 10px 20px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  border: 1px solid rgba(99, 147, 244, 0.2);
+  box-shadow: 0 2px 8px rgba(99, 147, 244, 0.1);
   gap: 16px;
-  margin-bottom: 24px;
 }
 
 .search-input {
-  width: 300px;
+  width: 400px !important;
+  margin: 0 20px 0 30px !important;
 }
 
 .course-select {
-  width: 200px;
+  width: 240px;
 }
 
 .knowledge-points-list {
-  margin-bottom: 24px;
+  background-color: white;
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(99, 147, 244, 0.15);
+  box-shadow: 0 2px 12px rgba(99, 147, 244, 0.08);
 }
 
-.pagination {
-  margin-top: 16px;
-  display: flex;
-  justify-content: center;
+.knowledge-points-list .el-table {
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 24px;
+.knowledge-points-list .el-table th {
+  background-color: #f5f7ff;
+  color: #333;
+  font-weight: bold;
 }
-</style> 
+
+.knowledge-points-list .el-table td {
+  color: #555;
+}
+
+.knowledge-points-list .el-table .el-button {
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.knowledge-points-list .el-table .el-button--primary {
+  background-color: #409eff;
+  border-color: #409eff;
+}
+.knowledge-points-list .el-table .el-button--primary:hover {
+  background-color: #66b1ff;
+  border-color: #66b1ff;
+}
+.knowledge-points-list .el-table .el-button--danger {
+  background-color: #f56c6c;
+  border-color: #f56c6c;
+}
+.knowledge-points-list .el-table .el-button--danger:hover {
+  background-color: #f78989;
+  border-color: #f78989;
+}
+.knowledge-points-list .el-table .el-button--info {
+  background-color: #909399;
+  border-color: #909399;
+}
+.knowledge-points-list .el-table .el-button--info:hover {
+  background-color: #a6a9ad;
+  border-color: #a6a9ad;
+}
+.knowledge-points-list .el-table .el-button--success {
+  background-color: #67c23a;
+  border-color: #67c23a;
+}
+.knowledge-points-list .el-table .el-button--success:hover {
+  background-color: #85ce61;
+  border-color: #85ce61;
+}
+.knowledge-points-list .el-table .el-button--warning {
+  background-color: #e6a23c;
+  border-color: #e6a23c;
+}
+.knowledge-points-list .el-table .el-button--warning:hover {
+  background-color: #eebe77;
+  border-color: #eebe77;
+}
+.knowledge-points-list .el-table .el-button--text {
+  color: #606266;
+}
+.knowledge-points-list .el-table .el-button--text:hover {
+  color: #409eff;
+}
+
+/* 只保留一次表头蓝色样式 */
+:deep(.el-table__header-wrapper) {
+  background-color: #f0f7ff;
+}
+:deep(.el-table__header-wrapper) th.el-table__cell {
+  background-color: #f0f7ff !important;
+  color: #333;
+  font-weight: 600;
+  border-bottom: none;
+  height: 50px;
+}
+</style>
