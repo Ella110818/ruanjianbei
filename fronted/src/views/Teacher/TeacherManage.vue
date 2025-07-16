@@ -1,469 +1,657 @@
 <template>
-  <div class="page-content">
+  <div class="exercises-page">
     <TeacherHeader />
-    <animated-background />
-    <div class="gray-space"></div>
-    <div class="content-wrapper">
-      <div class="search-section">
-        <el-button type="primary" @click="showDialog('add')">新增学生</el-button>
-        <el-select
-          v-model="selectedDepartments"
-          multiple
-          placeholder="所有班级"
-          class="course-select"
-          @change="handleDepartmentChange"
-        >
-          <el-option
-            v-for="item in departmentOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+    <div class="main-content">
+      <div class="exercises-container">
+        <!-- 添加创建按钮 -->
+        <div class="action-bar">
+          <el-button type="primary" @click="showCreateDialog">
+            创建练习题
+          </el-button>
+        </div>
+
+        <!-- 筛选器 -->
+        <div class="filter-section">
+          <el-input
+            v-model="filters.search"
+            placeholder="搜索练习题"
+            @input="handleFilterChange"
+            class="filter-item"
           />
-        </el-select>
-        <el-input
-          v-model="searchText"
-          class="search-input"
-          placeholder="搜索学生姓名或ID"
-          :suffix-icon="Search"
-          @input="handleSearchChange"
-        />
-      </div>
-      <div class="table"> 
-        <el-table :data="filteredTableData" style="width: 100%" :border="false" :cell-style="{ textAlign: 'center' }" v-loading="loading">
-          <el-table-column type="selection" width="55" align="center" />
-          <el-table-column label="班级" prop="department" min-width="180" align="center" />
-          <el-table-column label="学生" min-width="180" align="center">
-            <template #default="scope">
-              <div class="user">
-                <img class="avatar" :src="scope.row.avatar || '@/assets/avatar.png'" />
-                <div class="user-info">
-                  <p class="user-name">{{ scope.row.name }}</p>
-                </div>
+          <el-select
+            v-model="filters.type"
+            placeholder="题目类型"
+            @change="handleFilterChange"
+            class="filter-item"
+          >
+            <el-option label="单选题" value="single_choice" />
+            <el-option label="简答题" value="short_answer" />
+          </el-select>
+          <el-select
+            v-model="filters.difficulty"
+            placeholder="难度等级"
+            @change="handleFilterChange"
+            class="filter-item"
+          >
+            <el-option label="简单" value="1" />
+            <el-option label="中等" value="2" />
+            <el-option label="困难" value="3" />
+          </el-select>
+          <el-select
+            v-model="filters.knowledge_point"
+            placeholder="知识点"
+            @change="handleFilterChange"
+            class="filter-item"
+            :loading="knowledgePointsLoading"
+          >
+            <el-option
+              v-for="point in knowledgePoints"
+              :key="point.id"
+              :label="point.title"
+              :value="point.id"
+            >
+              <div class="knowledge-point-option">
+                <span>{{ point.title }}</span>
+                <small v-if="point.description" class="knowledge-point-desc">
+                  {{ point.description.length > 50 ? point.description.slice(0, 50) + '...' : point.description }}
+                </small>
               </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="学号" prop="teacherId" min-width="180" align="center" />
-          <el-table-column label="邮箱" prop="email" min-width="220" align="center" />
-          <el-table-column label="手机号" min-width="180" align="center">
-            <template #default="scope">
-              {{ scope.row.phone || '暂无' }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" min-width="120" align="center" fixed="right">
-            <template #default="scope">
-              <el-button
-                type="primary"
-                size="default"
-                class="blue-button"
-                @click="handleEdit(scope.row)"
+            </el-option>
+          </el-select>
+        </div>
+
+        <!-- 练习题列表 -->
+        <div class="exercises-list" v-loading="loading">
+          <el-card v-for="exercise in exercises" :key="exercise.id" class="exercise-card">
+            <div class="exercise-header" @click="toggleExercise(exercise.id)">
+              <span class="exercise-title">{{ exercise.title }}</span>
+              <el-tag size="small" :type="getExerciseTagType(exercise.type)">
+                {{ getExerciseTypeName(exercise.type) }}
+              </el-tag>
+            </div>
+            <div class="exercise-content">{{ exercise.content }}</div>
+            <!-- 添加选项展示区域 -->
+            <div v-if="exercise.id === expandedExerciseId" class="exercise-options">
+              <div class="options-title">选项：</div>
+              <div v-for="(option, index) in JSON.parse(exercise.answer_template)" 
+                   :key="index" 
+                   class="option-item">
+                <span class="option-label">{{ String.fromCharCode(65 + index) }}.</span>
+                <span class="option-text">{{ option }}</span>
+              </div>
+            </div>
+            <div class="exercise-footer">
+              <span class="knowledge-point">知识点：{{ exercise.knowledge_point_title }}</span>
+              <span class="difficulty">
+                难度：
+                <el-rate
+                  v-model="exercise.difficulty"
+                  :max="3"
+                  disabled
+                  text-color="#ff9900"
+                />
+              </span>
+            </div>
+          </el-card>
+        </div>
+
+        <!-- 分页器 -->
+        <div class="pagination-container">
+          <el-pagination
+            :model-value="currentPage"
+            @update:modelValue="currentPage = $event"
+            :page-size="pageSize"
+            :total="total"
+            @current-change="handlePageChange"
+            layout="prev, pager, next"
+          />
+        </div>
+
+        <!-- 添加创建练习题对话框 -->
+        <el-dialog
+          title="创建练习题"
+          v-model="createDialogVisible"
+          width="600px"
+        >
+          <el-form
+            ref="createForm"
+            :model="exerciseForm"
+            :rules="formRules"
+            label-width="100px"
+          >
+            <el-form-item label="题目标题" prop="title">
+              <el-input v-model="exerciseForm.title" placeholder="请输入题目标题" />
+            </el-form-item>
+            
+            <el-form-item label="题目内容" prop="content">
+              <el-input
+                v-model="exerciseForm.content"
+                type="textarea"
+                :rows="4"
+                placeholder="请输入题目内容"
+              />
+            </el-form-item>
+            
+            <el-form-item label="题目类型" prop="type">
+              <el-select v-model="exerciseForm.type" placeholder="请选择题目类型">
+                <el-option label="单选题" value="single_choice" />
+                <el-option label="简答题" value="short_answer" />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="难度等级" prop="difficulty">
+              <el-select v-model="exerciseForm.difficulty" placeholder="请选择难度等级">
+                <el-option label="简单" :value="1" />
+                <el-option label="中等" :value="2" />
+                <el-option label="困难" :value="3" />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="知识点" prop="knowledge_point">
+              <el-select
+                v-model="exerciseForm.knowledge_point"
+                placeholder="请选择知识点"
+                :loading="knowledgePointsLoading"
               >
-                编辑
+                <el-option
+                  v-for="point in knowledgePoints"
+                  :key="point.id"
+                  :label="point.title"
+                  :value="point.id"
+                />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="答案模板" prop="answer_template">
+              <el-input
+                v-model="exerciseForm.answer_template"
+                type="textarea"
+                :rows="3"
+                placeholder="请输入答案模板"
+              />
+            </el-form-item>
+          </el-form>
+          
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button @click="createDialogVisible = false">取消</el-button>
+              <el-button type="primary" @click="handleCreateExercise" :loading="creating">
+                创建
               </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+            </span>
+          </template>
+        </el-dialog>
       </div>
-      
-      <el-dialog
-        v-model="dialogVisible"
-        :title="dialogType === 'add' ? '添加学生' : '编辑学生'"
-        width="30%"
-      >
-        <el-form ref="formRef" :model="formData" :rules="rules" label-width="80px">
-          <el-form-item label="姓名" prop="name">
-            <el-input v-model="formData.name" />
-          </el-form-item>
-          <el-form-item label="学号" prop="teacherId">
-            <el-input v-model="formData.teacherId" :disabled="dialogType === 'edit'" />
-          </el-form-item>
-          <el-form-item label="班级" prop="department">
-            <el-input v-model="formData.department" />
-          </el-form-item>
-          <el-form-item label="邮箱" prop="email">
-            <el-input v-model="formData.email" />
-          </el-form-item>
-          <el-form-item label="手机号" prop="phone">
-            <el-input v-model="formData.phone" />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="handleSubmit">提交</el-button>
-          </div>
-        </template>
-      </el-dialog>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
-import { ElMessage } from 'element-plus';
-import { Search } from '@element-plus/icons-vue';
-import TeacherHeader from '@/components/TeacherHeader.vue';
-import AnimatedBackground from '@/components/AnimatedBackground.vue';
+import { ref, onMounted } from 'vue'
+import TeacherHeader from '@/components/TeacherHeader.vue'
+import { getExercises, getKnowledgePoints, getCourseList, createExercise } from '@/api'
+import { ElMessage } from 'element-plus'
 
-const dialogType = ref('add');
-const dialogVisible = ref(false);
-const loading = ref(false);
-const searchText = ref('');
-const selectedDepartments = ref([]);
+// 状态管理
+const sideTab = ref('exercises')
+const courseMenuOpen = ref(false)
+const courses = ref([])
+const exercises = ref([])
+const knowledgePoints = ref([])
+const loading = ref(false)
+const knowledgePointsLoading = ref(false)  // 添加知识点加载状态
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
-// 班级选项
-const departmentOptions = ref([
-  { value: '计算机科学与技术系', label: '计算机科学与技术系' },
-  { value: '物理系', label: '物理系' },
-  { value: '化学系', label: '化学系' }
-]);
+// 筛选条件
+const filters = ref({
+  search: '',
+  type: 'single_choice',  // 默认选择单选题
+  difficulty: '',
+  knowledge_point: '',
+  ordering: '1'
+})
 
-const tableData = ref([]);
+// 加载练习题
+const loadExercises = async () => {
+  loading.value = true
+  try {
+    let allExercises = []
+    let nextPage = 1
+    let hasMore = true
 
-const filteredTableData = computed(() => {
-  let data = tableData.value;
-  
-  // 按班级筛选
-  if (selectedDepartments.value.length > 0) {
-    data = data.filter(item => selectedDepartments.value.includes(item.department));
-  }
-  
-  // 按搜索文本筛选
-  if (searchText.value) {
-    const searchLower = searchText.value.toLowerCase();
-    data = data.filter(item =>
-      item.name.toLowerCase().includes(searchLower) ||
-      item.teacherId.toLowerCase().includes(searchLower) ||
-      item.email.toLowerCase().includes(searchLower)
-    );
-  }
-  
-  return data;
-});
-
-const handleDepartmentChange = () => {
-  // 班级选择变化时的处理逻辑
-};
-
-const handleSearchChange = () => {
-  // 搜索文本变化时的处理逻辑
-};
-
-// Mock API functions
-const fetchTeachersAPI = async () => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({
-        code: 200,
-        data: {
-          items: [
-            { id: 1, name: '张三丰', teacherId: 'T001', department: '计算机科学与技术系', email: 'zhangsf@example.com', phone: '13800138001', avatar: 'https://via.placeholder.com/40?text=ZSF' },
-            { id: 2, name: '李莫愁', teacherId: 'T002', department: '物理系', email: 'limc@example.com', phone: '13900139002', avatar: 'https://via.placeholder.com/40?text=LMC' },
-            { id: 3, name: '黄药师', teacherId: 'T003', department: '化学系', email: 'huangys@example.com', phone: '13700137003', avatar: 'https://via.placeholder.com/40?text=HYS' },
-          ],
-        },
+    while (hasMore) {
+      const response = await getExercises({
+        ...filters.value,
+        page: nextPage,
+        page_size: 100  // 每页获取100条数据
       })
-    }, 500)
-  })
+      
+      console.log(`加载第${nextPage}页练习题:`, response)
+      
+      if (response.success && response.status_code === 200) {
+        if (response.data && Array.isArray(response.data.results)) {
+          allExercises = [...allExercises, ...response.data.results]
+          
+          // 检查是否还有下一页
+          hasMore = !!response.data.next
+          nextPage++
+        } else {
+          console.error('练习题数据格式不正确:', response.data)
+          ElMessage.error('练习题数据格式不正确')
+          break
+        }
+      } else {
+        console.error('获取练习题列表失败:', response)
+        ElMessage.error(response.message || '获取练习题失败')
+        break
+      }
+    }
+
+    exercises.value = allExercises
+    total.value = allExercises.length
+    console.log('练习题加载完成，总数：', total.value)
+  } catch (error) {
+    console.error('加载练习题失败:', error)
+    ElMessage.error('加载练习题失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
 }
 
-const fetchTeachers = async () => {
-  loading.value = true;
+// 加载知识点
+const loadKnowledgePoints = async () => {
+  knowledgePointsLoading.value = true
   try {
-    const response = await fetchTeachersAPI();
-    if (response.code === 200) {
-      tableData.value = response.data.items;
+    let allKnowledgePoints = []
+    let nextPage = 1
+    let hasMore = true
+
+    while (hasMore) {
+      const response = await getKnowledgePoints({
+        page: nextPage,
+        page_size: 100,  // 每页获取100条数据
+        ordering: 'title'  // 按标题排序
+      })
+      
+      console.log(`加载第${nextPage}页知识点:`, response)
+      
+      if (response.code === 0) {
+        if (response.data && Array.isArray(response.data.results)) {
+          allKnowledgePoints = [...allKnowledgePoints, ...response.data.results]
+          
+          // 检查是否还有下一页
+          hasMore = !!response.data.next
+          nextPage++
+        } else {
+          console.error('知识点数据格式不正确:', response.data)
+          ElMessage.error('知识点数据格式不正确')
+          break
+        }
+      } else {
+        console.error('获取知识点列表失败:', response)
+        ElMessage.error(response.msg || '获取知识点列表失败')
+        break
+      }
+    }
+
+    knowledgePoints.value = allKnowledgePoints
+    console.log('知识点加载完成，总数：', knowledgePoints.value.length)
+  } catch (error) {
+    console.error('加载知识点失败:', error)
+    ElMessage.error('加载知识点失败，请稍后重试')
+  } finally {
+    knowledgePointsLoading.value = false
+  }
+}
+
+// 加载课程列表
+const loadCourses = async () => {
+  try {
+    const response = await getCourseList()
+    console.log('课程列表响应:', response)
+    
+    if (response.success && response.status_code === 200) {
+      courses.value = response.data.results.map(course => ({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        subject: course.subject,
+        grade_level: course.grade_level,
+        teacher_name: course.teacher_name
+      }))
+      console.log('处理后的课程列表:', courses.value)
+    } else {
+      console.warn('获取课程列表失败:', response)
     }
   } catch (error) {
-    console.error('获取学生列表失败:', error);
-    ElMessage.error('获取学生列表失败，请稍后重试');
-  } finally {
-    loading.value = false;
+    console.error('加载课程失败:', error)
   }
-};
+}
 
-const formData = reactive({
-  name: '',
-  teacherId: '',
-  department: '',
-  email: '',
-  phone: '',
-  avatar: '',
-});
+// 处理筛选条件变化
+const handleFilterChange = () => {
+  currentPage.value = 1
+  loadExercises()
+}
 
-const rules = reactive({
-  name: [
-    { required: true, message: '请输入学生姓名', trigger: 'blur' },
-    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+// 处理页码变化
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadExercises()
+}
+
+// 恢复之前的状态
+const restorePreviousState = () => {
+  const previousTab = localStorage.getItem('sideTab')
+  if (previousTab) {
+    sideTab.value = previousTab
+    if (previousTab.startsWith('course-')) {
+      courseMenuOpen.value = true
+    }
+  }
+}
+
+// 创建练习题相关状态
+const createDialogVisible = ref(false)
+const creating = ref(false)
+const createForm = ref(null)
+
+// 练习题表单数据
+const exerciseForm = ref({
+  title: '',
+  content: '',
+  type: 'single_choice',  // 默认选择单选题
+  difficulty: 1,
+  knowledge_point: '',
+  answer_template: ''
+})
+
+// 表单验证规则
+const formRules = {
+  title: [
+    { required: true, message: '请输入题目标题', trigger: 'blur' },
+    { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
   ],
-  teacherId: [
-    { required: true, message: '请输入学号', trigger: 'blur' }
+  content: [
+    { required: true, message: '请输入题目内容', trigger: 'blur' }
   ],
-  department: [
-    { required: true, message: '请输入班级', trigger: 'blur' }
+  type: [
+    { required: true, message: '请选择题目类型', trigger: 'change' }
   ],
-  email: [
-    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-    { type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change'] }
+  difficulty: [
+    { required: true, message: '请选择难度等级', trigger: 'change' }
+  ],
+  knowledge_point: [
+    { required: true, message: '请选择知识点', trigger: 'change' }
+  ],
+  answer_template: [
+    { required: true, message: '请输入答案模板', trigger: 'blur' }
   ]
-});
+}
 
-const formRef = ref(null);
-
-const showDialog = (type, row = null) => {
-  dialogType.value = type;
-  dialogVisible.value = true;
-  
-  if (type === 'edit' && row) {
-    Object.assign(formData, row);
-  } else {
-    Object.assign(formData, {
-      name: '',
-      teacherId: '',
-      department: '',
-      email: '',
-      phone: '',
-      avatar: ''
-    });
+// 显示创建对话框
+const showCreateDialog = () => {
+  createDialogVisible.value = true
+  // 重置表单
+  if (createForm.value) {
+    createForm.value.resetFields()
   }
-};
+}
 
-const handleEdit = (row) => {
-  showDialog('edit', row);
-};
-
-const handleSubmit = async () => {
-  if (!formRef.value) return;
+// 创建练习题
+const handleCreateExercise = async () => {
+  if (!createForm.value) return
   
   try {
-    await formRef.value.validate();
-    // 这里添加提交逻辑
-    ElMessage.success(dialogType.value === 'add' ? '添加成功' : '更新成功');
-    dialogVisible.value = false;
-    fetchTeachers();
+    await createForm.value.validate()
+    
+    creating.value = true
+    const response = await createExercise(exerciseForm.value)
+    console.log('创建练习题响应:', response);
+    
+    // 检查响应格式
+    if (response.success && (response.status_code === 200 || response.status_code === 201)) {
+      ElMessage.success('创建练习题成功')
+      createDialogVisible.value = false
+      // 重新加载练习题列表
+      loadExercises()
+    } else {
+      console.error('创建练习题失败:', response);
+      ElMessage.error(response.message || '创建练习题失败')
+    }
   } catch (error) {
-    console.error('表单验证失败:', error);
+    console.error('创建练习题失败:', error)
+    ElMessage.error('创建练习题失败，请检查表单内容')
+  } finally {
+    creating.value = false
   }
-};
+}
 
+// 添加展开/折叠状态管理
+const expandedExerciseId = ref(null)
+
+// 切换练习题展开/折叠状态
+const toggleExercise = (exerciseId) => {
+  expandedExerciseId.value = expandedExerciseId.value === exerciseId ? null : exerciseId
+}
+
+// 获取题目类型标签样式
+const getExerciseTagType = (type) => {
+  const types = {
+    'single_choice': 'primary',
+    'short_answer': 'success'
+  }
+  return types[type] || 'info'
+}
+
+// 获取题目类型名称
+const getExerciseTypeName = (type) => {
+  const types = {
+    'single_choice': '单选题',
+    'short_answer': '简答题'
+  }
+  return types[type] || '未知类型'
+}
+
+// 组件挂载时加载数据
 onMounted(() => {
-  fetchTeachers();
-});
+  restorePreviousState() // 先恢复状态
+  Promise.all([
+    loadExercises(),
+    loadKnowledgePoints(),
+    loadCourses()
+  ]).catch(error => {
+    console.error('初始化数据加载失败:', error)
+  })
+})
 </script>
 
-<style lang="scss" scoped>
-.page-content {
-  width: 100%;
-  max-width: 1480px;
-  min-height: calc(100vh - 24px);
-  margin: 0 auto;
-  padding: 0 20px;
-  position: relative;
-  background-color: transparent;
-  z-index: 1;
-  isolation: isolate;
-  margin-top: 34px;
-}
-
-.gray-space {
-  height: 12px;
-  background-color: transparent;
-}
-
-.content-wrapper {
-  background-color: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  box-shadow: 
-    rgba(99, 147, 244, 0.2) 0px 0px 0px 2px,
-    rgba(99, 147, 244, 0.15) 0px 4px 16px;
-  padding: 20px;
-  margin-bottom: 20px;
-  position: relative;
-  z-index: 2;
-  margin-top: 40px;
-}
-
-.search-section {
+<style scoped>
+.exercises-page {
+  min-height: 100vh;
   display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 10px 20px;
-  background-color: rgba(255, 255, 255, 0.95);
-  border-radius: 8px;
-  border: 1px solid rgba(99, 147, 244, 0.2);
-  box-shadow: 0 2px 8px rgba(99, 147, 244, 0.1);
-  
+  flex-direction: column;
+  background: #f5f7fa;
+  padding-top: 64px;
 }
 
-.el-button {
-  margin-right: 20px;
-  border-width: 2px;
-  &.el-button--primary {
-    border-color: rgba(99, 147, 244, 0.8);
-    box-shadow: 0 2px 6px rgba(99, 147, 244, 0.15);
-  }
-}
-
-.course-select {
-  width: 240px;
-  margin-right: 20px;
-  :deep(.el-input__wrapper) {
-    border: 1px solid rgba(99, 147, 244, 0.2);
-    box-shadow: 0 2px 6px rgba(99, 147, 244, 0.08);
-    &:hover {
-      border-color: rgba(99, 147, 244, 0.4);
-    }
-    &.is-focus {
-      border-color: rgba(99, 147, 244, 0.6);
-      box-shadow: 0 0 0 2px rgba(99, 147, 244, 0.1);
-    }
-  }
-}
-
-.search-input {
-  width: 400px !important;
-  margin: 0 20px 0 30px !important;
-  :deep(.el-input__wrapper) {
-    border: 1px solid rgba(99, 147, 244, 0.2);
-    box-shadow: 0 2px 6px rgba(99, 147, 244, 0.08);
-    &:hover {
-      border-color: rgba(99, 147, 244, 0.4);
-    }
-    &.is-focus {
-      border-color: rgba(99, 147, 244, 0.6);
-      box-shadow: 0 0 0 2px rgba(99, 147, 244, 0.1);
-    }
-  }
-}
-
-.table {
-  background-color: white;
-  border-radius: 8px;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid rgba(99, 147, 244, 0.15);
-  box-shadow: 0 2px 12px rgba(99, 147, 244, 0.08);
-}
-
-:deep(.el-table) {
-  border: none;
-  
-  &::before {
-    display: none;
-  }
-  
-  .el-table__header-wrapper {
-    background-color: #f0f7ff;
-    
-    th.el-table__cell {
-      background-color: #f0f7ff !important;
-      color: #333;
-  font-weight: 600;
-      border-bottom: none;
-      height: 50px;
-    }
-  }
-
-  .el-table__body-wrapper {
-    .el-table__row {
-      td {
-        border-bottom: 1px solid rgba(99, 147, 244, 0.1);
-        height: 60px;
-      }
-      
-      &:hover {
-        td {
-          background-color: rgba(99, 147, 244, 0.05);
-        }
-      }
-    }
-  }
-}
-
-// 覆盖 element-plus 的默认表头样式
-:deep(.el-table__header) {
-  th.el-table__cell {
-    background-color: #f0f7ff !important;
-  }
-}
-
-.user {
+.main-content {
   display: flex;
-  align-items: center;
-  padding: 0 10px;
-  gap: 12px;
+  min-height: calc(100vh - 64px);
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  object-fit: cover;
-  border: 2px solid #ebeef5;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
-}
-
-.user-info {
+.exercises-container {
   flex: 1;
-  text-align: left;
+  padding: 24px;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.user-name {
-  font-weight: 500;
-  color: #333;
-  margin: 0;
+.filter-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
 }
 
-.blue-button {
-  background-color: #409eff;
-  border-color: #409eff;
-  color: white;
+.filter-item {
+  min-width: 200px;
+}
+
+.exercises-list {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.exercise-card {
+  border-radius: 8px;
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.exercise-card:hover {
+  transform: translateY(-2px);
+}
+
+.exercise-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 8px;
   border-radius: 4px;
-  padding: 8px 16px;
+  transition: background-color 0.2s;
+}
+
+.exercise-header:hover {
+  background-color: #f5f7fa;
+}
+
+.exercise-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.exercise-content {
+  color: #666;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.exercise-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #999;
   font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.3s, border-color 0.3s;
-  border: none;
-  
-  &:hover {
-    background-color: #66b1ff;
-    border-color: #66b1ff;
-  }
 }
 
-:deep(.el-button--primary) {
-  background-color: #409eff;
-  border-color: #409eff;
-  
-  &:hover {
-    background-color: #66b1ff;
-    border-color: #66b1ff;
-  }
+.knowledge-point {
+  color: #409EFF;
 }
 
-:deep(.el-dialog) {
-  border-radius: 12px;
-  overflow: hidden;
-  
-  .el-dialog__header {
-    margin: 0;
-    padding: 20px 24px;
-    border-bottom: 1px solid #e0e6f0;
-  }
-  
-  .el-dialog__body {
-    padding: 24px;
-  }
-  
-  .el-dialog__footer {
-    border-top: 1px solid #e0e6f0;
-    padding: 16px 24px;
-  }
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.knowledge-point-option {
+  display: flex;
+  flex-direction: column;
+}
+
+.knowledge-point-desc {
+  color: #999;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* 添加新样式 */
+.action-bar {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
 }
-</style>
+
+.exercise-options {
+  margin: 16px 0;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.options-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #606266;
+}
+
+.option-item {
+  margin: 8px 0;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: white;
+  display: flex;
+  align-items: center;
+}
+
+.option-label {
+  font-weight: 600;
+  margin-right: 8px;
+  color: #409EFF;
+  min-width: 24px;
+}
+
+.option-text {
+  color: #606266;
+}
+
+/* 添加课程菜单样式 */
+.course-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.course-title {
+  font-weight: 500;
+  color: #333;
+}
+
+.course-info {
+  color: #999;
+  font-size: 12px;
+}
+
+@media screen and (max-width: 1366px) {
+  .exercises-container {
+    margin-left: 250px;
+  }
+  
+  .filter-item {
+    min-width: 180px;
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .exercises-container {
+    margin-left: 200px;
+  }
+  
+  .filter-item {
+    min-width: 160px;
+  }
+}
+</style> 

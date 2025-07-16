@@ -173,7 +173,7 @@ onUnmounted(() => {
 
 <style scoped>
 .side-nav {
-  width: 200px;
+  width: 300px;
   background: linear-gradient(180deg, #E8EBFF 0%, #F0F3FF 50%, #F8FAFF 100%);
   color: #333;
   padding: 0;
