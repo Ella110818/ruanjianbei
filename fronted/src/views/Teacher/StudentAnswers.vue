@@ -334,7 +334,7 @@ const requestAIGrade = async () => {
     console.log('AI批改请求数据:', requestData)
     
     // 发送请求到AI批改接口
-    const response = await fetch('https://990dad7dbad9.ngrok-free.app/api/ai/correct-answer/', {
+    const response = await fetch('https://e54d64a5eb55.ngrok-free.app/api/ai/correct-answer/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
