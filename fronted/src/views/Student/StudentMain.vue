@@ -23,7 +23,7 @@
           >
             <el-option label="单选题" value="single_choice" />
             <el-option label="多选题" value="multiple_choice" />
-            <el-option label="判断题" value="true_false" />
+            <el-option label="简答题" value="true_false" />
           </el-select>
           <el-select
             v-model="filters.difficulty"

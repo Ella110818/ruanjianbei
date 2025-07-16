@@ -2461,7 +2461,7 @@ export const generateKnowledgePointsPPT = async (params) => {
         const token = TokenManager.getAccessToken();
         console.log('发送请求使用的token:', token);
 
-        const url = `${API_CONFIG.BASE_URL}/knowledge-points-to-ppt/`;
+        const url = `${API_CONFIG.BASE_URL}/knowledge-to-ppt/`;
         console.log('完整请求URL:', url);
 
         const requestConfig = {
