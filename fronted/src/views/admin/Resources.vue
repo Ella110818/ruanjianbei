@@ -308,9 +308,48 @@ export default {
     handleUpload() {
       this.uploadDialogVisible = true
     },
-    handleDownload(row) {
-      // 实现下载逻辑
-      ElMessage.success(`开始下载：${row.name}`)
+    async handleDownload(row) {
+      try {
+        // 构建下载URL
+        const downloadUrl = `${import.meta.env.VITE_API_BASE_URL}/coursewares/download/${row.id}/`
+        
+        // 获取token
+        const token = localStorage.getItem('token')
+        
+        // 创建下载请求
+        const response = await fetch(downloadUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error('下载失败')
+        }
+        
+        // 获取文件blob
+        const blob = await response.blob()
+        
+        // 创建下载链接
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = row.name // 使用资源名称作为下载文件名
+        
+        // 触发下载
+        document.body.appendChild(link)
+        link.click()
+        
+        // 清理
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+        
+        ElMessage.success(`文件"${row.name}"下载成功`)
+      } catch (error) {
+        console.error('下载失败:', error)
+        ElMessage.error('下载失败，请稍后重试')
+      }
     },
     handlePreview(row) {
       // 实现预览逻辑
@@ -400,15 +439,28 @@ export default {
       return true
     },
     async handleUploadSubmit() {
-      if (!this.$refs.uploadForm) return
+      if (!this.$refs.uploadForm) {
+        console.log('表单引用不存在')
+        return
+      }
       
       try {
+        console.log('开始验证表单')
         await this.$refs.uploadForm.validate()
         
         if (!this.uploadForm.file) {
+          console.log('未选择文件')
           ElMessage.warning('请选择要上传的文件')
           return
         }
+
+        console.log('准备上传文件:', {
+          fileName: this.uploadForm.file.name,
+          fileSize: this.uploadForm.file.size,
+          fileType: this.uploadForm.file.type,
+          courseName: this.uploadForm.course,
+          formName: this.uploadForm.name
+        })
 
         // 创建 FormData
         const formData = new FormData()
@@ -419,10 +471,13 @@ export default {
           formData.append('description', this.uploadForm.description)
         }
 
+        console.log('开始调用上传接口')
         // 调用上传接口
         const response = await uploadCourseware(formData)
+        console.log('上传接口响应:', response)
         
         if (response.code === 0) {
+          console.log('上传成功')
           ElMessage.success('资源上传成功')
           this.uploadDialogVisible = false
           // 重置表单
@@ -431,6 +486,7 @@ export default {
           // 刷新资源列表
           await this.fetchResourceList()
         } else {
+          console.log('上传失败:', response)
           throw new Error(response.msg || '上传失败')
         }
       } catch (error) {

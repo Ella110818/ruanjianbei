@@ -414,9 +414,11 @@ const handleCreateExercise = async () => {
     
     // 先调用AI生成题目接口
     const generateResponse = await generateQuestions({
-      type: exerciseForm.value.type,
-      difficulty: exerciseForm.value.difficulty,
-      knowledge_point: exerciseForm.value.knowledge_point
+      query: exerciseForm.value.content || exerciseForm.value.title, // 使用题目内容或标题作为查询内容
+      knowledge_point_ids: [exerciseForm.value.knowledge_point], // 转换为数组格式
+      question_types: [exerciseForm.value.type], // 转换为数组格式
+      quantity: 1, // 只生成一道题
+      difficulty: exerciseForm.value.difficulty
     })
     
     if (!generateResponse.success) {
@@ -498,171 +500,254 @@ onMounted(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f7fa;
   padding-top: 64px;
+  position: relative;
+  background-image: url('@/assets/back.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.exercises-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.01);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .main-content {
   display: flex;
   min-height: calc(100vh - 64px);
+  justify-content: center;
+  position: relative;
+  z-index: 2;
 }
 
 .exercises-container {
-  flex: 1;
-  padding: 24px;
-  max-width: 1100px;
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
+  max-width: 1200px;
+  padding: 30px;
+  margin: 0 auto;
+}
+
+.action-bar {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
 }
 
 .filter-section {
+  background: rgba(255, 255, 255, 0.85);
+  padding: 24px 30px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 30px;
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 20px;
   flex-wrap: wrap;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .filter-item {
-  min-width: 200px;
+  flex: 1;
+  min-width: 220px;
 }
 
 .exercises-list {
-  display: grid;
-  gap: 20px;
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .exercise-card {
-  border-radius: 8px;
-  transition: transform 0.2s;
-  cursor: pointer;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  overflow: hidden;
 }
 
 .exercise-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
 }
 
 .exercise-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  padding: 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.exercise-header:hover {
-  background-color: #f5f7fa;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(238, 238, 238, 0.5);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .exercise-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #2c3e50;
+  letter-spacing: 0.3px;
 }
 
 .exercise-content {
-  color: #666;
+  padding: 24px;
+  color: #3a4a5c;
+  line-height: 1.8;
+  font-size: 15px;
+}
+
+.exercise-options {
+  padding: 16px;
+  background: rgba(248, 249, 250, 0.9);
+  border-radius: 4px;
+  margin: 0 16px 16px;
+}
+
+.options-title {
+  font-weight: 600;
   margin-bottom: 12px;
-  line-height: 1.5;
+  color: #333;
+}
+
+.option-item {
+  padding: 16px 20px;
+  margin: 10px 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #eef2f7;
+  display: flex;
+  align-items: center;
+}
+
+.option-item:hover {
+  background: #f0f7ff;
+  border-color: #409EFF;
+  transform: translateX(4px);
+}
+
+.option-label {
+  font-weight: 600;
+  color: #409EFF;
+  margin-right: 16px;
+  min-width: 24px;
+  text-align: center;
 }
 
 .exercise-footer {
+  padding: 20px 24px;
+  border-top: 1px solid rgba(238, 238, 238, 0.5);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #999;
-  font-size: 14px;
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .knowledge-point {
   color: #409EFF;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pagination-container {
+  margin-top: 30px;
+  margin-bottom: 20px;
   display: flex;
   justify-content: center;
-  margin-top: 24px;
+}
+
+:deep(.el-pagination) {
+  --el-pagination-button-bg-color: rgba(255, 255, 255, 0.9);
+  --el-pagination-hover-color: #409EFF;
 }
 
 .knowledge-point-option {
   display: flex;
   flex-direction: column;
+  padding: 8px 0;
 }
 
 .knowledge-point-desc {
-  color: #999;
+  color: #909399;
   font-size: 12px;
-  margin-top: 2px;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 
-/* 添加新样式 */
-.action-bar {
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: flex-end;
+/* 对话框样式优化 */
+:deep(.el-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+:deep(.el-dialog__header) {
+  margin: 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e6f0;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+:deep(.el-dialog__body) {
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+:deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  border-top: 1px solid #e0e6f0;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-textarea__inner) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e0e6f0;
+  transition: all 0.3s;
+}
+
+:deep(.el-input__wrapper:hover),
+:deep(.el-textarea__inner:hover) {
+  border-color: #409EFF;
+}
+
+:deep(.el-select) {
+  width: 100%;
 }
 
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
 }
 
-.exercise-options {
-  margin: 16px 0;
-  padding: 16px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-}
-
-.options-title {
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #606266;
-}
-
-.option-item {
-  margin: 8px 0;
-  padding: 8px;
-  border-radius: 4px;
-  background-color: white;
-  display: flex;
-  align-items: center;
-}
-
-.option-label {
-  font-weight: 600;
-  margin-right: 8px;
-  color: #409EFF;
-  min-width: 24px;
-}
-
-.option-text {
-  color: #606266;
-}
-
-/* 添加课程菜单样式 */
-.course-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.course-title {
-  font-weight: 500;
-  color: #333;
-}
-
-.course-info {
-  color: #999;
-  font-size: 12px;
-}
-
+/* 响应式优化 */
 @media screen and (max-width: 1366px) {
   .exercises-container {
-    margin-left: 250px;
+    max-width: 1000px;
+    padding: 20px;
   }
   
   .filter-item {
@@ -672,7 +757,8 @@ onMounted(() => {
 
 @media screen and (max-width: 1024px) {
   .exercises-container {
-    margin-left: 200px;
+    max-width: 800px;
+    padding: 16px;
   }
   
   .filter-item {

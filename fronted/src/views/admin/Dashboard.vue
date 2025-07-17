@@ -37,7 +37,7 @@
           <img src="@/assets/图层 2.png" alt="学校" />
         </div>
         <div class="right-card">
-          <FrequentErrors />
+          <FrequentErrors :selected-course="selectedCourse" />
         </div>
       </div>
       <div class="bottom-stats">
