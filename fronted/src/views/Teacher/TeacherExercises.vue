@@ -230,14 +230,14 @@ const loadExercises = async () => {
     let hasMore = true
 
     while (hasMore) {
-      const response = await getExercises({
-        ...filters.value,
+    const response = await getExercises({
+      ...filters.value,
         page: nextPage,
         page_size: 100  // 每页获取100条数据
       })
       
       console.log(`加载第${nextPage}页练习题:`, response)
-      
+    
       if (response.success && response.status_code === 200) {
         if (response.data && Array.isArray(response.data.results)) {
           allExercises = [...allExercises, ...response.data.results]
@@ -250,7 +250,7 @@ const loadExercises = async () => {
           ElMessage.error('练习题数据格式不正确')
           break
         }
-      } else {
+    } else {
         console.error('获取练习题列表失败:', response)
         ElMessage.error(response.message || '获取练习题失败')
         break
@@ -277,12 +277,12 @@ const loadKnowledgePoints = async () => {
     let hasMore = true
 
     while (hasMore) {
-      const response = await getKnowledgePoints({
+    const response = await getKnowledgePoints({
         page: nextPage,
         page_size: 100,  // 每页获取100条数据
-        ordering: 'title'  // 按标题排序
-      })
-      
+      ordering: 'title'  // 按标题排序
+    })
+    
       console.log(`加载第${nextPage}页知识点:`, response)
       
       if (response.code === 0) {
@@ -297,7 +297,7 @@ const loadKnowledgePoints = async () => {
           ElMessage.error('知识点数据格式不正确')
           break
         }
-      } else {
+    } else {
         console.error('获取知识点列表失败:', response)
         ElMessage.error(response.msg || '获取知识点列表失败')
         break

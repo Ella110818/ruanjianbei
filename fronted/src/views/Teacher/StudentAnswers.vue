@@ -370,48 +370,36 @@ const requestAIGrade = async () => {
     
     if (data.success && data.status_code === 200) {
       try {
-        // 1. 从feedback字符串中提取JSON部分
-        const feedback = data.data.feedback;
-        const jsonMatch = feedback.match(/```json\n([\s\S]*?)\n```/);
+        // 直接使用返回的数据对象
+        const answerData = data.data;
         
-        if (jsonMatch && jsonMatch[1]) {
-          // 2. 解析JSON部分
-          const answerJson = JSON.parse(jsonMatch[1]);
-          
-          // 3. 提取sources
-          const sourcesMatch = feedback.match(/sources': '([^']*?)'/);
-          const sources = sourcesMatch ? sourcesMatch[1] : '无';
-          
-          // 4. 更新AI评分结果
-          aiGradeResult.value = {
-            is_correct: answerJson.is_correct,
-            score: answerJson.score,
-            feedback: answerJson.feedback,
-            improvement_suggestions: answerJson.improvement_suggestions,
-            explanation: answerJson.explanation,
-            sources: sources
-          }
-          
-          // 如果AI评分成功，自动填入分数和反馈
-          if (!isEditing.value) {
-            startEdit()
-          }
-          
-          // 更新当前选中的答案
-          if (selectedAnswer.value) {
-            selectedAnswer.value.score = answerJson.score
-            selectedAnswer.value.feedback = answerJson.improvement_suggestions || answerJson.feedback
-            selectedAnswer.value.explanation = answerJson.explanation || ''
-            selectedAnswer.value.sources = sources
-          }
-          
-          ElMessage.success('AI批改完成')
-        } else {
-          throw new Error('无法解析AI评分数据')
+        // 更新AI评分结果
+        aiGradeResult.value = {
+          is_correct: answerData.is_correct,
+          score: answerData.score,
+          feedback: answerData.feedback,
+          improvement_suggestions: answerData.improvement_suggestions,
+          explanation: answerData.explanation,
+          sources: answerData.sources || '无'
         }
+        
+        // 如果AI评分成功，自动填入分数和反馈
+        if (!isEditing.value) {
+          startEdit()
+        }
+        
+        // 更新当前选中的答案
+        if (selectedAnswer.value) {
+          selectedAnswer.value.score = answerData.score
+          selectedAnswer.value.feedback = answerData.improvement_suggestions || answerData.feedback
+          selectedAnswer.value.explanation = answerData.explanation || ''
+          selectedAnswer.value.sources = answerData.sources || '无'
+        }
+        
+        ElMessage.success('AI批改完成')
       } catch (error) {
-        console.error('解析AI评分数据失败:', error)
-        ElMessage.error('解析AI评分数据失败：' + error.message)
+        console.error('处理AI评分数据失败:', error)
+        ElMessage.error('处理AI评分数据失败：' + error.message)
       }
     } else {
       throw new Error(data.message || 'AI批改失败')
