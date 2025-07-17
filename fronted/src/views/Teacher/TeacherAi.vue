@@ -171,8 +171,8 @@ const loadKnowledgePoints = async () => {
   try {
     const response = await getKnowledgePoints({
       page: currentPage.value,
-      page_size: pageSize.value,
-      search: searchQuery.value,
+        page_size: pageSize.value,
+        search: searchQuery.value,
       course: selectedCourse.value,
       ordering: 'title'
     })
@@ -189,10 +189,10 @@ const loadKnowledgePoints = async () => {
       if (responseData && Array.isArray(responseData.results)) {
         // 更新数据，添加课程名称
         knowledgePoints.value = responseData.results.map(point => ({
-          ...point,
+            ...point,
           course_name: courseNameMap.value[point.course] || '未知课程'
         }));
-        // 更新总数
+          // 更新总数
         total.value = responseData.count;
         
         console.log('知识点加载完成，总数：', total.value);
@@ -317,20 +317,20 @@ const handleGeneratePPT = async (knowledgePoints) => {
           })
           
           if (fileResponse.ok) {
-            const blob = await fileResponse.blob()
-            // 创建下载链接
-            const url = window.URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.href = url
-            link.download = response.data.filename || '知识点PPT.pptx'
-            document.body.appendChild(link)
-            link.click()
-            
-            // 清理
-            document.body.removeChild(link)
-            window.URL.revokeObjectURL(url)
-            
-            ElMessage.success('PPT下载成功！')
+          const blob = await fileResponse.blob()
+          // 创建下载链接
+          const url = window.URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = response.data.filename || '知识点PPT.pptx'
+          document.body.appendChild(link)
+          link.click()
+          
+          // 清理
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(url)
+          
+          ElMessage.success('PPT下载成功！')
           } else {
             throw new Error('文件下载响应格式不正确')
           }
@@ -390,13 +390,13 @@ const loadCourses = async () => {
 
       if (courseList.length > 0) {
         coursesList.value = courseList.map(course => ({
-          id: course.id,
+        id: course.id,
           title: course.name || course.title,
           description: course.description,
           subject: course.subject,
           grade_level: course.grade_level,
           teacher_name: course.teacher_name
-        }))
+      }))
         console.log('课程列表加载成功:', coursesList.value)
         // 重新加载知识点列表以更新课程名称
         loadKnowledgePoints()
@@ -428,7 +428,7 @@ const updateCourseMenuOpen = (value) => {
 onMounted(async () => {
   await Promise.all([
     loadKnowledgePoints(),
-    loadCourses()
+  loadCourses()
   ]).catch(error => {
     console.error('初始化数据加载失败:', error)
     ElMessage.error('加载数据失败，请刷新页面重试')
@@ -578,4 +578,4 @@ onMounted(async () => {
   border-bottom: none;
   height: 50px;
 }
-</style>
+</style> 

@@ -305,11 +305,11 @@ const sendMessage = async (message = null) => {
       if (messageIndex !== -1) {
         messages.value[messageIndex] = {
           id: loadingMessageId,
-          type: 'ai',
+    type: 'ai',
           content: data.data.answer || '抱歉，我没有找到合适的答案',
-          time: formatTime(new Date())
+    time: formatTime(new Date())
         };
-      }
+}
 
       // 更新会话ID
       if (data.data.session_id) {
@@ -622,18 +622,18 @@ const generateExercises = async () => {
           .map((exercise, index) => `第${index + 1}题\n\n${formatExercise(exercise)}`)
           .join('\n\n---\n\n');
         
-        messages.value.push({
-          id: messages.value.length + 1,
-          type: 'ai',
+      messages.value.push({
+        id: messages.value.length + 1,
+        type: 'ai',
           content: formattedExercises,
-          time: formatTime(new Date())
-        })
+        time: formatTime(new Date())
+      })
         
         // 保存会话ID
         if (data.data.session_id) {
           currentSessionId.value = data.data.session_id;
         }
-      } else {
+    } else {
         throw new Error('没有生成任何题目');
       }
     } else {
