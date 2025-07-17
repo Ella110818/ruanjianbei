@@ -5,25 +5,39 @@
       <div class="answers-container">
         <!-- 筛选器 -->
         <div class="filter-section">
-          <el-input
-            v-model="filters.search"
-            placeholder="搜索学生姓名"
-            @input="handleFilterChange"
-            class="filter-item"
-          />
-          <el-select
-            v-model="filters.exercise"
-            placeholder="选择练习题"
-            @change="handleFilterChange"
-            class="filter-item"
-          >
-            <el-option
-              v-for="exercise in exercises"
-              :key="exercise.id"
-              :label="exercise.title"
-              :value="exercise.id"
-            />
-          </el-select>
+          <div class="filter-group">
+            <el-input
+              v-model="filters.search"
+              placeholder="搜索学生姓名"
+              @input="handleFilterChange"
+              class="filter-item"
+              clearable
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+            <el-select
+              v-model="filters.exercise"
+              placeholder="选择练习题"
+              @change="handleFilterChange"
+              class="filter-item"
+              clearable
+              filterable
+            >
+              <el-option
+                v-for="exercise in exercises"
+                :key="exercise.id"
+                :label="exercise.title"
+                :value="exercise.id"
+              >
+                <div class="exercise-option">
+                  <span class="exercise-title">{{ exercise.title }}</span>
+                  <small class="exercise-type">{{ exercise.type_display }}</small>
+                </div>
+              </el-option>
+            </el-select>
+          </div>
         </div>
 
         <!-- 答题记录表格 -->
@@ -32,13 +46,28 @@
           style="width: 100%"
           v-loading="loading"
           border
+          stripe
+          highlight-current-row
+          class="answer-table"
         >
-          <el-table-column prop="student_name" label="学生姓名" width="120" />
-          <el-table-column prop="exercise_title" label="练习题" min-width="200" />
-          <el-table-column prop="content" label="学生答案" width="120" align="center" />
+          <el-table-column prop="student_name" label="学生姓名" width="120" fixed="left" />
+          <el-table-column prop="exercise_title" label="练习题" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="content" label="学生答案" width="180" align="center" show-overflow-tooltip>
+            <template #default="{ row }">
+              <el-tooltip
+                :content="row.content"
+                placement="top"
+                :hide-after="2000"
+              >
+                <span class="answer-content">{{ row.content }}</span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
           <el-table-column prop="score" label="得分" width="100" align="center">
             <template #default="{ row }">
-              {{ row.score || '未评分' }}
+              <el-tag :type="getScoreTagType(row.score)" size="small">
+                {{ row.score !== null ? `${row.score}分` : '未评分' }}
+              </el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="submitted_at" label="提交时间" width="180">
@@ -46,9 +75,9 @@
               {{ formatDate(row.submitted_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column label="操作" width="120" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button type="text" @click="handleViewDetail(row)">
+              <el-button type="primary" link @click="handleViewDetail(row)">
                 查看详情
               </el-button>
             </template>
@@ -62,7 +91,8 @@
             :page-size="pageSize"
             :total="total"
             @current-change="handlePageChange"
-            layout="total, prev, pager, next"
+            layout="total, prev, pager, next, jumper"
+            background
           />
         </div>
       </div>
@@ -70,105 +100,104 @@
 
     <!-- 答题详情对话框 -->
     <el-dialog
-      title="答题详情"
+      :title="getDialogTitle"
       v-model="detailDialogVisible"
-      width="600px"
+      width="700px"
+      class="answer-detail-dialog"
     >
       <div v-if="selectedAnswer" class="answer-detail">
-        <div class="detail-item">
-          <label>学生姓名：</label>
-          <span>{{ selectedAnswer.student_name }}</span>
-        </div>
-        <div class="detail-item">
-          <label>练习题：</label>
-          <span>{{ selectedAnswer.exercise_title }}</span>
-        </div>
-        <div class="detail-item">
-          <label>学生答案：</label>
-          <span>{{ selectedAnswer.content }}</span>
-        </div>
-        <div class="detail-item">
-          <label>得分：</label>
-          <el-input-number 
-            v-model="selectedAnswer.score" 
-            :min="0" 
-            :max="100"
-            size="small"
-            :disabled="!isEditing"
-          />
-        </div>
-        <div class="detail-item">
-          <label>教师反馈：</label>
-          <el-input
-            v-model="selectedAnswer.feedback"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入反馈意见"
-            :disabled="!isEditing"
-          />
-        </div>
-        <div class="detail-item">
-          <label>详细解释：</label>
-          <el-input
-            v-model="selectedAnswer.explanation"
-            type="textarea"
-            :rows="3"
-            placeholder="答案的详细解释"
-            :disabled="!isEditing"
-          />
-        </div>
-        <div class="detail-item">
-          <label>参考来源：</label>
-          <el-input
-            v-model="selectedAnswer.sources"
-            placeholder="参考资料来源"
-            :disabled="!isEditing"
-          />
-        </div>
-        <div class="detail-item">
-          <label>提交时间：</label>
-          <span>{{ formatDate(selectedAnswer.submitted_at) }}</span>
-        </div>
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="学生姓名">
+            {{ selectedAnswer.student_name }}
+          </el-descriptions-item>
+          <el-descriptions-item label="练习题">
+            {{ selectedAnswer.exercise_title }}
+          </el-descriptions-item>
+          <el-descriptions-item label="学生答案">
+            {{ selectedAnswer.content }}
+          </el-descriptions-item>
+          <el-descriptions-item label="得分">
+            <el-input-number 
+              v-model="selectedAnswer.score" 
+              :min="0" 
+              :max="100"
+              :step="5"
+              size="small"
+              :disabled="!isEditing"
+              class="score-input"
+            />
+          </el-descriptions-item>
+          <el-descriptions-item label="教师反馈">
+            <el-input
+              v-model="selectedAnswer.feedback"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入反馈意见"
+              :disabled="!isEditing"
+              resize="none"
+            />
+          </el-descriptions-item>
+          <el-descriptions-item label="详细解释">
+            <el-input
+              v-model="selectedAnswer.explanation"
+              type="textarea"
+              :rows="3"
+              placeholder="答案的详细解释"
+              :disabled="!isEditing"
+              resize="none"
+            />
+          </el-descriptions-item>
+          <el-descriptions-item label="参考来源">
+            <el-input
+              v-model="selectedAnswer.sources"
+              placeholder="参考资料来源"
+              :disabled="!isEditing"
+            />
+          </el-descriptions-item>
+          <el-descriptions-item label="提交时间">
+            {{ formatDate(selectedAnswer.submitted_at) }}
+          </el-descriptions-item>
+        </el-descriptions>
         
         <!-- AI评分结果展示 -->
         <div v-if="aiGradeResult" class="ai-grade-result">
           <h3>AI评分建议</h3>
-          <div class="ai-grade-item">
-            <label>正确性：</label>
-            <span :class="{ 'correct': aiGradeResult.is_correct, 'incorrect': !aiGradeResult.is_correct }">
-              {{ aiGradeResult.is_correct ? '正确' : '错误' }}
-            </span>
-          </div>
-          <div class="ai-grade-item">
-            <label>建议得分：</label>
-            <span :class="{ 'score-high': aiGradeResult.score >= 80, 'score-medium': aiGradeResult.score >= 60 && aiGradeResult.score < 80, 'score-low': aiGradeResult.score < 60 }">
-              {{ aiGradeResult.score }}分
-            </span>
-          </div>
-          <div class="ai-grade-item">
-            <label>评价反馈：</label>
-            <div class="ai-feedback">{{ aiGradeResult.feedback }}</div>
-          </div>
-          <div v-if="aiGradeResult.improvement_suggestions" class="ai-grade-item">
-            <label>改进建议：</label>
-            <div class="ai-suggestions">{{ aiGradeResult.improvement_suggestions }}</div>
-          </div>
-          <div v-if="aiGradeResult.explanation" class="ai-grade-item">
-            <label>详细解释：</label>
-            <div class="ai-explanation">{{ aiGradeResult.explanation }}</div>
-          </div>
-          <div class="ai-grade-item">
-            <label>参考来源：</label>
-            <div class="ai-sources">{{ aiGradeResult.sources }}</div>
-          </div>
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="正确性">
+              <el-tag :type="aiGradeResult.is_correct ? 'success' : 'danger'" size="small">
+                {{ aiGradeResult.is_correct ? '正确' : '错误' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="建议得分">
+              <el-tag :type="getScoreTagType(aiGradeResult.score)" size="small">
+                {{ aiGradeResult.score }}分
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="评价反馈">
+              {{ aiGradeResult.feedback }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="aiGradeResult.improvement_suggestions" label="改进建议">
+              {{ aiGradeResult.improvement_suggestions }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="aiGradeResult.explanation" label="详细解释">
+              {{ aiGradeResult.explanation }}
+            </el-descriptions-item>
+            <el-descriptions-item label="参考来源">
+              {{ aiGradeResult.sources }}
+            </el-descriptions-item>
+          </el-descriptions>
         </div>
       </div>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="detailDialogVisible = false">关闭</el-button>
-          <el-button type="info" @click="requestAIGrade" :loading="aiGrading">AI批改</el-button>
+          <el-button type="info" @click="requestAIGrade" :loading="aiGrading">
+            <el-icon><Monitor /></el-icon> AI批改
+          </el-button>
           <template v-if="!isEditing">
-            <el-button type="primary" @click="startEdit">编辑评分</el-button>
+            <el-button type="primary" @click="startEdit">
+              <el-icon><Edit /></el-icon> 编辑评分
+            </el-button>
           </template>
           <template v-else>
             <el-button @click="cancelEdit">取消</el-button>
@@ -181,11 +210,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import { getStudentAnswers, getExercises, updateStudentAnswer } from '@/api'
 import { ElMessage } from 'element-plus'
-import { API_CONFIG } from '@/api'  // 添加导入
+import { API_CONFIG } from '@/api'
+import { Search, Monitor, Edit } from '@element-plus/icons-vue'
 
 // 状态管理
 const loading = ref(false)
@@ -427,6 +457,21 @@ onMounted(() => {
   loadAnswers()
   loadExercises()
 })
+
+// 获取对话框标题
+const getDialogTitle = computed(() => {
+  if (!selectedAnswer.value) return '答题详情'
+  return `答题详情 - ${selectedAnswer.value.student_name}`
+})
+
+// 获取分数标签类型
+const getScoreTagType = (score) => {
+  if (score === null) return 'info'
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'warning'
+  return 'danger'
+}
+
 </script>
 
 <style scoped>
@@ -482,11 +527,32 @@ onMounted(() => {
   justify-content: center;  /* 添加水平居中 */
 }
 
+.filter-group {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
 .filter-item {
-  flex: 0 0 auto;  /* 改为固定宽度模式 */
-  width: 300px;    /* 设置固定宽度 */
-  min-width: unset; /* 移除最小宽度限制 */
-  max-width: unset; /* 移除最大宽度限制 */
+  flex: 1;
+}
+
+.exercise-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.exercise-title {
+  font-weight: 500;
+}
+
+.exercise-type {
+  color: #909399;
+  font-size: 12px;
 }
 
 .pagination-container {
@@ -618,6 +684,63 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.answer-table {
+  margin-top: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.answer-content {
+  display: inline-block;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.answer-detail-dialog :deep(.el-dialog__body) {
+  padding: 20px;
+}
+
+.score-input {
+  width: 120px;
+}
+
+:deep(.el-descriptions__label) {
+  width: 120px;
+  font-weight: 600;
+}
+
+:deep(.el-descriptions__content) {
+  padding: 12px 16px;
+}
+
+.ai-grade-result {
+  margin-top: 24px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.ai-grade-result h3 {
+  margin: 0 0 16px 0;
+  color: #409EFF;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-grade-result h3::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: #409EFF;
+  border-radius: 2px;
 }
 
 @media screen and (max-width: 1366px) {

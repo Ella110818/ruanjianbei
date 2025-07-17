@@ -20,10 +20,11 @@
             placeholder="题目类型"
             @change="handleFilterChange"
             class="filter-item"
+            clearable
           >
             <el-option label="单选题" value="single_choice" />
             <el-option label="多选题" value="multiple_choice" />
-            <el-option label="简答题" value="true_false" />
+            <el-option label="简答题" value="short_answer" />
           </el-select>
           <el-select
             v-model="filters.difficulty"
@@ -182,12 +183,22 @@ const loadUserInfo = async () => {
 const loadExercises = async () => {
   loading.value = true
   try {
-    const response = await getExercises({
-      ...filters.value,
-      page: currentPage.value
-    })
+    // 构建请求参数，过滤掉空值
+    const params = {
+      page: currentPage.value,
+      search: filters.value.search || undefined,
+      type: filters.value.type || undefined,
+      difficulty: filters.value.difficulty || undefined,
+      knowledge_point: filters.value.knowledge_point || undefined,
+      ordering: filters.value.ordering
+    }
     
-    if (response.success && response.status_code === 200) {  // 修改判断条件
+    // 移除所有undefined的属性
+    Object.keys(params).forEach(key => params[key] === undefined && delete params[key])
+    
+    const response = await getExercises(params)
+    
+    if (response.success && response.status_code === 200) {
       exercises.value = response.data.results.map(exercise => ({
         ...exercise,
         studentAnswer: '',
@@ -273,26 +284,24 @@ const toggleExercise = (exerciseId) => {
   expandedExerciseId.value = expandedExerciseId.value === exerciseId ? null : exerciseId
 }
 
-// 获取题目类型标签样式
-const getExerciseTagType = (type) => {
-  const types = {
-    'single_choice': 'primary',
-    'multiple_choice': 'success',
-    'true_false': 'warning',
-    'short_answer': 'info'  // 添加简答题类型
-  }
-  return types[type] || 'info'
-}
-
 // 获取题目类型名称
 const getExerciseTypeName = (type) => {
   const types = {
     'single_choice': '单选题',
     'multiple_choice': '多选题',
-    'true_false': '判断题',
-    'short_answer': '简答题'  // 添加简答题类型
+    'short_answer': '简答题'
   }
   return types[type] || '未知类型'
+}
+
+// 获取题目类型标签样式
+const getExerciseTagType = (type) => {
+  const types = {
+    'single_choice': 'primary',
+    'multiple_choice': 'success',
+    'short_answer': 'info'
+  }
+  return types[type] || 'info'
 }
 
 // 选择答案

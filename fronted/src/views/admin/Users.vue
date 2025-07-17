@@ -11,17 +11,17 @@
           placeholder="搜索用户名/姓名/角色"
           :prefix-icon="Search"
           clearable
-          @clear="handleSearch"
-          @input="handleSearch"
+          @clear="handleSearchInput"
+          @input="handleSearchInput"
           class="search-input"
         >
         </el-input>
-        <el-select v-model="roleFilter" placeholder="角色筛选" @change="handleSearch" class="filter-select">
+        <el-select v-model="roleFilter" placeholder="角色筛选" @change="handleFilterChange" class="filter-select">
           <el-option label="全部" value=""></el-option>
           <el-option label="教师" value="teacher"></el-option>
           <el-option label="学生" value="student"></el-option>
         </el-select>
-        <el-select v-model="statusFilter" placeholder="状态筛选" @change="handleSearch" class="filter-select">
+        <el-select v-model="statusFilter" placeholder="状态筛选" @change="handleFilterChange" class="filter-select">
           <el-option label="全部" value=""></el-option>
           <el-option label="正常" value="active"></el-option>
           <el-option label="禁用" value="disabled"></el-option>
@@ -232,11 +232,17 @@ export default {
       }
     },
     
-    // 搜索处理函数 - 增加防抖
-    handleSearch: debounce(function() {
+    // 搜索输入处理函数 - 使用防抖
+    handleSearchInput: debounce(function() {
       this.currentPage = 1  // 重置到第一页
       this.fetchUserList()
     }, 300),  // 300ms 防抖
+    
+    // 筛选器改变处理函数 - 直接触发
+    handleFilterChange() {
+      this.currentPage = 1  // 重置到第一页
+      this.fetchUserList()
+    },
     
     handleAddUser() {
       this.dialogType = 'add'

@@ -2742,3 +2742,69 @@ export async function submitStudentAnswer(data) {
     }
 }
 
+// 上传课件
+export async function uploadCourseware(formData) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '上传成功',
+            data: {
+                id: Math.floor(Math.random() * 1000),
+                name: formData.get('name'),
+                course: formData.get('course'),
+                type: 'document',
+                size: 1024576,
+                uploader: '当前用户',
+                upload_time: new Date().toISOString(),
+                downloads: 0
+            }
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/coursewares/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                // 不要设置 Content-Type，让浏览器自动设置正确的 multipart/form-data
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: formData
+        });
+
+        const responseData = await response.json();
+        console.log('上传课件响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        if (responseData.success && responseData.status_code === 200) {
+            return {
+                code: 0,
+                msg: '上传成功',
+                data: responseData.data
+            };
+        } else {
+            return {
+                code: 1,
+                msg: responseData.message || '上传失败',
+                data: null
+            };
+        }
+    } catch (error) {
+        console.error('上传课件失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '上传失败',
+            data: null
+        };
+    }
+}
+
