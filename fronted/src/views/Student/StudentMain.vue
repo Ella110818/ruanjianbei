@@ -374,14 +374,33 @@ onMounted(async () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f7fa;
   padding-top: 64px;
+  position: relative;
+  background-image: url('@/assets/back.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.exercises-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.01);  /* 从0.8改为0.5，降低不透明度 */
+  pointer-events: none;
+  z-index: 1;
 }
 
 .main-content {
   display: flex;
   min-height: calc(100vh - 64px);
   justify-content: center;
+  position: relative;
+  z-index: 2;
 }
 
 .exercises-container {
@@ -391,7 +410,7 @@ onMounted(async () => {
 }
 
 .filter-section {
-  background: white;
+  background: rgba(255, 255, 255, 0.85);  /* 调整筛选区域的透明度 */
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
@@ -399,6 +418,7 @@ onMounted(async () => {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
+  backdrop-filter: blur(5px);
 }
 
 .filter-item {
@@ -415,8 +435,9 @@ onMounted(async () => {
 .exercise-card {
   border-radius: 8px;
   transition: all 0.3s;
-  background: white;
+  background: rgba(255, 255, 255, 0.85);  /* 调整卡片的透明度 */
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
 }
 
 .exercise-card:hover {
@@ -429,7 +450,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(238, 238, 238, 0.5);
 }
 
 .exercise-title {
@@ -446,7 +467,7 @@ onMounted(async () => {
 
 .exercise-options {
   padding: 16px;
-  background: #f8f9fa;
+  background: rgba(248, 249, 250, 0.9);
   border-radius: 4px;
   margin: 0 16px 16px;
 }
@@ -461,7 +482,7 @@ onMounted(async () => {
   padding: 12px;
   margin: 8px 0;
   border-radius: 4px;
-  background: white;
+  background: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   transition: all 0.3s;
   border: 1px solid #eee;
@@ -490,7 +511,7 @@ onMounted(async () => {
 
 .exercise-footer {
   padding: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(238, 238, 238, 0.5);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -509,7 +530,7 @@ onMounted(async () => {
 .feedback-section {
   margin-top: 16px;
   padding: 16px;
-  background: #f0f9eb;
+  background: rgba(240, 249, 235, 0.9);
   border-radius: 4px;
   color: #67c23a;
 }

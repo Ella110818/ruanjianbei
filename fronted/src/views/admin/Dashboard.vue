@@ -58,6 +58,7 @@ import LearningEffect from '@/components/LearningEffect.vue'
 import CourseOptimization from '@/components/CourseOptimization.vue'
 import FrequentErrors from '@/components/FrequentErrors.vue'
 import { ElMessage } from 'element-plus'
+import { getCourseList } from '@/api'  // 导入 getCourseList
 
 export default {
   name: 'AdminDashboard',
@@ -99,48 +100,36 @@ export default {
       this.currentDate = `${year}年${month}月${day}日 ${weekday}`
     },
 
-    // 加载课程列表
+    // 修改后的 loadCourses 方法
     async loadCourses() {
       this.coursesLoading = true
       try {
-        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://1aa43f9b548f.ngrok-free.app'
-        const response = await fetch(`${API_BASE_URL}/api/courses/`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
-          }
-        })
-        const data = await response.json()
-        console.log('课程列表响应:', data) // 添加日志
+        const response = await getCourseList()
+        console.log('课程列表响应:', response)
         
-        // 处理不同的响应格式
-        if (response.ok) {
+        if (response.code === 0 && response.data) {
           let courseList = []
-          if (data.success && data.status_code === 200 && data.data) {
-            // 处理分页格式
-            if (Array.isArray(data.data.results)) {
-              courseList = data.data.results
-            } 
-            // 处理直接数组格式
-            else if (Array.isArray(data.data)) {
-              courseList = data.data
-            }
-          } else if (data.code === 0 && Array.isArray(data.data)) {
-            courseList = data.data
+          
+          // 处理分页格式
+          if (Array.isArray(response.data.results)) {
+            courseList = response.data.results
+          } 
+          // 处理直接数组格式
+          else if (Array.isArray(response.data)) {
+            courseList = response.data
           }
 
           if (courseList.length > 0) {
             this.courses = courseList.map(course => ({
               value: course.id,
-              label: course.name || course.title // 支持name或title字段
+              label: course.name || course.title
             }))
           } else {
-            console.error('课程列表为空')
+            console.warn('课程列表为空')
             ElMessage.warning('暂无可用课程')
           }
         } else {
-          throw new Error(data.message || '获取课程列表失败')
+          throw new Error(response.msg || '获取课程列表失败')
         }
       } catch (error) {
         console.error('加载课程失败:', error)
