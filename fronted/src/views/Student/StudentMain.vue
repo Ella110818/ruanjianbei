@@ -405,64 +405,71 @@ onMounted(async () => {
 
 .exercises-container {
   width: 100%;
-  max-width: 1000px;
-  padding: 24px;
+  max-width: 1200px;  /* 增加最大宽度 */
+  padding: 30px;
+  margin: 0 auto;  /* 居中容器 */
 }
 
 .filter-section {
-  background: rgba(255, 255, 255, 0.85);  /* 调整筛选区域的透明度 */
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 24px 30px;  /* 增加内边距 */
+  border-radius: 16px;  /* 增加圆角 */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);  /* 优化阴影 */
+  margin-bottom: 30px;
   display: flex;
-  gap: 16px;
+  gap: 20px;  /* 增加间距 */
   flex-wrap: wrap;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);  /* 添加边框 */
 }
 
 .filter-item {
   flex: 1;
-  min-width: 200px;
+  min-width: 220px;  /* 稍微增加最小宽度 */
 }
 
 .exercises-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;  /* 增加卡片间距 */
 }
 
 .exercise-card {
-  border-radius: 8px;
-  transition: all 0.3s;
-  background: rgba(255, 255, 255, 0.85);  /* 调整卡片的透明度 */
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(5px);
+  border-radius: 16px;  /* 增加圆角 */
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  overflow: hidden;  /* 确保内容不超出圆角 */
 }
 
 .exercise-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
 }
 
 .exercise-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 20px 24px;  /* 增加内边距 */
   border-bottom: 1px solid rgba(238, 238, 238, 0.5);
+  background: rgba(255, 255, 255, 0.5);  /* 添加微妙背景 */
 }
 
 .exercise-title {
-  font-size: 16px;
+  font-size: 18px;  /* 增加字号 */
   font-weight: 600;
-  color: #333;
+  color: #2c3e50;  /* 更改字体颜色 */
+  letter-spacing: 0.3px;  /* 添加字间距 */
 }
 
 .exercise-content {
-  padding: 16px;
-  color: #666;
-  line-height: 1.6;
+  padding: 24px;
+  color: #3a4a5c;  /* 更改字体颜色 */
+  line-height: 1.8;  /* 增加行高 */
+  font-size: 15px;  /* 调整字号 */
 }
 
 .exercise-options {
@@ -479,24 +486,28 @@ onMounted(async () => {
 }
 
 .option-item {
-  padding: 12px;
-  margin: 8px 0;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.9);
+  padding: 16px 20px;
+  margin: 10px 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
   cursor: pointer;
-  transition: all 0.3s;
-  border: 1px solid #eee;
+  transition: all 0.3s ease;
+  border: 1px solid #eef2f7;  /* 更改边框颜色 */
+  display: flex;
+  align-items: center;
 }
 
 .option-item:hover {
   background: #f0f7ff;
   border-color: #409EFF;
+  transform: translateX(4px);  /* 添加悬停效果 */
 }
 
 .option-item.selected {
-  background: #409EFF;
+  background: linear-gradient(135deg, #409EFF, #3a8ee6);  /* 添加渐变背景 */
   color: white;
   border-color: #409EFF;
+  transform: translateX(4px);
 }
 
 .option-item.selected .option-label {
@@ -506,33 +517,42 @@ onMounted(async () => {
 .option-label {
   font-weight: 600;
   color: #409EFF;
-  margin-right: 12px;
+  margin-right: 16px;
+  min-width: 24px;  /* 固定宽度 */
+  text-align: center;  /* 居中对齐 */
 }
 
 .exercise-footer {
-  padding: 16px;
+  padding: 20px 24px;
   border-top: 1px solid rgba(238, 238, 238, 0.5);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: rgba(255, 255, 255, 0.5);  /* 添加微妙背景 */
 }
 
 .knowledge-point {
   color: #409EFF;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .answer-actions {
-  margin-top: 16px;
+  margin-top: 20px;
   display: flex;
   justify-content: center;
+  gap: 12px;  /* 添加按钮间距 */
 }
 
 .feedback-section {
-  margin-top: 16px;
-  padding: 16px;
-  background: rgba(240, 249, 235, 0.9);
-  border-radius: 4px;
+  margin-top: 20px;
+  padding: 20px;
+  background: rgba(240, 249, 235, 0.95);
+  border-radius: 12px;
   color: #67c23a;
+  border: 1px solid rgba(103, 194, 58, 0.2);  /* 添加边框 */
 }
 
 .score {
@@ -541,7 +561,8 @@ onMounted(async () => {
 }
 
 .pagination-container {
-  margin-top: 24px;
+  margin-top: 30px;
+  margin-bottom: 20px;  /* 添加底部间距 */
   display: flex;
   justify-content: center;
 }
@@ -572,13 +593,22 @@ onMounted(async () => {
   line-height: 1.3;
 }
 
+/* 添加响应式优化 */
 @media screen and (max-width: 768px) {
   .exercises-container {
     padding: 16px;
   }
-
-  .filter-item {
-    min-width: 100%;
+  
+  .filter-section {
+    padding: 20px;
+  }
+  
+  .exercise-card {
+    border-radius: 12px;
+  }
+  
+  .exercise-title {
+    font-size: 16px;
   }
 }
 </style> 
