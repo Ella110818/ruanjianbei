@@ -477,11 +477,16 @@ onMounted(() => {
   display: flex;
   gap: 16px;
   margin-bottom: 24px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;  /* 添加水平居中 */
 }
 
 .filter-item {
-  min-width: 200px;
+  flex: 0 0 auto;  /* 改为固定宽度模式 */
+  width: 300px;    /* 设置固定宽度 */
+  min-width: unset; /* 移除最小宽度限制 */
+  max-width: unset; /* 移除最大宽度限制 */
 }
 
 .pagination-container {
