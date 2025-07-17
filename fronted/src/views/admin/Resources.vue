@@ -103,8 +103,22 @@
     </div>
 
     <!-- 上传资源对话框 -->
-    <el-dialog title="上传资源" v-model="uploadDialogVisible" width="500px">
-      <el-form :model="uploadForm" :rules="uploadRules" ref="uploadForm" label-width="100px">
+    <el-dialog 
+      title="上传资源" 
+      v-model="uploadDialogVisible" 
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form 
+        :model="uploadForm" 
+        :rules="uploadRules" 
+        ref="uploadForm" 
+        label-width="100px"
+      >
+        <el-form-item label="资源名称" prop="name">
+          <el-input v-model="uploadForm.name" placeholder="请输入资源名称"></el-input>
+        </el-form-item>
+        
         <el-form-item label="所属课程" prop="course">
           <el-select v-model="uploadForm.course" placeholder="请选择课程">
             <el-option
@@ -116,17 +130,30 @@
             </el-option>
           </el-select>
         </el-form-item>
+
+        <el-form-item label="资源描述">
+          <el-input
+            v-model="uploadForm.description"
+            type="textarea"
+            rows="3"
+            placeholder="请输入资源描述（选填）"
+          ></el-input>
+        </el-form-item>
+
         <el-form-item label="资源文件" prop="file">
           <el-upload
             class="upload-demo"
             drag
-            action="/api/upload"
-            :on-success="handleUploadSuccess"
-            :before-upload="beforeUpload"
+            :auto-upload="false"
+            :show-file-list="true"
             :limit="1"
+            :on-change="(file) => beforeUpload(file.raw)"
+            :on-exceed="() => ElMessage.warning('只能上传一个文件')"
           >
             <i class="el-icon-upload"></i>
-            <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+            <div class="el-upload__text">
+              将文件拖到此处，或<em>点击上传</em>
+            </div>
             <template #tip>
               <div class="el-upload__tip">
                 支持任意格式文件，单个文件不超过100MB
@@ -148,7 +175,7 @@
 <script>
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourseList, getCoursewareList } from '@/api'
+import { getCourseList, getCoursewareList, deleteCourseware, uploadCourseware } from '@/api'
 
 export default {
   name: 'AdminResources',
@@ -170,7 +197,9 @@ export default {
       courseOptions: [],
       uploadForm: {
         course: '',
-        file: null
+        file: null,
+        name: '',  // 添加文件名字段
+        description: ''  // 添加描述字段
       },
       uploadRules: {
         course: [
@@ -178,6 +207,9 @@ export default {
         ],
         file: [
           { required: true, message: '请上传资源文件', trigger: 'change' }
+        ],
+        name: [
+          { required: true, message: '请输入资源名称', trigger: 'blur' }
         ]
       }
     }
@@ -295,19 +327,58 @@ export default {
             type: 'warning'
           }
         )
-        // 实现删除逻辑
-        ElMessage.success('删除成功')
-      } catch {
-        // 用户取消操作
+        
+        // 调用删除接口
+        const response = await deleteCourseware(row.id)
+        if (response.code === 0) {
+          ElMessage.success('删除成功')
+          // 重新加载资源列表
+          await this.fetchResourceList()
+        } else {
+          ElMessage.error(response.msg || '删除失败')
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('删除资源失败:', error)
+          ElMessage.error('删除失败，请稍后重试')
+        }
       }
     },
     handleBatchDownload() {
       // 实现批量下载逻辑
       ElMessage.info('批量下载功能开发中')
     },
-    handleBatchDelete() {
-      // 实现批量删除逻辑
-      ElMessage.info('批量删除功能开发中')
+    async handleBatchDelete() {
+      try {
+        const selection = this.$refs.table.getSelectionRows()
+        if (!selection || selection.length === 0) {
+          ElMessage.warning('请选择要删除的资源')
+          return
+        }
+
+        await ElMessageBox.confirm(
+          `确定要删除选中的 ${selection.length} 个资源吗？`,
+          '提示',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        )
+
+        // 批量删除
+        const promises = selection.map(item => deleteCourseware(item.id))
+        await Promise.all(promises)
+        
+        ElMessage.success('批量删除成功')
+        // 重新加载资源列表
+        await this.fetchResourceList()
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('批量删除失败:', error)
+          ElMessage.error('批量删除失败，请稍后重试')
+        }
+      }
     },
     handleSizeChange(val) {
       this.pageSize = val
@@ -323,20 +394,48 @@ export default {
         ElMessage.error('文件大小不能超过100MB')
         return false
       }
+      // 自动设置文件名
+      this.uploadForm.name = file.name
+      this.uploadForm.file = file
       return true
     },
-    handleUploadSuccess(response, file) {
-      this.uploadForm.file = file
-      ElMessage.success('上传成功')
-    },
     async handleUploadSubmit() {
+      if (!this.$refs.uploadForm) return
+      
       try {
         await this.$refs.uploadForm.validate()
-        // 实现表单提交逻辑
-        ElMessage.success('资源上传成功')
-        this.uploadDialogVisible = false
-      } catch {
-        // 表单验证失败
+        
+        if (!this.uploadForm.file) {
+          ElMessage.warning('请选择要上传的文件')
+          return
+        }
+
+        // 创建 FormData
+        const formData = new FormData()
+        formData.append('file', this.uploadForm.file)
+        formData.append('course', this.uploadForm.course)
+        formData.append('name', this.uploadForm.name)
+        if (this.uploadForm.description) {
+          formData.append('description', this.uploadForm.description)
+        }
+
+        // 调用上传接口
+        const response = await uploadCourseware(formData)
+        
+        if (response.code === 0) {
+          ElMessage.success('资源上传成功')
+          this.uploadDialogVisible = false
+          // 重置表单
+          this.$refs.uploadForm.resetFields()
+          this.uploadForm.file = null
+          // 刷新资源列表
+          await this.fetchResourceList()
+        } else {
+          throw new Error(response.msg || '上传失败')
+        }
+      } catch (error) {
+        console.error('上传失败:', error)
+        ElMessage.error(error.message || '上传失败，请稍后重试')
       }
     }
   }

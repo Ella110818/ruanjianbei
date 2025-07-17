@@ -207,17 +207,20 @@ export default {
       this.loading = true
       try {
         const params = {
-          search: this.searchQuery || undefined,
+          page: this.currentPage,
+          page_size: this.pageSize,
+          search: this.searchQuery.trim() || undefined,
           role: this.roleFilter || undefined,
           status: this.statusFilter || undefined,
-          page: this.currentPage,
-          ordering: '1'
+          ordering: '-created_at'  // 按创建时间倒序
         }
         
         const response = await getUserList(params)
+        console.log('获取用户列表响应:', response)
+        
         if (response.code === 0 && response.data) {
           this.userList = response.data.results || []
-          this.total = response.data.total || 0
+          this.total = response.data.count || 0  // 使用 count 而不是 total
         } else {
           ElMessage.error(response.msg || '获取用户列表失败')
         }
@@ -228,10 +231,13 @@ export default {
         this.loading = false
       }
     },
-    handleSearch() {
-      this.currentPage = 1
+    
+    // 搜索处理函数 - 增加防抖
+    handleSearch: debounce(function() {
+      this.currentPage = 1  // 重置到第一页
       this.fetchUserList()
-    },
+    }, 300),  // 300ms 防抖
+    
     handleAddUser() {
       this.dialogType = 'add'
       this.userForm = {
@@ -338,6 +344,17 @@ export default {
         this.submitting = false
       }
     }
+  }
+}
+
+// 防抖函数
+function debounce(fn, delay) {
+  let timer = null
+  return function (...args) {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      fn.apply(this, args)
+    }, delay)
   }
 }
 </script>
