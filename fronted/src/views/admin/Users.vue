@@ -133,11 +133,11 @@
 </template>
 
 <script>
-import { Search } from '@element-plus/icons-vue'
 import AdminHeader from '@/components/AdminHeader.vue'
 import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserList, toggleUserStatus, API_CONFIG } from '@/api'
+import { API_CONFIG } from '@/api'
+import { Search } from '@element-plus/icons-vue'
 
 export default {
   name: 'AdminUsers',
@@ -215,6 +215,13 @@ export default {
     async fetchUserList() {
       this.loading = true
       try {
+        // 检查认证令牌
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          return
+        }
+
         // 构建查询参数
         const params = {
           page: this.currentPage,
@@ -237,19 +244,34 @@ export default {
           params.status = this.statusFilter
         }
 
-        console.log('请求参数:', params)
-        const response = await getUserList(params)
-        console.log('获取用户列表响应:', response)
-        
-        if (response.code === 0 && response.data) {
-          this.userList = response.data.results || []
-          this.total = response.data.count || 0
+        const queryString = new URLSearchParams(params).toString()
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/?${queryString}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            return
+          }
+          throw new Error(`获取用户列表失败: ${response.status}`)
+        }
+
+        const data = await response.json()
+        if (data.code === 0) {
+          this.userList = data.data.results || []
+          this.total = data.data.count || 0
         } else {
-          ElMessage.error(response.msg || '获取用户列表失败')
+          throw new Error(data.msg || '获取用户列表失败')
         }
       } catch (error) {
         console.error('获取用户列表失败:', error)
-        ElMessage.error('获取用户列表失败')
+        ElMessage.error(error.message || '获取用户列表失败')
       } finally {
         this.loading = false
       }
@@ -350,18 +372,41 @@ export default {
             type: 'warning'
           }
         )
+
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          return
+        }
         
-        const response = await toggleUserStatus(row.username)
-        if (response.code === 0) {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/${row.id}/toggle_status/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            return
+          }
+          throw new Error(`${action}用户失败: ${response.status}`)
+        }
+
+        const data = await response.json()
+        if (data.code === 0) {
           row.status = row.status === 'active' ? 'disabled' : 'active'
           ElMessage.success(`${action}成功`)
         } else {
-          ElMessage.error(response.msg || `${action}失败`)
+          throw new Error(data.msg || `${action}失败`)
         }
       } catch (error) {
         if (error !== 'cancel') {
           console.error(`${action}用户失败:`, error)
-          ElMessage.error(`${action}失败`)
+          ElMessage.error(error.message || `${action}失败`)
         }
       }
     },
@@ -376,14 +421,28 @@ export default {
             type: 'warning'
           }
         )
+
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          return
+        }
         
         const response = await fetch(`${API_CONFIG.BASE_URL}/users/${row.id}/`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${token}`,
             'ngrok-skip-browser-warning': 'true'
           }
         });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            return
+          }
+          throw new Error(`删除用户失败: ${response.status}`)
+        }
 
         if (response.status === 204) {
           ElMessage.success('删除成功');
@@ -410,6 +469,13 @@ export default {
       try {
         await this.$refs.userForm.validate()
         this.submitting = true
+
+        // 检查认证令牌
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          return
+        }
         
         if (this.dialogType === 'add') {
           // 添加用户
@@ -429,16 +495,24 @@ export default {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+              'Authorization': `Bearer ${token}`,
               'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify({ data: userData })
           });
 
+          if (!response.ok) {
+            if (response.status === 401) {
+              ElMessage.error('登录已过期，请重新登录')
+              return
+            }
+            throw new Error(`添加用户失败: ${response.status}`)
+          }
+
           const data = await response.json();
           console.log('创建用户响应:', data);
           
-          if (response.ok && data.success && data.status_code === 200) {
+          if (data.code === 0) {
             ElMessage.success('添加用户成功')
             this.dialogVisible = false
             this.fetchUserList()
@@ -460,16 +534,24 @@ export default {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+              'Authorization': `Bearer ${token}`,
               'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify({ data: userData })
           });
 
+          if (!response.ok) {
+            if (response.status === 401) {
+              ElMessage.error('登录已过期，请重新登录')
+              return
+            }
+            throw new Error(`编辑用户失败: ${response.status}`)
+          }
+
           const data = await response.json();
           console.log('编辑用户响应:', data);
           
-          if (response.ok && data.success && data.status_code === 200) {
+          if (data.code === 0) {
             ElMessage.success('编辑用户成功')
             this.dialogVisible = false
             this.fetchUserList()

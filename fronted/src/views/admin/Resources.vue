@@ -175,7 +175,7 @@
 <script>
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourseList, getCoursewareList, deleteCourseware, API_CONFIG } from '@/api'
+import { getCourseList, deleteCourseware, API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminResources',
@@ -222,6 +222,12 @@ export default {
     async fetchResourceList() {
       try {
         this.loading = true
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          return
+        }
+
         const params = {
           page: this.currentPage,
           page_size: this.pageSize,
@@ -234,10 +240,28 @@ export default {
           params.end_date = this.dateRange[1]
         }
         
-        const response = await getCoursewareList(params)
-        if (response.code === 0 && response.data) {
+        const queryString = new URLSearchParams(params).toString()
+        const response = await fetch(`${API_CONFIG.BASE_URL}/coursewares/?${queryString}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            return
+          }
+          throw new Error(`获取资源列表失败: ${response.status}`)
+        }
+
+        const data = await response.json()
+        if (data.code === 0 && data.data) {
           // 处理返回的资源列表数据
-          this.resourceList = (response.data.results || []).map(item => ({
+          this.resourceList = (data.data.results || []).map(item => ({
             id: item.id,
             name: item.file_name,
             type: item.file_type,
@@ -247,13 +271,13 @@ export default {
             course: item.course_name || '未知课程',
             uploader: item.uploader_name || '未知用户'
           }))
-          this.total = response.data.count || 0
+          this.total = data.data.count || 0
         } else {
-          ElMessage.error(response.msg || '获取资源列表失败')
+          ElMessage.error(data.msg || '获取资源列表失败')
         }
       } catch (error) {
         console.error('获取资源列表失败:', error)
-        ElMessage.error('获取资源列表失败')
+        ElMessage.error(error.message || '获取资源列表失败')
       } finally {
         this.loading = false
       }
@@ -320,15 +344,15 @@ export default {
     },
     async handleDownload(row) {
       try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          return
+        }
+
         // 构建正确的下载URL
         const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${row.id}/`
         console.log('下载URL:', downloadUrl)
-        
-        // 获取token
-        const token = localStorage.getItem('token')
-        if (!token) {
-          throw new Error('未登录或登录已过期')
-        }
         
         // 创建下载请求
         const response = await fetch(downloadUrl, {
@@ -340,6 +364,10 @@ export default {
         })
         
         if (!response.ok) {
+          if (response.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            return
+          }
           throw new Error(`下载失败: ${response.status}`)
         }
         
@@ -385,7 +413,7 @@ export default {
         // 调用删除接口，直接传入 id
         const response = await deleteCourseware(row.id)
         if (response.code === 0) {
-          ElMessage.success('删除成功')
+        ElMessage.success('删除成功')
           // 重新加载资源列表
           await this.fetchResourceList()
         } else {
@@ -528,6 +556,13 @@ export default {
           return
         }
 
+        // 检查认证令牌
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          return
+        }
+
         console.log('准备上传文件:', {
           fileName: this.uploadForm.file.name,
           fileSize: this.uploadForm.file.size,
@@ -550,11 +585,19 @@ export default {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Authorization': `Bearer ${token}`,
             'ngrok-skip-browser-warning': 'true'
           },
           body: JSON.stringify(coursewareData)
         })
+
+        if (!createResponse.ok) {
+          if (createResponse.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            return
+          }
+          throw new Error(`创建课件记录失败: ${createResponse.status}`)
+        }
 
         const createData = await createResponse.json()
         console.log('创建课件响应:', createData)
@@ -574,11 +617,19 @@ export default {
         const uploadResponse = await fetch(`${API_CONFIG.BASE_URL}/coursewares/upload/`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Authorization': `Bearer ${token}`,
             'ngrok-skip-browser-warning': 'true'
           },
           body: formData
         })
+
+        if (!uploadResponse.ok) {
+          if (uploadResponse.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            return
+          }
+          throw new Error(`文件上传失败: ${uploadResponse.status}`)
+        }
 
         const uploadData = await uploadResponse.json()
         console.log('文件上传响应:', uploadData)
