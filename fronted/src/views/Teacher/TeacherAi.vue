@@ -203,16 +203,17 @@ const loadKnowledgePoints = async () => {
       page: currentPage.value,
       page_size: pageSize.value,
       search: searchQuery.value,
-      course: selectedCourse.value.id,
+      course: selectedCourse.value.id,  // 使用选中课程的ID筛选
       ordering: 'title'
     })
     
     console.log('知识点响应:', response)
     
-    if (response.success && response.status_code === 200) {
+    if (response.code === 0) {  // 修改判断条件以匹配实际返回格式
       const responseData = response.data
       
       if (responseData && Array.isArray(responseData.results)) {
+        // 直接使用返回的数据，因为已经是过滤后的结果
         knowledgePoints.value = responseData.results
         total.value = responseData.count
         
@@ -223,7 +224,7 @@ const loadKnowledgePoints = async () => {
         ElMessage.error('知识点数据格式不正确')
       }
     } else {
-      const errorMsg = response.message || '获取知识点列表失败'
+      const errorMsg = response.msg || '获取知识点列表失败'
       ElMessage.error(errorMsg)
     }
   } catch (error) {
