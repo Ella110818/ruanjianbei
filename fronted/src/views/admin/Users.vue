@@ -211,6 +211,7 @@ export default {
     this.fetchUserList()
   },
   methods: {
+    // 修改加载用户列表函数
     async fetchUserList() {
       this.loading = true
       try {
@@ -402,6 +403,7 @@ export default {
       this.currentPage = val
       this.fetchUserList()
     },
+    // 修改添加用户部分的代码
     async handleSubmitForm() {
       if (!this.$refs.userForm) return
       
@@ -427,7 +429,7 @@ export default {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
               'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify({ data: userData })
@@ -436,7 +438,7 @@ export default {
           const data = await response.json();
           console.log('创建用户响应:', data);
           
-          if (data.code === 0) {
+          if (response.ok && data.success && data.status_code === 200) {
             ElMessage.success('添加用户成功')
             this.dialogVisible = false
             this.fetchUserList()
@@ -458,7 +460,7 @@ export default {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
               'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify({ data: userData })
@@ -467,7 +469,7 @@ export default {
           const data = await response.json();
           console.log('编辑用户响应:', data);
           
-          if (data.code === 0) {
+          if (response.ok && data.success && data.status_code === 200) {
             ElMessage.success('编辑用户成功')
             this.dialogVisible = false
             this.fetchUserList()

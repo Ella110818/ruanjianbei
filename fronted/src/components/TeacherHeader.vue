@@ -85,6 +85,7 @@
 
 <script>
 import { ElMessage } from 'element-plus'
+import { API_CONFIG } from '@/api'  // 添加这行导入
 
 export default {
   name: 'TeacherHeader',
@@ -185,7 +186,7 @@ export default {
         await this.$refs.passwordFormRef.validate()
         
         this.submitting = true
-        const response = await fetch('/api/users/change_password/', {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/change_password/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -201,17 +202,25 @@ export default {
           })
         })
 
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
         const data = await response.json()
         
         if (data.code === 0) {
           ElMessage.success('密码修改成功')
           this.changePasswordVisible = false
         } else {
-          ElMessage.error(data.message || '密码修改失败')
+          ElMessage.error(data.msg || '密码修改失败')
         }
       } catch (error) {
         console.error('修改密码失败:', error)
-        ElMessage.error('修改密码失败，请重试')
+        if (error.message.includes('status: 405')) {
+          ElMessage.error('请求方法不允许，请联系管理员')
+        } else {
+          ElMessage.error('修改密码失败，请重试')
+        }
       } finally {
         this.submitting = false
       }

@@ -12,7 +12,6 @@
       <div class="content-area">
         <!-- 课程卡片视图 -->
         <div v-if="!selectedCourse" class="courses-container">
-          
           <div class="courses-grid">
             <el-card 
               v-for="course in coursesList" 
@@ -33,6 +32,9 @@
               <div class="course-info">
                 <h3 class="course-title">{{ course.title }}</h3>
                 <span class="teacher">{{ course.teacher_name || '未知教师' }}</span>
+                <div class="course-stats">
+                  <span class="knowledge-points-count">知识点: {{ course.knowledge_points_count || 0 }}</span>
+                </div>
                 <el-button type="primary" @click.stop="selectCourse(course)">备课</el-button>
               </div>
             </el-card>
@@ -44,6 +46,7 @@
           <div class="header-section">
             <el-button icon="ArrowLeft" @click="backToCourses">返回课程列表</el-button>
             <h2>{{ selectedCourse.title }} - 知识点</h2>
+            <el-button type="primary" @click="handleCreateExercise">创建练习题</el-button>
           </div>
           
           <!-- 搜索和筛选区域 -->
@@ -133,6 +136,87 @@
         </div>
       </div>
     </div>
+
+    <!-- 添加练习题对话框 -->
+    <el-dialog
+      v-model="showExerciseDialog"
+      title="创建练习题"
+      width="600px"
+      destroy-on-close
+    >
+      <el-form
+        ref="exerciseFormRef"
+        :model="exerciseForm"
+        :rules="exerciseRules"
+        label-width="100px"
+      >
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="exerciseForm.title" placeholder="请输入题目标题"></el-input>
+        </el-form-item>
+        
+        <el-form-item label="内容" prop="content">
+          <el-input
+            v-model="exerciseForm.content"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入题目内容"
+          ></el-input>
+        </el-form-item>
+        
+        <el-form-item label="题目类型" prop="type">
+          <el-select v-model="exerciseForm.type" placeholder="请选择题目类型">
+            <el-option
+              v-for="value in Object.values(EXERCISE_TYPES)"
+              :key="value"
+              :label="EXERCISE_TYPE_LABELS[value]"
+              :value="value"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="难度等级" prop="difficulty">
+          <el-rate
+            v-model="exerciseForm.difficulty"
+            :max="5"
+            :texts="['简单', '较简单', '中等', '较难', '困难']"
+            show-text
+          ></el-rate>
+        </el-form-item>
+        
+        <el-form-item label="关联知识点" prop="knowledge_point">
+          <el-select 
+            v-model="exerciseForm.knowledge_point"
+            placeholder="请选择关联知识点"
+            filterable
+          >
+            <el-option
+              v-for="point in knowledgePoints"
+              :key="point.id"
+              :label="point.title"
+              :value="point.id"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="答案模板" prop="answer_template">
+          <el-input
+            v-model="exerciseForm.answer_template"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入答案模板（选填）"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showExerciseDialog = false">取消</el-button>
+          <el-button type="primary" @click="submitExercise" :loading="submitting">
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -140,7 +224,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { generateKnowledgePointsPPT, getKnowledgePoints, handleRequest } from '@/api'
+import { generateKnowledgePointsPPT, handleRequest } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import pythonImg from '@/assets/python.png'
@@ -199,32 +283,37 @@ const loadKnowledgePoints = async () => {
   
   loading.value = true
   try {
-    const response = await getKnowledgePoints({
+    const response = await handleRequest(`knowledge-points/`, {
+      method: 'GET',
+      params: {
       page: currentPage.value,
-      page_size: pageSize.value,
-      search: searchQuery.value,
-      course: selectedCourse.value.id,  // 使用选中课程的ID筛选
+        page_size: pageSize.value,
+        search: searchQuery.value,
+        course_id: selectedCourse.value.id,  // 使用课程ID作为过滤条件
       ordering: 'title'
+      }
     })
     
     console.log('知识点响应:', response)
     
-    if (response.code === 0) {  // 修改判断条件以匹配实际返回格式
+    if (response.success && response.status_code === 200) {
       const responseData = response.data
       
       if (responseData && Array.isArray(responseData.results)) {
-        // 直接使用返回的数据，因为已经是过滤后的结果
-        knowledgePoints.value = responseData.results
-        total.value = responseData.count
+        // 过滤出属于当前课程的知识点
+        knowledgePoints.value = responseData.results.filter(point => 
+          point.course === selectedCourse.value.id
+        )
+        total.value = knowledgePoints.value.length
         
-        console.log('知识点加载完成，总数：', total.value)
+        console.log('当前课程知识点加载完成，总数：', total.value)
         console.log('当前页数据：', knowledgePoints.value)
       } else {
         console.error('知识点数据格式不正确:', responseData)
         ElMessage.error('知识点数据格式不正确')
       }
     } else {
-      const errorMsg = response.msg || '获取知识点列表失败'
+      const errorMsg = response.message || '获取知识点列表失败'
       ElMessage.error(errorMsg)
     }
   } catch (error) {
@@ -330,16 +419,16 @@ const handleGeneratePPT = async (knowledgePoints) => {
           })
           
           if (fileResponse.ok) {
-            const blob = await fileResponse.blob()
-            const url = window.URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.href = url
-            link.download = response.data.filename || '知识点PPT.pptx'
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            window.URL.revokeObjectURL(url)
-            ElMessage.success('PPT下载成功！')
+          const blob = await fileResponse.blob()
+          const url = window.URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = response.data.filename || '知识点PPT.pptx'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(url)
+          ElMessage.success('PPT下载成功！')
           } else {
             throw new Error('文件下载响应格式不正确')
           }
@@ -361,7 +450,141 @@ const handleGeneratePPT = async (knowledgePoints) => {
   }
 }
 
-// 修改加载课程数据的函数
+// 修改练习题类型常量
+const EXERCISE_TYPES = {
+  SINGLE_CHOICE: 'single_choice',
+  MULTIPLE_CHOICE: 'multiple_choice',
+  FILL_BLANK: 'fill_blank',
+  SHORT_ANSWER: 'short_answer',
+  CODING: 'coding',
+  OTHER: 'other'
+}
+
+// 添加题型显示名称映射
+const EXERCISE_TYPE_LABELS = {
+  [EXERCISE_TYPES.SINGLE_CHOICE]: '单选题',
+  [EXERCISE_TYPES.MULTIPLE_CHOICE]: '多选题',
+  [EXERCISE_TYPES.FILL_BLANK]: '填空题',
+  [EXERCISE_TYPES.SHORT_ANSWER]: '简答题',
+  [EXERCISE_TYPES.CODING]: '编程题',
+  [EXERCISE_TYPES.OTHER]: '其他'
+}
+
+// 添加练习题创建方法
+const createExercise = async (exerciseData) => {
+  try {
+    // 数据验证
+    if (!exerciseData.title || exerciseData.title.length > 200) {
+      throw new Error('标题长度必须在1-200字符之间')
+    }
+    if (!exerciseData.content) {
+      throw new Error('题目内容不能为空')
+    }
+    if (!Object.values(EXERCISE_TYPES).includes(exerciseData.type)) {
+      throw new Error('无效的题目类型')
+    }
+    if (!exerciseData.knowledge_point) {
+      throw new Error('请选择关联的知识点')
+    }
+    if (![1, 2, 3, 4, 5].includes(exerciseData.difficulty)) {
+      throw new Error('难度等级必须在1-5之间')
+    }
+
+    // 构造请求体
+    const requestBody = {
+      data: {
+        title: exerciseData.title.trim(),
+        content: exerciseData.content.trim(),
+        type: exerciseData.type,
+        difficulty: exerciseData.difficulty,
+        knowledge_point: exerciseData.knowledge_point,
+        answer_template: exerciseData.answer_template || ''
+      }
+    }
+
+    console.log('准备发送的练习题数据:', requestBody)
+
+    const response = await handleRequest('exercises/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('teacherToken')}`,
+        'ngrok-skip-browser-warning': 'true'
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    if (response.success && response.status_code === 200) {
+      ElMessage.success('创建练习题成功')
+      return response.data
+    } else {
+      throw new Error(response.message || '创建练习题失败')
+    }
+  } catch (error) {
+    console.error('创建练习题失败:', error)
+    ElMessage.error(error.message || '创建练习题失败，请稍后重试')
+    throw error
+  }
+}
+
+// 添加练习题表单数据
+const exerciseForm = ref({
+  title: '',
+  content: '',
+  type: '',
+  difficulty: 1,
+  knowledge_point: null,
+  answer_template: ''
+})
+
+// 添加练习题表单验证规则
+const exerciseRules = {
+  title: [
+    { required: true, message: '请输入题目标题', trigger: 'blur' },
+    { max: 200, message: '标题长度不能超过200字符', trigger: 'blur' }
+  ],
+  content: [
+    { required: true, message: '请输入题目内容', trigger: 'blur' }
+  ],
+  type: [
+    { required: true, message: '请选择题目类型', trigger: 'change' }
+  ],
+  difficulty: [
+    { required: true, message: '请选择难度等级', trigger: 'change' },
+    { type: 'number', min: 1, max: 5, message: '难度等级必须在1-5之间', trigger: 'change' }
+  ],
+  knowledge_point: [
+    { required: true, message: '请选择关联知识点', trigger: 'change' }
+  ]
+}
+
+// 添加提交练习题方法
+const submitExercise = async () => {
+  if (!exerciseFormRef.value) return
+  
+  try {
+    await exerciseFormRef.value.validate()
+    submitting.value = true
+    await createExercise(exerciseForm.value)
+    // 重置表单
+    exerciseForm.value = {
+      title: '',
+      content: '',
+      type: '',
+      difficulty: 1,
+      knowledge_point: null,
+      answer_template: ''
+    }
+    showExerciseDialog.value = false
+    // 关闭对话框或进行其他操作
+  } catch (error) {
+    console.error('提交练习题失败:', error)
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 修改课程列表加载函数
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
@@ -383,13 +606,14 @@ const loadCourses = async () => {
 
       if (courseList.length > 0) {
         coursesList.value = courseList.map(course => ({
-          id: course.id,
+        id: course.id,
           title: course.name || course.title,
           description: course.description,
           subject: course.subject,
           grade_level: course.grade_level,
-          teacher_name: course.teacher_name
-        }))
+          teacher_name: course.teacher_name,
+          knowledge_points_count: course.knowledge_points_count || 0 // 添加知识点数量
+      }))
         console.log('课程列表加载成功:', coursesList.value)
       } else {
         console.warn('课程列表为空')
@@ -419,6 +643,25 @@ const updateCourseMenuOpen = (value) => {
 onMounted(async () => {
   await loadCourses()
 })
+
+const showExerciseDialog = ref(false)
+const submitting = ref(false)
+
+// 添加表单引用
+const exerciseFormRef = ref(null)
+
+// 添加创建练习题按钮的处理方法
+const handleCreateExercise = () => {
+  showExerciseDialog.value = true
+  exerciseForm.value = {
+    title: '',
+    content: '',
+    type: '',
+    difficulty: 1,
+    knowledge_point: null,
+    answer_template: ''
+  }
+}
 </script>
 
 <style scoped>
@@ -503,6 +746,29 @@ onMounted(async () => {
   margin-bottom: 16px;
 }
 
+.course-stats {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #666;
+}
+
+.knowledge-points-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.knowledge-points-count::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'%3E%3Cpath d='M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
 .knowledge-points-container {
   background-color: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
@@ -564,5 +830,11 @@ onMounted(async () => {
   font-weight: 600;
   border-bottom: none;
   height: 50px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style> 

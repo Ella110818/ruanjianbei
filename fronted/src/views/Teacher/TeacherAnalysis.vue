@@ -215,10 +215,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
-import { getStudentAnswers, getExercises, updateStudentAnswer } from '@/api'
+import { updateStudentAnswer } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { API_CONFIG } from '@/api'
 import { Search, Monitor, Edit } from '@element-plus/icons-vue'
+import { debounce } from 'lodash-es'
 
 // 状态管理
 const loading = ref(false)
@@ -233,17 +234,26 @@ const selectedAnswer = ref(null)
 // 加载练习题列表
 const loadExercises = async () => {
   try {
-    const response = await getExercises({
-      page: 1,
-      page_size: 100
+    const response = await fetch(`${API_CONFIG.BASE_URL}/exercises/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('teacherToken')}`,
+        'ngrok-skip-browser-warning': 'true'
+      }
     })
     
-    if (response.success && response.status_code === 200) {  // 修改判断条件
-      exercises.value = response.data || []
+    const data = await response.json()
+    
+    if (data.code === 0) {
+      exercises.value = data.data.results || []
       console.log('练习题列表:', exercises.value)
+    } else {
+      throw new Error(data.msg || '获取练习题列表失败')
     }
   } catch (error) {
     console.error('加载练习题失败:', error)
+    ElMessage.error('加载练习题失败，请稍后重试')
   }
 }
 
@@ -253,11 +263,11 @@ const filters = ref({
   exercise: undefined
 })
 
-// 处理筛选条件变化
-const handleFilterChange = () => {
+// 处理筛选条件变化 - 使用防抖
+const handleFilterChange = debounce(() => {
   currentPage.value = 1
   loadAnswers()
-}
+}, 300)
 
 // 处理页码变化
 const handlePageChange = (page) => {
@@ -336,24 +346,40 @@ const saveGrade = async () => {
 const loadAnswers = async () => {
   loading.value = true
   try {
-    const response = await getStudentAnswers({
-      ...filters.value,
-      page: currentPage.value,
-      page_size: pageSize.value
+    // 构建查询参数
+    const params = new URLSearchParams({
+      page: currentPage.value.toString(),
+      page_size: pageSize.value.toString()
+    })
+
+    // 添加搜索条件
+    if (filters.value.search.trim()) {
+      params.append('student_name', filters.value.search.trim())
+    }
+
+    // 添加练习题筛选
+    if (filters.value.exercise) {
+      params.append('exercise_id', filters.value.exercise.toString())
+    }
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}/student-answers/?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('teacherToken')}`,
+        'ngrok-skip-browser-warning': 'true'
+      }
     })
     
-    console.log('API响应数据:', response)
+    const data = await response.json()
     
-    if (response.success && response.status_code === 200) {  // 修改判断条件
-      console.log('答题记录数据:', response.data.results)
-      console.log('总记录数:', response.data.count)
-      
-      answers.value = response.data.results || []
-      total.value = response.data.count || 0
-      
-      console.log('更新后的answers:', answers.value)
+    if (data.code === 0) {
+      answers.value = data.data.results || []
+      total.value = data.data.count || 0
+      console.log('答题记录数据:', answers.value)
+      console.log('总记录数:', total.value)
     } else {
-      ElMessage.error('获取答题记录失败')
+      throw new Error(data.msg || '获取答题记录失败')
     }
   } catch (error) {
     console.error('加载答题记录失败:', error)
