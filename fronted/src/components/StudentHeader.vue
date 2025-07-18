@@ -199,18 +199,21 @@ const submitChangePassword = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('studentToken')}`,
+        'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify({
-        old_password: passwordForm.value.old_password,
-        new_password: passwordForm.value.new_password,
-        confirm_password: passwordForm.value.confirm_password
+        data: {
+          old_password: passwordForm.value.old_password,
+          new_password: passwordForm.value.new_password,
+          confirm_password: passwordForm.value.confirm_password
+        }
       })
     })
 
     const data = await response.json()
     
-    if (data.success) {
+    if (data.code === 0) {
       ElMessage.success('密码修改成功')
       changePasswordVisible.value = false
     } else {

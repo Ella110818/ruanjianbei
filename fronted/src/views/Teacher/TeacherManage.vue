@@ -464,7 +464,26 @@ const formRules = {
     { required: true, message: '请选择知识点', trigger: 'change' }
   ],
   answer_template: [
-    { required: true, message: '请输入答案模板', trigger: 'blur' }
+    { required: true, message: '请输入答案模板', trigger: 'blur' },
+    { 
+      validator: (rule, value, callback) => {
+        if (exerciseForm.value.type === 'single_choice') {
+          try {
+            const options = JSON.parse(value);
+            if (!Array.isArray(options)) {
+              callback(new Error('单选题答案模板必须是数组格式'));
+            } else {
+              callback();
+            }
+          } catch (e) {
+            callback(new Error('答案模板格式不正确'));
+          }
+        } else {
+          callback();
+        }
+      },
+      trigger: 'blur'
+    }
   ]
 }
 
@@ -565,34 +584,48 @@ const handleCreateExercise = async () => {
         type: exerciseForm.value.type,
         difficulty: Number(exerciseForm.value.difficulty),
         knowledge_point: Number(exerciseForm.value.knowledge_point),
-        answer_template: exerciseForm.value.answer_template
+        answer_template: exerciseForm.value.type === 'single_choice' 
+          ? JSON.stringify(['A', 'B', 'C', 'D']) // 单选题默认四个选项
+          : exerciseForm.value.answer_template // 简答题保持原样
       }
     }
     
     console.log('准备发送的练习题数据:', exerciseData)
     
     // 创建练习题
-    const response = await fetch(`${API_CONFIG.BASE_URL}/exercises/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'ngrok-skip-browser-warning': 'true'
-      },
-      body: JSON.stringify(exerciseData)
-    });
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/exercises/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify(exerciseData)
+      });
 
-    const data = await response.json();
-    console.log('创建练习题响应:', data)
-    
-    if (data.code === 0) {
-      ElMessage.success('创建练习题成功')
-      createDialogVisible.value = false
-      // 重新加载练习题列表
-      loadExercises()
-    } else {
-      console.error('创建练习题失败:', data)
-      ElMessage.error(data.msg || '创建练习题失败')
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('服务器错误详情:', errorData);
+        throw new Error(errorData.message || '创建练习题失败');
+      }
+
+      const data = await response.json();
+      console.log('创建练习题响应:', data)
+      
+      if (data.code === 0) {
+        ElMessage.success('创建练习题成功')
+        createDialogVisible.value = false
+        // 重新加载练习题列表
+        loadExercises()
+      } else {
+        throw new Error(data.msg || '创建练习题失败')
+      }
+    } catch (error) {
+      console.error('创建练习题失败:', error)
+      ElMessage.error(error.message || '创建练习题失败，请检查表单内容')
+    } finally {
+      creating.value = false
     }
   } catch (error) {
     console.error('创建练习题失败:', error)

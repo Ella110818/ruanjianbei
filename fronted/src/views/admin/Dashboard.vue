@@ -121,9 +121,13 @@ export default {
 
           if (courseList.length > 0) {
             this.courses = courseList.map(course => ({
-            value: course.id,
+              value: course.id,
               label: course.name || course.title
-          }))
+            }))
+            // 默认选中第一个课程
+            if (this.courses.length > 0 && !this.selectedCourse) {
+              this.selectedCourse = this.courses[0].value
+            }
           } else {
             console.warn('课程列表为空')
             ElMessage.warning('暂无可用课程')
