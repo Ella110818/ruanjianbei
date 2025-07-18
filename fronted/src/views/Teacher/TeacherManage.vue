@@ -262,8 +262,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
-import { getExercises, getKnowledgePoints, getCourseList, createExercise, generateQuestions } from '@/api'
+import { getExercises, getKnowledgePoints, getCourseList, generateQuestions } from '@/api'
 import { ElMessage } from 'element-plus'
+import { API_CONFIG } from '@/api'
 
 // 状态管理
 const sideTab = ref('exercises')
@@ -564,26 +565,34 @@ const handleCreateExercise = async () => {
         type: exerciseForm.value.type,
         difficulty: Number(exerciseForm.value.difficulty),
         knowledge_point: Number(exerciseForm.value.knowledge_point),
-        answer_template: Array.isArray(exerciseForm.value.answer_template) 
-          ? JSON.stringify(exerciseForm.value.answer_template)
-          : exerciseForm.value.answer_template
+        answer_template: exerciseForm.value.answer_template
       }
     }
     
     console.log('准备发送的练习题数据:', exerciseData)
     
     // 创建练习题
-    const response = await createExercise(exerciseData)
-    console.log('创建练习题响应:', response)
+    const response = await fetch(`${API_CONFIG.BASE_URL}/exercises/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'ngrok-skip-browser-warning': 'true'
+      },
+      body: JSON.stringify(exerciseData)
+    });
+
+    const data = await response.json();
+    console.log('创建练习题响应:', data)
     
-    if (response.code === 0) {
+    if (data.code === 0) {
       ElMessage.success('创建练习题成功')
       createDialogVisible.value = false
       // 重新加载练习题列表
       loadExercises()
     } else {
-      console.error('创建练习题失败:', response)
-      ElMessage.error(response.msg || '创建练习题失败')
+      console.error('创建练习题失败:', data)
+      ElMessage.error(data.msg || '创建练习题失败')
     }
   } catch (error) {
     console.error('创建练习题失败:', error)

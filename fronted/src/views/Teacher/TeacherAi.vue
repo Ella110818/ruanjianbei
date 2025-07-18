@@ -12,7 +12,7 @@
       <div class="content-area">
         <!-- 课程卡片视图 -->
         <div v-if="!selectedCourse" class="courses-container">
-          <h2>我的课程</h2>
+          
           <div class="courses-grid">
             <el-card 
               v-for="course in coursesList" 
