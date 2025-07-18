@@ -175,8 +175,7 @@
 <script>
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourseList, getCoursewareList, deleteCourseware, uploadCourseware } from '@/api'
-import API_CONFIG from '@/api/config' // 导入 API_CONFIG
+import { getCourseList, getCoursewareList, deleteCourseware, uploadCourseware, API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminResources',
