@@ -175,7 +175,7 @@
 <script>
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourseList, getCoursewareList, deleteCourseware, uploadCourseware, API_CONFIG } from '@/api'
+import { getCourseList, getCoursewareList, deleteCourseware, API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminResources',
@@ -537,17 +537,28 @@ export default {
 
         // 创建 FormData
         const formData = new FormData()
-        formData.append('file', this.uploadForm.file)  // 使用 'file' 作为文件字段名
-        formData.append('course_id', this.uploadForm.course)  // 添加课程ID
+        formData.append('data[file]', this.uploadForm.file)  // 修改文件字段名
+        formData.append('data[course_id]', this.uploadForm.course)  // 添加课程ID
+        formData.append('data[name]', this.uploadForm.name)  // 添加资源名称
+        formData.append('data[description]', this.uploadForm.description || '')  // 添加描述
 
         console.log('开始调用上传接口')
         // 调用上传接口
-        const response = await uploadCourseware(formData)
-        console.log('上传接口响应:', response)
+        const response = await fetch(`${API_CONFIG.BASE_URL}/coursewares/upload/`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+        console.log('上传接口响应:', data)
         
-        if (response.code === 0 && response.data) {
+        if (data.code === 0 && data.data) {
           // 处理返回的文件信息
-          const fileInfo = response.data
+          const fileInfo = data.data
           console.log('文件上传成功:', {
             id: fileInfo.id,
             fileName: fileInfo.file_name,
@@ -565,8 +576,8 @@ export default {
           // 刷新资源列表
           await this.fetchResourceList()
         } else {
-          console.log('上传失败:', response)
-          throw new Error(response.msg || '上传失败')
+          console.log('上传失败:', data)
+          throw new Error(data.msg || '上传失败')
         }
       } catch (error) {
         console.error('上传失败:', error)

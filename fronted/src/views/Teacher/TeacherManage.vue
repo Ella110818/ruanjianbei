@@ -531,10 +531,10 @@ const handleCreateExercise = async () => {
     // 如果是自动出题模式，则先调用AI生成题目接口
     if (isAutoGenerate.value) {
       const generateResponse = await generateQuestions({
-        query: exerciseForm.value.content || exerciseForm.value.title, // 使用题目内容或标题作为查询内容
-        knowledge_point_ids: [exerciseForm.value.knowledge_point], // 转换为数组格式
-        question_types: [exerciseForm.value.type], // 转换为数组格式
-        quantity: 1, // 只生成一道题
+        query: exerciseForm.value.content || exerciseForm.value.title,
+        knowledge_point_ids: [exerciseForm.value.knowledge_point],
+        question_types: [exerciseForm.value.type],
+        quantity: 1,
         difficulty: exerciseForm.value.difficulty
       })
 
@@ -548,7 +548,6 @@ const handleCreateExercise = async () => {
       if (generatedQuestion) {
         exerciseForm.value.title = generatedQuestion.title || exerciseForm.value.title
         exerciseForm.value.content = generatedQuestion.content || exerciseForm.value.content
-        // 确保 answer_template 是字符串格式
         if (Array.isArray(generatedQuestion.answer_template)) {
           exerciseForm.value.answer_template = JSON.stringify(generatedQuestion.answer_template)
         } else {
@@ -559,26 +558,32 @@ const handleCreateExercise = async () => {
     
     // 创建练习题前确保所有数据格式正确
     const exerciseData = {
-      ...exerciseForm.value,
-      // 确保 answer_template 是字符串格式
-      answer_template: typeof exerciseForm.value.answer_template === 'string' 
-        ? exerciseForm.value.answer_template 
-        : JSON.stringify(exerciseForm.value.answer_template)
+      data: {
+        title: exerciseForm.value.title,
+        content: exerciseForm.value.content,
+        type: exerciseForm.value.type,
+        difficulty: Number(exerciseForm.value.difficulty),
+        knowledge_point: Number(exerciseForm.value.knowledge_point),
+        answer_template: Array.isArray(exerciseForm.value.answer_template) 
+          ? JSON.stringify(exerciseForm.value.answer_template)
+          : exerciseForm.value.answer_template
+      }
     }
+    
+    console.log('准备发送的练习题数据:', exerciseData)
     
     // 创建练习题
     const response = await createExercise(exerciseData)
-    console.log('创建练习题响应:', response);
+    console.log('创建练习题响应:', response)
     
-    // 检查响应格式
-    if (response.success && (response.status_code === 200 || response.status_code === 201)) {
+    if (response.code === 0) {
       ElMessage.success('创建练习题成功')
       createDialogVisible.value = false
       // 重新加载练习题列表
       loadExercises()
     } else {
-      console.error('创建练习题失败:', response);
-      ElMessage.error(response.message || '创建练习题失败')
+      console.error('创建练习题失败:', response)
+      ElMessage.error(response.msg || '创建练习题失败')
     }
   } catch (error) {
     console.error('创建练习题失败:', error)
