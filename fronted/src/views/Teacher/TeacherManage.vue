@@ -431,11 +431,25 @@ const handleCreateExercise = async () => {
     if (generatedQuestion) {
       exerciseForm.value.title = generatedQuestion.title || exerciseForm.value.title
       exerciseForm.value.content = generatedQuestion.content || exerciseForm.value.content
-      exerciseForm.value.answer_template = generatedQuestion.answer_template || exerciseForm.value.answer_template
+      // 确保 answer_template 是字符串格式
+      if (Array.isArray(generatedQuestion.answer_template)) {
+        exerciseForm.value.answer_template = JSON.stringify(generatedQuestion.answer_template)
+      } else {
+        exerciseForm.value.answer_template = generatedQuestion.answer_template || exerciseForm.value.answer_template
+      }
+    }
+    
+    // 创建练习题前确保所有数据格式正确
+    const exerciseData = {
+      ...exerciseForm.value,
+      // 确保 answer_template 是字符串格式
+      answer_template: typeof exerciseForm.value.answer_template === 'string' 
+        ? exerciseForm.value.answer_template 
+        : JSON.stringify(exerciseForm.value.answer_template)
     }
     
     // 创建练习题
-    const response = await createExercise(exerciseForm.value)
+    const response = await createExercise(exerciseData)
     console.log('创建练习题响应:', response);
     
     // 检查响应格式
