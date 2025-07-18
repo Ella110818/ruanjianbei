@@ -10,8 +10,41 @@
         @update:courseMenuOpen="updateCourseMenuOpen"
       />
       <div class="content-area">
-        <div class="knowledge-points-container">
-          <h2>选择知识点</h2>
+        <!-- 课程卡片视图 -->
+        <div v-if="!selectedCourse" class="courses-container">
+          <h2>我的课程</h2>
+          <div class="courses-grid">
+            <el-card 
+              v-for="course in coursesList" 
+              :key="course.id"
+              class="course-card" 
+              shadow="hover"
+              @click="selectCourse(course)"
+            >
+              <div class="course-header">
+                <img 
+                  :src="getCourseImage()"
+                  :alt="course.title"
+                  class="course-image"
+                  loading="lazy"
+                  @error="handleImageError"
+                />
+              </div>
+              <div class="course-info">
+                <h3 class="course-title">{{ course.title }}</h3>
+                <span class="teacher">{{ course.teacher_name || '未知教师' }}</span>
+                <el-button type="primary" @click.stop="selectCourse(course)">备课</el-button>
+              </div>
+            </el-card>
+          </div>
+        </div>
+
+        <!-- 知识点列表视图 -->
+        <div v-else class="knowledge-points-container">
+          <div class="header-section">
+            <el-button icon="ArrowLeft" @click="backToCourses">返回课程列表</el-button>
+            <h2>{{ selectedCourse.title }} - 知识点</h2>
+          </div>
           
           <!-- 搜索和筛选区域 -->
           <div class="filter-section">
@@ -26,21 +59,7 @@
               </template>
             </el-input>
             
-            <el-select
-              v-model="selectedCourse"
-              placeholder="选择课程"
-              @change="handleCourseChange"
-              class="course-select"
-              :loading="coursesLoading"
-            >
-              <el-option
-                v-for="course in coursesList"
-                :key="course.id"
-                :label="course.title"
-                :value="course.id"
-              />
-            </el-select>
-             <el-button
+            <el-button
               type="primary"
               :loading="isGeneratingPPT"
               @click="handleGeneratePPT(selectedPoints)"
@@ -70,17 +89,6 @@
                 <template #header>
                   <div class="header-content">
                     <span>知识点名称</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column
-                prop="course_name"
-                label="所属课程"
-                width="150"
-              >
-                <template #header>
-                  <div class="header-content">
-                    <span>所属课程</span>
                   </div>
                 </template>
               </el-table-column>
@@ -122,7 +130,6 @@
               />
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -130,18 +137,31 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import { generateKnowledgePointsPPT, getKnowledgePoints, handleRequest } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
+import pythonImg from '@/assets/python.png'
 
 const sideTab = ref('lesson-prep')
 const courseMenuOpen = ref(false)
 const courses = ref([])
 const isGeneratingPPT = ref(false)
 const loading = ref(false)
+const selectedCourse = ref(null)
+
+// 课程图片相关
+const defaultImage = pythonImg
+
+const getCourseImage = () => {
+  return defaultImage
+}
+
+const handleImageError = (e) => {
+  e.target.src = defaultImage
+}
 
 // 知识点列表相关
 const knowledgePoints = ref([])
@@ -150,77 +170,72 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const searchQuery = ref('')
-const selectedCourse = ref('')
 
-// 加载课程列表
+// 课程列表相关
 const coursesList = ref([])
 const coursesLoading = ref(false)
 
-// 添加课程ID到课程名称的映射
-const courseNameMap = computed(() => {
-  const map = {}
-  coursesList.value.forEach(course => {
-    map[course.id] = course.title
-  })
-  return map
-})
+// 返回课程列表
+const backToCourses = () => {
+  selectedCourse.value = null
+  searchQuery.value = ''
+  selectedPoints.value = []
+}
+
+// 选择课程
+const selectCourse = (course) => {
+  selectedCourse.value = course
+  // 重置知识点相关状态
+  currentPage.value = 1
+  searchQuery.value = ''
+  selectedPoints.value = []
+  // 加载该课程的知识点
+  loadKnowledgePoints()
+}
 
 // 修改加载知识点列表函数
 const loadKnowledgePoints = async () => {
+  if (!selectedCourse.value) return
+  
   loading.value = true
   try {
     const response = await getKnowledgePoints({
       page: currentPage.value,
-        page_size: pageSize.value,
-        search: searchQuery.value,
-      course: selectedCourse.value,
+      page_size: pageSize.value,
+      search: searchQuery.value,
+      course: selectedCourse.value.id,
       ordering: 'title'
     })
     
     console.log('知识点响应:', response)
     
-    // 检查两种可能的成功响应格式
-    const isSuccess = (response.success && response.status_code === 200) || 
-                     (response.code === 0 && response.msg);
-                     
-    if (isSuccess) {
-      const responseData = response.data;
+    if (response.success && response.status_code === 200) {
+      const responseData = response.data
       
       if (responseData && Array.isArray(responseData.results)) {
-        // 更新数据，添加课程名称
-        knowledgePoints.value = responseData.results.map(point => ({
-            ...point,
-          course_name: courseNameMap.value[point.course] || '未知课程'
-        }));
-          // 更新总数
-        total.value = responseData.count;
+        knowledgePoints.value = responseData.results
+        total.value = responseData.count
         
-        console.log('知识点加载完成，总数：', total.value);
-        console.log('当前页数据：', knowledgePoints.value);
+        console.log('知识点加载完成，总数：', total.value)
+        console.log('当前页数据：', knowledgePoints.value)
       } else {
-        console.error('知识点数据格式不正确:', responseData);
-        ElMessage.error('知识点数据格式不正确');
+        console.error('知识点数据格式不正确:', responseData)
+        ElMessage.error('知识点数据格式不正确')
       }
     } else {
-      const errorMsg = response.message || response.msg || '获取知识点列表失败';
-      ElMessage.error(errorMsg);
+      const errorMsg = response.message || '获取知识点列表失败'
+      ElMessage.error(errorMsg)
     }
   } catch (error) {
-    console.error('加载知识点失败:', error);
-    ElMessage.error('加载知识点失败，请稍后重试');
+    console.error('加载知识点失败:', error)
+    ElMessage.error('加载知识点失败，请稍后重试')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 // 处理搜索
 const handleSearch = () => {
-  currentPage.value = 1
-  loadKnowledgePoints()
-}
-
-// 处理课程选择
-const handleCourseChange = () => {
   currentPage.value = 1
   loadKnowledgePoints()
 }
@@ -275,12 +290,12 @@ const handleGeneratePPT = async (knowledgePoints) => {
     visual_style: "default",
     color_scheme: "blue",
     show_relations: true,
-    title: "知识点PPT",
+    title: selectedCourse.value ? selectedCourse.value.title : "知识点PPT",
     include_course_info: true,
     use_ai: false,
     return_file_content: false,
     direct_download: true,
-    course_id: localStorage.getItem('currentCourseId') || null
+    course_id: selectedCourse.value ? selectedCourse.value.id : null
   }
 
   try {
@@ -290,7 +305,6 @@ const handleGeneratePPT = async (knowledgePoints) => {
     
     if (response.status === 'success') {
       if (response.data?.file_content) {
-        // 如果是直接下载模式，直接使用返回的blob
         const blob = response.data.file_content
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
@@ -302,35 +316,29 @@ const handleGeneratePPT = async (knowledgePoints) => {
         window.URL.revokeObjectURL(url)
         ElMessage.success('PPT下载成功！')
       } else if (response.data?.file_url) {
-        // 如果返回的是URL，使用handleRequest下载文件
-        const fileUrl = response.data.file_url.replace(/^\/api/, '')  // 移除开头的/api（如果存在）
+        const fileUrl = response.data.file_url.replace(/^\/api/, '')
         console.log('下载文件URL:', fileUrl)
         
         try {
-          // 使用handleRequest获取文件内容
           const fileResponse = await fetch(fileUrl, {
             method: 'GET',
             headers: {
               'Authorization': localStorage.getItem('token') || ''
             },
-            responseType: 'blob'  // 指定响应类型为blob
+            responseType: 'blob'
           })
           
           if (fileResponse.ok) {
-          const blob = await fileResponse.blob()
-          // 创建下载链接
-          const url = window.URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = response.data.filename || '知识点PPT.pptx'
-          document.body.appendChild(link)
-          link.click()
-          
-          // 清理
-          document.body.removeChild(link)
-          window.URL.revokeObjectURL(url)
-          
-          ElMessage.success('PPT下载成功！')
+            const blob = await fileResponse.blob()
+            const url = window.URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = response.data.filename || '知识点PPT.pptx'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(url)
+            ElMessage.success('PPT下载成功！')
           } else {
             throw new Error('文件下载响应格式不正确')
           }
@@ -365,12 +373,9 @@ const loadCourses = async () => {
     if (response.success && response.status_code === 200) {
       let courseList = []
       if (response.data) {
-        // 处理分页格式
         if (Array.isArray(response.data.results)) {
           courseList = response.data.results
-        } 
-        // 处理直接数组格式
-        else if (Array.isArray(response.data)) {
+        } else if (Array.isArray(response.data)) {
           courseList = response.data
         }
       }
@@ -385,8 +390,6 @@ const loadCourses = async () => {
           teacher_name: course.teacher_name
         }))
         console.log('课程列表加载成功:', coursesList.value)
-        // 重新加载知识点列表以更新课程名称
-        loadKnowledgePoints()
       } else {
         console.warn('课程列表为空')
         ElMessage.warning('暂无可用课程')
@@ -413,13 +416,7 @@ const updateCourseMenuOpen = (value) => {
 
 // 组件挂载时加载数据
 onMounted(async () => {
-  await Promise.all([
-    loadKnowledgePoints(),
-  loadCourses()
-  ]).catch(error => {
-    console.error('初始化数据加载失败:', error)
-    ElMessage.error('加载数据失败，请刷新页面重试')
-  })
+  await loadCourses()
 })
 </script>
 
@@ -441,19 +438,87 @@ onMounted(async () => {
   padding: 24px;
 }
 
+.courses-container {
+  padding: 20px;
+}
+
+.courses-container h2 {
+  margin-bottom: 24px;
+  color: #333;
+  font-size: 24px;
+}
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  padding: 20px;
+}
+
+.course-card {
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.course-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.course-header {
+  height: 180px;
+  overflow: hidden;
+}
+
+.course-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.course-card:hover .course-image {
+  transform: scale(1.05);
+}
+
+.course-info {
+  padding: 16px;
+  position: relative;
+}
+
+.course-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.teacher {
+  display: block;
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
 .knowledge-points-container {
   background-color: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(99, 147, 244, 0.08), 0 0 0 2px rgba(99, 147, 244, 0.12);
-  padding: 20px 24px 24px 24px;
+  box-shadow: 0 2px 12px rgba(99, 147, 244, 0.08);
+  padding: 20px 24px;
   margin-bottom: 20px;
-  position: relative;
-  z-index: 2;
-  margin-top: 40px;
 }
 
-.knowledge-points-container h2 {
-  margin: 0 0 24px;
+.header-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.header-section h2 {
+  margin: 0;
   color: #333;
   font-size: 20px;
 }
@@ -467,16 +532,10 @@ onMounted(async () => {
   border-radius: 8px;
   border: 1px solid rgba(99, 147, 244, 0.2);
   box-shadow: 0 2px 8px rgba(99, 147, 244, 0.1);
-  gap: 16px;
 }
 
 .search-input {
   width: 400px !important;
-  margin: 0 20px 0 30px !important;
-}
-
-.course-select {
-  width: 240px;
 }
 
 .knowledge-points-list {
@@ -485,79 +544,19 @@ onMounted(async () => {
   padding: 0;
   overflow: hidden;
   border: 1px solid rgba(99, 147, 244, 0.15);
-  box-shadow: 0 2px 12px rgba(99, 147, 244, 0.08);
 }
 
-.knowledge-points-list .el-table {
-  border-radius: 8px;
-  overflow: hidden;
+.pagination {
+  margin-top: 20px;
+  padding: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 
-.knowledge-points-list .el-table th {
-  background-color: #f5f7ff;
-  color: #333;
-  font-weight: bold;
-}
-
-.knowledge-points-list .el-table td {
-  color: #555;
-}
-
-.knowledge-points-list .el-table .el-button {
-  border-radius: 6px;
-  padding: 8px 12px;
-}
-.knowledge-points-list .el-table .el-button--primary {
-  background-color: #409eff;
-  border-color: #409eff;
-}
-.knowledge-points-list .el-table .el-button--primary:hover {
-  background-color: #66b1ff;
-  border-color: #66b1ff;
-}
-.knowledge-points-list .el-table .el-button--danger {
-  background-color: #f56c6c;
-  border-color: #f56c6c;
-}
-.knowledge-points-list .el-table .el-button--danger:hover {
-  background-color: #f78989;
-  border-color: #f78989;
-}
-.knowledge-points-list .el-table .el-button--info {
-  background-color: #909399;
-  border-color: #909399;
-}
-.knowledge-points-list .el-table .el-button--info:hover {
-  background-color: #a6a9ad;
-  border-color: #a6a9ad;
-}
-.knowledge-points-list .el-table .el-button--success {
-  background-color: #67c23a;
-  border-color: #67c23a;
-}
-.knowledge-points-list .el-table .el-button--success:hover {
-  background-color: #85ce61;
-  border-color: #85ce61;
-}
-.knowledge-points-list .el-table .el-button--warning {
-  background-color: #e6a23c;
-  border-color: #e6a23c;
-}
-.knowledge-points-list .el-table .el-button--warning:hover {
-  background-color: #eebe77;
-  border-color: #eebe77;
-}
-.knowledge-points-list .el-table .el-button--text {
-  color: #606266;
-}
-.knowledge-points-list .el-table .el-button--text:hover {
-  color: #409eff;
-}
-
-/* 只保留一次表头蓝色样式 */
 :deep(.el-table__header-wrapper) {
   background-color: #f0f7ff;
 }
+
 :deep(.el-table__header-wrapper) th.el-table__cell {
   background-color: #f0f7ff !important;
   color: #333;
