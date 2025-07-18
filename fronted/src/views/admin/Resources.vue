@@ -535,30 +535,57 @@ export default {
           course: this.uploadForm.course
         })
 
-        // 创建 FormData
-        const formData = new FormData()
-        formData.append('file', this.uploadForm.file)  // 文件对象
-        formData.append('course_id', this.uploadForm.course)  // 课程ID
-        formData.append('name', this.uploadForm.name)  // 资源名称
-        formData.append('description', this.uploadForm.description || '')  // 资源描述
+        // 第一步：创建课件记录
+        const coursewareData = {
+          data: {
+            title: this.uploadForm.name,
+            content: this.uploadForm.description || '',
+            type: 'document',
+            course: this.uploadForm.course
+          }
+        }
 
-        console.log('开始调用上传接口')
-        // 调用上传接口
-        const response = await fetch(`${API_CONFIG.BASE_URL}/coursewares/upload/`, {
+        console.log('创建课件记录:', coursewareData)
+        const createResponse = await fetch(`${API_CONFIG.BASE_URL}/coursewares/`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify(coursewareData)
+        })
+
+        const createData = await createResponse.json()
+        console.log('创建课件响应:', createData)
+
+        if (createData.code !== 0 || !createData.data) {
+          throw new Error(createData.msg || '创建课件记录失败')
+        }
+
+        const coursewareId = createData.data.id
+
+        // 第二步：上传文件
+        const formData = new FormData()
+        formData.append('file', this.uploadForm.file)
+        formData.append('courseware_id', coursewareId)
+
+        console.log('开始上传文件，课件ID:', coursewareId)
+        const uploadResponse = await fetch(`${API_CONFIG.BASE_URL}/coursewares/upload/`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
             'ngrok-skip-browser-warning': 'true'
           },
           body: formData
-        });
+        })
 
-        const data = await response.json();
-        console.log('上传接口响应:', data)
+        const uploadData = await uploadResponse.json()
+        console.log('文件上传响应:', uploadData)
         
-        if (data.code === 0 && data.data) {
+        if (uploadData.code === 0 && uploadData.data) {
           // 处理返回的文件信息
-          const fileInfo = data.data
+          const fileInfo = uploadData.data
           console.log('文件上传成功:', {
             id: fileInfo.id,
             fileName: fileInfo.file_name,
@@ -576,8 +603,7 @@ export default {
           // 刷新资源列表
           await this.fetchResourceList()
         } else {
-          console.log('上传失败:', data)
-          throw new Error(data.msg || '上传失败')
+          throw new Error(uploadData.msg || '文件上传失败')
         }
       } catch (error) {
         console.error('上传失败:', error)
