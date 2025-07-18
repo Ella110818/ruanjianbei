@@ -370,7 +370,7 @@ export default {
         // 调用删除接口
         const response = await deleteCourseware(row.id)
         if (response.code === 0) {
-          ElMessage.success('删除成功')
+        ElMessage.success('删除成功')
           // 重新加载资源列表
           await this.fetchResourceList()
         } else {
@@ -478,8 +478,8 @@ export default {
         
         if (response.code === 0) {
           console.log('上传成功')
-          ElMessage.success('资源上传成功')
-          this.uploadDialogVisible = false
+        ElMessage.success('资源上传成功')
+        this.uploadDialogVisible = false
           // 重置表单
           this.$refs.uploadForm.resetFields()
           this.uploadForm.file = null

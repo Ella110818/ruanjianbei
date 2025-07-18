@@ -7,24 +7,24 @@
     </div>
     <div class="error-list" v-loading="loading">
       <div v-if="errorPoints.length > 0">
-        <div v-for="(item, index) in errorPoints" 
-             :key="index" 
-             class="error-item"
-             @click="showDetail(item)">
-          <div class="rank-number" :class="'rank-' + (index + 1)">{{ index + 1 }}</div>
-          <div class="error-info">
-            <div class="error-content">{{ item.name }}</div>
-            <div class="error-stats">
-              <span class="stat-item">
-                <i class="el-icon-warning-outline"></i>
-                错误率: {{ item.errorRate }}%
-              </span>
-              <span class="stat-item">
-                <i class="el-icon-time"></i>
-                出现: {{ item.frequency }}次
-              </span>
-            </div>
+      <div v-for="(item, index) in errorPoints" 
+           :key="index" 
+           class="error-item"
+           @click="showDetail(item)">
+        <div class="rank-number" :class="'rank-' + (index + 1)">{{ index + 1 }}</div>
+        <div class="error-info">
+          <div class="error-content">{{ item.name }}</div>
+          <div class="error-stats">
+            <span class="stat-item">
+              <i class="el-icon-warning-outline"></i>
+              错误率: {{ item.errorRate }}%
+            </span>
+            <span class="stat-item">
+              <i class="el-icon-time"></i>
+              出现: {{ item.frequency }}次
+            </span>
           </div>
+        </div>
         </div>
       </div>
       <div v-else class="no-data">
