@@ -569,7 +569,7 @@ export async function refreshToken() {
 }
 
 // 通用请求处理函数
-async function handleRequest(url, options = {}, retryCount = 0) {
+export async function handleRequest(url, options = {}, retryCount = 0) {
     const MAX_RETRIES = 1; // 最多重试一次
 
     try {
