@@ -128,7 +128,7 @@ import { Search } from '@element-plus/icons-vue'
 import AdminHeader from '@/components/AdminHeader.vue'
 import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserList, createUser, updateUser, toggleUserStatus, API_CONFIG } from '@/api'
+import { getUserList, toggleUserStatus, API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminUsers',
@@ -374,24 +374,42 @@ export default {
         await this.$refs.userForm.validate()
         this.submitting = true
         
-        const apiMethod = this.dialogType === 'add' ? createUser : updateUser
-        const response = await apiMethod(
-          this.dialogType === 'edit' ? this.userForm.username : undefined,
-          this.userForm
-        )
+        // 构造请求数据
+        const userData = {
+          data: {
+            username: this.userForm.username,
+            email: this.userForm.email,
+            password: this.userForm.password,
+            role: this.userForm.role,
+            first_name: '',  // 可选字段
+            last_name: ''    // 可选字段
+          }
+        }
+
+        // 发送请求
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify(userData)
+        });
+
+        const data = await response.json();
+        console.log('创建用户响应:', data);
         
-        if (response.code === 0) {
-          ElMessage.success(this.dialogType === 'add' ? '添加成功' : '修改成功')
+        if (data.code === 0) {
+          ElMessage.success('添加用户成功')
           this.dialogVisible = false
           this.fetchUserList()
         } else {
-          ElMessage.error(response.msg || (this.dialogType === 'add' ? '添加失败' : '修改失败'))
+          ElMessage.error(data.msg || '添加用户失败')
         }
       } catch (error) {
-        if (error !== 'validation') {
-          console.error(this.dialogType === 'add' ? '添加用户失败:' : '修改用户失败:', error)
-          ElMessage.error(this.dialogType === 'add' ? '添加失败' : '修改失败')
-        }
+        console.error('添加用户失败:', error)
+        ElMessage.error('添加用户失败，请检查表单内容')
       } finally {
         this.submitting = false
       }
