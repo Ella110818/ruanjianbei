@@ -21,18 +21,13 @@
           <el-option label="教师" value="teacher"></el-option>
           <el-option label="学生" value="student"></el-option>
         </el-select>
-        <el-select v-model="statusFilter" placeholder="状态筛选" @change="handleFilterChange" class="filter-select">
-          <el-option label="全部" value=""></el-option>
-          <el-option label="正常" value="active"></el-option>
-          <el-option label="禁用" value="disabled"></el-option>
-        </el-select>
+       
       </div>
 
       <div class="table">
         <el-table :data="userList" stripe border class="user-table" v-loading="loading">
           <el-table-column type="selection" width="55" align="center" />
           <el-table-column prop="username" label="用户名" min-width="120" align="center" />
-          <el-table-column prop="name" label="姓名" min-width="120" align="center" />
           <el-table-column prop="role" label="角色" min-width="100" align="center">
             <template #default="{ row }">
               <el-tag :type="row.role === 'teacher' ? 'success' : 'warning'" class="role-tag">
@@ -41,14 +36,6 @@
             </template>
           </el-table-column>
           <el-table-column prop="email" label="邮箱" min-width="200" align="center" show-overflow-tooltip />
-          <el-table-column prop="lastLogin" label="最后登录时间" min-width="180" align="center" />
-          <el-table-column prop="status" label="状态" min-width="100" align="center">
-            <template #default="{ row }">
-              <el-tag :type="row.status === 'active' ? 'success' : 'danger'" class="status-tag">
-                {{ row.status === 'active' ? '正常' : '禁用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
           <el-table-column label="操作" min-width="220" fixed="right" align="center">
             <template #default="{ row }">
               <div class="action-buttons">
@@ -68,13 +55,13 @@
                 >
                   重置密码
                 </el-button>
-                <el-button 
-                  type="primary" 
+                <el-button
+                  type="primary"
                   size="small"
-                  :class="['blue-button', row.status === 'active' ? 'danger' : '']"
-                  @click="handleToggleStatus(row)"
+                  class="blue-button danger"
+                  @click="handleDelete(row)"
                 >
-                  {{ row.status === 'active' ? '禁用' : '启用' }}
+                  删除
                 </el-button>
               </div>
             </template>
@@ -113,9 +100,6 @@
         <el-form-item label="用户名" prop="username">
           <el-input v-model="userForm.username" :disabled="dialogType === 'edit'"></el-input>
         </el-form-item>
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="userForm.name"></el-input>
-        </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="userForm.role" placeholder="请选择角色">
             <el-option label="教师" value="teacher"></el-option>
@@ -144,8 +128,7 @@ import { Search } from '@element-plus/icons-vue'
 import AdminHeader from '@/components/AdminHeader.vue'
 import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserList, createUser, updateUser, toggleUserStatus } from '@/api'
-import { API_CONFIG } from '@/api'
+import { getUserList, createUser, updateUser, toggleUserStatus, API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminUsers',
@@ -173,7 +156,6 @@ export default {
       userList: [],
       userForm: {
         username: '',
-        name: '',
         role: '',
         email: '',
         password: ''
@@ -182,9 +164,6 @@ export default {
         username: [
           { required: true, message: '请输入用户名', trigger: 'blur' },
           { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
-        ],
-        name: [
-          { required: true, message: '请输入姓名', trigger: 'blur' }
         ],
         role: [
           { required: true, message: '请选择角色', trigger: 'change' }
@@ -263,7 +242,6 @@ export default {
       this.dialogType = 'add'
       this.userForm = {
         username: '',
-        name: '',
         role: '',
         email: '',
         password: ''
@@ -274,7 +252,6 @@ export default {
       this.dialogType = 'edit'
       this.userForm = {
         username: row.username,
-        name: row.name,
         role: row.role,
         email: row.email
       }
@@ -349,6 +326,40 @@ export default {
         if (error !== 'cancel') {
           console.error(`${action}用户失败:`, error)
           ElMessage.error(`${action}失败`)
+        }
+      }
+    },
+    async handleDelete(row) {
+      try {
+        await ElMessageBox.confirm(
+          `确定要删除用户 ${row.username} 吗？此操作不可恢复！`,
+          '警告',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        )
+        
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/${row.id}/`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
+
+        if (response.status === 204) {
+          ElMessage.success('删除成功');
+          this.fetchUserList(); // 刷新用户列表
+        } else {
+          const data = await response.json();
+          throw new Error(data.msg || '删除失败');
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('删除用户失败:', error);
+          ElMessage.error(error.message || '删除失败');
         }
       }
     },
