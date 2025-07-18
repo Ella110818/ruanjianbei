@@ -54,6 +54,114 @@ export default {
   },
   data() {
     return {
+      // 基础课程优化模板
+      baseOptimizations: {
+        'teaching': [ // 教学类课程通用优化方向
+          {
+            title: '教学方法优化',
+            items: [
+              '增加互动教学环节',
+              '引入案例教学方式',
+              '开展分组讨论活动'
+            ]
+          },
+          {
+            title: '学习评估改进',
+            items: [
+              '建立多维度评价体系',
+              '实施形成性评估方案',
+              '提供及时学习反馈'
+            ]
+          },
+          {
+            title: '资源建设完善',
+            items: [
+              '丰富在线学习资源',
+              '建设微课视频库',
+              '开发实践练习题库'
+            ]
+          }
+        ],
+        'programming': [ // 编程类课程通用优化方向
+          {
+            title: '实践环境优化',
+            items: [
+              '搭建在线编程环境',
+              '提供自动评测系统',
+              '建立代码版本管理'
+            ]
+          },
+          {
+            title: '编程能力培养',
+            items: [
+              '设计阶段性项目实战',
+              '举办编程竞赛活动',
+              '建立代码审查机制'
+            ]
+          },
+          {
+            title: '技术支持体系',
+            items: [
+              '完善技术文档库',
+              '提供在线答疑平台',
+              '组织技术分享会'
+            ]
+          }
+        ],
+        'science': [ // 理科类课程通用优化方向
+          {
+            title: '概念理解强化',
+            items: [
+              '开发概念可视化工具',
+              '建立知识关联图谱',
+              '设计概念理解测评'
+            ]
+          },
+          {
+            title: '解题能力提升',
+            items: [
+              '构建题型分类库',
+              '提供解题思路指导',
+              '开展解题方法讨论'
+            ]
+          },
+          {
+            title: '应用能力培养',
+            items: [
+              '增加实际应用案例',
+              '开展建模训练',
+              '设置跨学科专题'
+            ]
+          }
+        ],
+        'language': [ // 语言类课程通用优化方向
+          {
+            title: '语言技能提升',
+            items: [
+              '开展口语训练活动',
+              '强化听力练习',
+              '组织写作工作坊'
+            ]
+          },
+          {
+            title: '文化理解深化',
+            items: [
+              '引入文化背景教学',
+              '组织文化交流活动',
+              '开展主题文化周'
+            ]
+          },
+          {
+            title: '应用能力培养',
+            items: [
+              '设置情境对话练习',
+              '开展翻译实践',
+              '举办语言竞赛'
+            ]
+          }
+        ]
+      },
+      // 特定课程优化方向
       optimizations: {
         '1': [ // Python编程基础
           {
@@ -214,6 +322,35 @@ export default {
       }
     }
   },
+  methods: {
+    // 根据课程类型获取优化方向
+    getCourseType(courseId) {
+      // 这里可以根据课程ID判断课程类型
+      const programmingCourses = ['1', '2', '14'] // Python、TensorFlow、测试集成
+      const languageCourses = ['3'] // 语文
+      const scienceCourses = ['6'] // 数学
+      const teachingCourses = ['13'] // 体育
+
+      if (programmingCourses.includes(courseId)) return 'programming'
+      if (languageCourses.includes(courseId)) return 'language'
+      if (scienceCourses.includes(courseId)) return 'science'
+      if (teachingCourses.includes(courseId)) return 'teaching'
+      
+      return 'teaching' // 默认返回教学类
+    },
+
+    // 生成课程优化建议
+    generateOptimizations(courseId) {
+      // 如果有特定的优化方向，直接返回
+      if (this.optimizations[courseId]) {
+        return this.optimizations[courseId]
+      }
+
+      // 否则返回对应类型的通用优化方向
+      const courseType = this.getCourseType(courseId)
+      return this.baseOptimizations[courseType]
+    }
+  },
   watch: {
     selectedCourse: {
       handler(newVal) {
@@ -228,8 +365,8 @@ export default {
   },
   computed: {
     currentOptimizations() {
-      console.log('Computing currentOptimizations for course:', this.selectedCourse);
-      return this.optimizations[this.selectedCourse] || [];
+      if (!this.selectedCourse) return []
+      return this.generateOptimizations(this.selectedCourse)
     }
   }
 }

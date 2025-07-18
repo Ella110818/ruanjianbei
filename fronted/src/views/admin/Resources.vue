@@ -176,6 +176,7 @@
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourseList, getCoursewareList, deleteCourseware, uploadCourseware } from '@/api'
+import API_CONFIG from '@/api/config' // 导入 API_CONFIG
 
 export default {
   name: 'AdminResources',
@@ -236,8 +237,18 @@ export default {
         
         const response = await getCoursewareList(params)
         if (response.code === 0 && response.data) {
-          this.resourceList = response.data.results || []
-          this.total = response.data.total || 0
+          // 处理返回的资源列表数据
+          this.resourceList = (response.data.results || []).map(item => ({
+            id: item.id,
+            name: item.file_name,
+            type: item.file_type,
+            size: item.file_size,
+            url: item.file_url,
+            uploadTime: item.upload_time,
+            course: item.course_name || '未知课程',
+            uploader: item.uploader_name || '未知用户'
+          }))
+          this.total = response.data.count || 0
         } else {
           ElMessage.error(response.msg || '获取资源列表失败')
         }
@@ -294,12 +305,12 @@ export default {
       }
       return labels[type] || type
     },
-    formatFileSize(bytes) {
-      if (bytes === 0) return '0 B'
+    formatFileSize(size) {
+      if (!size || size === 0) return '0 B'
       const k = 1024
       const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-      const i = Math.floor(Math.log(bytes) / Math.log(k))
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+      const i = Math.floor(Math.log(size) / Math.log(k))
+      return parseFloat((size / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
     },
     handleSearch() {
       this.currentPage = 1
@@ -310,14 +321,19 @@ export default {
     },
     async handleDownload(row) {
       try {
-        // 构建下载URL
-        const downloadUrl = `${import.meta.env.VITE_API_BASE_URL}/coursewares/download/${row.id}/`
+        // 构建正确的下载URL
+        const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${row.id}/`
+        console.log('下载URL:', downloadUrl)
         
         // 获取token
         const token = localStorage.getItem('token')
+        if (!token) {
+          throw new Error('未登录或登录已过期')
+        }
         
         // 创建下载请求
         const response = await fetch(downloadUrl, {
+          method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
             'ngrok-skip-browser-warning': 'true'
@@ -325,7 +341,7 @@ export default {
         })
         
         if (!response.ok) {
-          throw new Error('下载失败')
+          throw new Error(`下载失败: ${response.status}`)
         }
         
         // 获取文件blob
@@ -348,7 +364,7 @@ export default {
         ElMessage.success(`文件"${row.name}"下载成功`)
       } catch (error) {
         console.error('下载失败:', error)
-        ElMessage.error('下载失败，请稍后重试')
+        ElMessage.error(error.message || '下载失败，请稍后重试')
       }
     },
     handlePreview(row) {
@@ -367,10 +383,10 @@ export default {
           }
         )
         
-        // 调用删除接口
+        // 调用删除接口，直接传入 id
         const response = await deleteCourseware(row.id)
         if (response.code === 0) {
-        ElMessage.success('删除成功')
+          ElMessage.success('删除成功')
           // 重新加载资源列表
           await this.fetchResourceList()
         } else {
@@ -383,9 +399,60 @@ export default {
         }
       }
     },
-    handleBatchDownload() {
-      // 实现批量下载逻辑
-      ElMessage.info('批量下载功能开发中')
+    async handleBatchDownload() {
+      try {
+        const selection = this.$refs.table.getSelectionRows()
+        if (!selection || selection.length === 0) {
+          ElMessage.warning('请选择要下载的资源')
+          return
+        }
+
+        // 获取token
+        const token = localStorage.getItem('token')
+        if (!token) {
+          throw new Error('未登录或登录已过期')
+        }
+
+        // 创建所有下载任务
+        const downloadTasks = selection.map(async (item) => {
+          try {
+            const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${item.id}/`
+            const response = await fetch(downloadUrl, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'ngrok-skip-browser-warning': 'true'
+              }
+            })
+
+            if (!response.ok) {
+              throw new Error(`下载失败: ${response.status}`)
+            }
+
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = item.name
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(url)
+
+            return item.name
+          } catch (error) {
+            console.error(`下载文件 "${item.name}" 失败:`, error)
+            throw error
+          }
+        })
+
+        // 等待所有下载完成
+        await Promise.all(downloadTasks)
+        ElMessage.success('批量下载完成')
+      } catch (error) {
+        console.error('批量下载失败:', error)
+        ElMessage.error('批量下载失败，请稍后重试')
+      }
     },
     async handleBatchDelete() {
       try {
@@ -405,7 +472,7 @@ export default {
           }
         )
 
-        // 批量删除
+        // 批量删除，每个请求只传入 id
         const promises = selection.map(item => deleteCourseware(item.id))
         await Promise.all(promises)
         
@@ -433,9 +500,17 @@ export default {
         ElMessage.error('文件大小不能超过100MB')
         return false
       }
-      // 自动设置文件名
-      this.uploadForm.name = file.name
+      
+      // 只保存文件对象
       this.uploadForm.file = file
+      
+      // 打印文件信息
+      console.log('文件信息:', {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      })
+      
       return true
     },
     async handleUploadSubmit() {
@@ -458,28 +533,33 @@ export default {
           fileName: this.uploadForm.file.name,
           fileSize: this.uploadForm.file.size,
           fileType: this.uploadForm.file.type,
-          courseName: this.uploadForm.course,
-          formName: this.uploadForm.name
+          course: this.uploadForm.course
         })
 
         // 创建 FormData
         const formData = new FormData()
-        formData.append('file', this.uploadForm.file)
-        formData.append('course', this.uploadForm.course)
-        formData.append('name', this.uploadForm.name)
-        if (this.uploadForm.description) {
-          formData.append('description', this.uploadForm.description)
-        }
+        formData.append('file', this.uploadForm.file)  // 使用 'file' 作为文件字段名
+        formData.append('course_id', this.uploadForm.course)  // 添加课程ID
 
         console.log('开始调用上传接口')
         // 调用上传接口
         const response = await uploadCourseware(formData)
         console.log('上传接口响应:', response)
         
-        if (response.code === 0) {
-          console.log('上传成功')
-        ElMessage.success('资源上传成功')
-        this.uploadDialogVisible = false
+        if (response.code === 0 && response.data) {
+          // 处理返回的文件信息
+          const fileInfo = response.data
+          console.log('文件上传成功:', {
+            id: fileInfo.id,
+            fileName: fileInfo.file_name,
+            fileSize: fileInfo.file_size,
+            fileType: fileInfo.file_type,
+            fileUrl: fileInfo.file_url,
+            uploadTime: fileInfo.upload_time
+          })
+
+          ElMessage.success('资源上传成功')
+          this.uploadDialogVisible = false
           // 重置表单
           this.$refs.uploadForm.resetFields()
           this.uploadForm.file = null

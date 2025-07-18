@@ -370,6 +370,12 @@ const requestAIGrade = async () => {
   
   aiGrading.value = true
   try {
+    // 获取 token
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('未登录或登录已过期')
+    }
+
     // 生成唯一的会话ID
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
@@ -387,8 +393,9 @@ const requestAIGrade = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         'ngrok-skip-browser-warning': 'true',
-        'Authorization': localStorage.getItem('token') || ''
+        'Authorization': `Bearer ${token}`  // 修改这里，添加 Bearer 前缀
       },
       body: JSON.stringify(requestData)
     })
@@ -442,6 +449,12 @@ const requestAIGrade = async () => {
         ElMessage.error('解析AI评分数据失败：' + error.message)
       }
     } else {
+      // 处理认证错误
+      if (data.status_code === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        // 可以在这里添加重定向到登录页面的逻辑
+        return
+      }
       throw new Error(data.message || 'AI批改失败')
     }
   } catch (error) {

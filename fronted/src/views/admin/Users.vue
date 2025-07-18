@@ -144,7 +144,8 @@ import { Search } from '@element-plus/icons-vue'
 import AdminHeader from '@/components/AdminHeader.vue'
 import AnimatedBackground from '@/components/AnimatedBackground.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserList, createUser, updateUser, resetUserPassword, toggleUserStatus } from '@/api'
+import { getUserList, createUser, updateUser, toggleUserStatus } from '@/api'
+import { API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminUsers',
@@ -206,21 +207,35 @@ export default {
     async fetchUserList() {
       this.loading = true
       try {
+        // 构建查询参数
         const params = {
           page: this.currentPage,
           page_size: this.pageSize,
-          search: this.searchQuery.trim() || undefined,
-          role: this.roleFilter || undefined,
-          status: this.statusFilter || undefined,
           ordering: '-created_at'  // 按创建时间倒序
         }
-        
+
+        // 添加搜索条件
+        if (this.searchQuery.trim()) {
+          params.search = this.searchQuery.trim()
+        }
+
+        // 添加角色筛选
+        if (this.roleFilter) {
+          params.role = this.roleFilter
+        }
+
+        // 添加状态筛选
+        if (this.statusFilter) {
+          params.status = this.statusFilter
+        }
+
+        console.log('请求参数:', params)
         const response = await getUserList(params)
         console.log('获取用户列表响应:', response)
         
         if (response.code === 0 && response.data) {
           this.userList = response.data.results || []
-          this.total = response.data.count || 0  // 使用 count 而不是 total
+          this.total = response.data.count || 0
         } else {
           ElMessage.error(response.msg || '获取用户列表失败')
         }
@@ -236,9 +251,9 @@ export default {
     handleSearchInput: debounce(function() {
       this.currentPage = 1  // 重置到第一页
       this.fetchUserList()
-    }, 300),  // 300ms 防抖
+    }, 300),
     
-    // 筛选器改变处理函数 - 直接触发
+    // 筛选器改变处理函数
     handleFilterChange() {
       this.currentPage = 1  // 重置到第一页
       this.fetchUserList()
@@ -277,16 +292,36 @@ export default {
           }
         )
         
-        const response = await resetUserPassword(row.username)
-        if (response.code === 0) {
-          ElMessage.success('密码重置成功')
+        // 使用正确的参数格式
+        const defaultPassword = '123456'
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/change_password/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify({
+            data: {
+              old_password: defaultPassword,  // 旧密码
+              new_password: defaultPassword,  // 新密码
+              confirm_password: defaultPassword  // 确认密码
+            }
+          })
+        })
+
+        const data = await response.json()
+        
+        if (response.ok && data.code === 0) {
+          ElMessage.success(`密码重置成功，新密码为：${defaultPassword}`)
         } else {
-          ElMessage.error(response.msg || '密码重置失败')
+          throw new Error(data.msg || '密码重置失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
           console.error('重置密码失败:', error)
-          ElMessage.error('重置密码失败')
+          ElMessage.error(error.message || '重置密码失败，请稍后重试')
         }
       }
     },
