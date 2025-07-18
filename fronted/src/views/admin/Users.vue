@@ -100,17 +100,26 @@
         <el-form-item label="用户名" prop="username">
           <el-input v-model="userForm.username" :disabled="dialogType === 'edit'"></el-input>
         </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="userForm.email" type="email"></el-input>
+        </el-form-item>
+        <el-form-item label="密码" prop="password" v-if="dialogType === 'add'">
+          <el-input v-model="userForm.password" type="password"></el-input>
+        </el-form-item>
+        <el-form-item label="确认密码" prop="password2" v-if="dialogType === 'add'">
+          <el-input v-model="userForm.password2" type="password"></el-input>
+        </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="userForm.role" placeholder="请选择角色">
             <el-option label="教师" value="teacher"></el-option>
             <el-option label="学生" value="student"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="userForm.email"></el-input>
+        <el-form-item label="姓" prop="first_name">
+          <el-input v-model="userForm.first_name"></el-input>
         </el-form-item>
-        <el-form-item label="密码" prop="password" v-if="dialogType === 'add'">
-          <el-input v-model="userForm.password" type="password"></el-input>
+        <el-form-item label="名" prop="last_name">
+          <el-input v-model="userForm.last_name"></el-input>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -156,25 +165,44 @@ export default {
       userList: [],
       userForm: {
         username: '',
-        role: '',
         email: '',
-        password: ''
+        password: '',
+        password2: '',
+        role: '',
+        first_name: '',
+        last_name: '',
+        id: null // 新增用于存储用户ID
       },
       rules: {
         username: [
           { required: true, message: '请输入用户名', trigger: 'blur' },
-          { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
-        ],
-        role: [
-          { required: true, message: '请选择角色', trigger: 'change' }
+          { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' },
+          { pattern: /^[\w@+-]+$/, message: '只能包含字母、数字和@/./+/-/_', trigger: 'blur' }
         ],
         email: [
           { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-          { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+          { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' },
+          { max: 254, message: '邮箱长度不能超过254个字符', trigger: 'blur' }
         ],
         password: [
           { required: true, message: '请输入密码', trigger: 'blur' },
           { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
+        ],
+        password2: [
+          { required: true, message: '请再次输入密码', trigger: 'blur' },
+          { 
+            validator: (rule, value, callback) => {
+              if (value !== this.userForm.password) {
+                callback(new Error('两次输入的密码不一致'));
+              } else {
+                callback();
+              }
+            },
+            trigger: 'blur'
+          }
+        ],
+        role: [
+          { required: true, message: '请选择角色', trigger: 'change' }
         ]
       }
     }
@@ -242,9 +270,13 @@ export default {
       this.dialogType = 'add'
       this.userForm = {
         username: '',
-        role: '',
         email: '',
-        password: ''
+        password: '',
+        password2: '',
+        role: '',
+        first_name: '',
+        last_name: '',
+        id: null
       }
       this.dialogVisible = true
     },
@@ -253,7 +285,10 @@ export default {
       this.userForm = {
         username: row.username,
         role: row.role,
-        email: row.email
+        email: row.email,
+        first_name: row.first_name || '',
+        last_name: row.last_name || '',
+        id: row.id  // 保存用户ID用于编辑
       }
       this.dialogVisible = true
     },
@@ -374,42 +409,75 @@ export default {
         await this.$refs.userForm.validate()
         this.submitting = true
         
-        // 构造请求数据
-        const userData = {
-          data: {
+        if (this.dialogType === 'add') {
+          // 添加用户
+          const userData = {
             username: this.userForm.username,
             email: this.userForm.email,
             password: this.userForm.password,
+            password2: this.userForm.password2,
             role: this.userForm.role,
-            first_name: '',  // 可选字段
-            last_name: ''    // 可选字段
+            first_name: this.userForm.first_name || '',
+            last_name: this.userForm.last_name || ''
+          }
+
+          console.log('准备发送的用户数据:', userData)
+
+          const response = await fetch(`${API_CONFIG.BASE_URL}/users/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify({ data: userData })
+          });
+
+          const data = await response.json();
+          console.log('创建用户响应:', data);
+          
+          if (data.code === 0) {
+            ElMessage.success('添加用户成功')
+            this.dialogVisible = false
+            this.fetchUserList()
+          } else {
+            throw new Error(data.msg || '添加用户失败')
+          }
+        } else {
+          // 编辑用户
+          const userData = {
+            email: this.userForm.email,
+            role: this.userForm.role,
+            first_name: this.userForm.first_name || '',
+            last_name: this.userForm.last_name || ''
+          }
+
+          console.log('准备发送的编辑数据:', userData)
+
+          const response = await fetch(`${API_CONFIG.BASE_URL}/users/${this.userForm.id}/`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify({ data: userData })
+          });
+
+          const data = await response.json();
+          console.log('编辑用户响应:', data);
+          
+          if (data.code === 0) {
+            ElMessage.success('编辑用户成功')
+            this.dialogVisible = false
+            this.fetchUserList()
+          } else {
+            throw new Error(data.msg || '编辑用户失败')
           }
         }
-
-        // 发送请求
-        const response = await fetch(`${API_CONFIG.BASE_URL}/users/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'ngrok-skip-browser-warning': 'true'
-          },
-          body: JSON.stringify(userData)
-        });
-
-        const data = await response.json();
-        console.log('创建用户响应:', data);
-        
-        if (data.code === 0) {
-          ElMessage.success('添加用户成功')
-          this.dialogVisible = false
-          this.fetchUserList()
-        } else {
-          ElMessage.error(data.msg || '添加用户失败')
-        }
       } catch (error) {
-        console.error('添加用户失败:', error)
-        ElMessage.error('添加用户失败，请检查表单内容')
+        console.error(this.dialogType === 'add' ? '添加用户失败:' : '编辑用户失败:', error)
+        ElMessage.error(error.message || (this.dialogType === 'add' ? '添加用户失败' : '编辑用户失败'))
       } finally {
         this.submitting = false
       }

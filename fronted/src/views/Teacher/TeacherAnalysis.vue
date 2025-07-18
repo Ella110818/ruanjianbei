@@ -75,10 +75,13 @@
               {{ formatDate(row.submitted_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right" align="center">
+          <el-table-column label="操作" width="180" fixed="right" align="center">
             <template #default="{ row }">
               <el-button type="primary" link @click="handleViewDetail(row)">
                 查看详情
+              </el-button>
+              <el-button type="danger" link @click="handleDelete(row)">
+                删除
               </el-button>
             </template>
           </el-table-column>
@@ -213,7 +216,7 @@
 import { ref, onMounted, computed } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import { getStudentAnswers, getExercises, updateStudentAnswer } from '@/api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { API_CONFIG } from '@/api'
 import { Search, Monitor, Edit } from '@element-plus/icons-vue'
 
@@ -450,6 +453,43 @@ const requestAIGrade = async () => {
     ElMessage.error(error.message || 'AI批改失败，请稍后重试')
   } finally {
     aiGrading.value = false
+  }
+}
+
+// 添加删除方法
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除该学生答案吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    const response = await fetch(`${API_CONFIG.BASE_URL}/student-answers/${row.id}/`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'ngrok-skip-browser-warning': 'true'
+      }
+    });
+
+    if (response.status === 204) {
+      ElMessage.success('删除成功');
+      // 重新加载答题列表
+      loadAnswers();
+    } else {
+      const data = await response.json();
+      throw new Error(data.msg || '删除失败');
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除答案失败:', error);
+      ElMessage.error(error.message || '删除失败');
+    }
   }
 }
 

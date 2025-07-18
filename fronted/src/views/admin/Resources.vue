@@ -537,10 +537,10 @@ export default {
 
         // 创建 FormData
         const formData = new FormData()
-        formData.append('data[file]', this.uploadForm.file)  // 修改文件字段名
-        formData.append('data[course_id]', this.uploadForm.course)  // 添加课程ID
-        formData.append('data[name]', this.uploadForm.name)  // 添加资源名称
-        formData.append('data[description]', this.uploadForm.description || '')  // 添加描述
+        formData.append('file', this.uploadForm.file)  // 文件对象
+        formData.append('course_id', this.uploadForm.course)  // 课程ID
+        formData.append('name', this.uploadForm.name)  // 资源名称
+        formData.append('description', this.uploadForm.description || '')  // 资源描述
 
         console.log('开始调用上传接口')
         // 调用上传接口
