@@ -5,6 +5,9 @@
       <div class="exercises-container">
         <!-- 添加创建按钮 -->
         <div class="action-bar">
+          <el-button type="success" @click="showAutoCreateDialog" style="margin-right: 12px;">
+            自动出题
+          </el-button>
           <el-button type="primary" @click="showCreateDialog">
             创建练习题
           </el-button>
@@ -359,6 +362,8 @@ const restorePreviousState = () => {
 const createDialogVisible = ref(false)
 const creating = ref(false)
 const createForm = ref(null)
+// 标识当前对话框是否为自动出题模式
+const isAutoGenerate = ref(false)
 
 // 练习题表单数据
 const exerciseForm = ref({
@@ -394,8 +399,19 @@ const formRules = {
   ]
 }
 
-// 显示创建对话框
+// 显示手动创建对话框
 const showCreateDialog = () => {
+  isAutoGenerate.value = false
+  createDialogVisible.value = true
+  // 重置表单
+  if (createForm.value) {
+    createForm.value.resetFields()
+  }
+}
+
+// 显示自动出题对话框
+const showAutoCreateDialog = () => {
+  isAutoGenerate.value = true
   createDialogVisible.value = true
   // 重置表单
   if (createForm.value) {
@@ -411,31 +427,33 @@ const handleCreateExercise = async () => {
     await createForm.value.validate()
     
     creating.value = true
-    
-    // 先调用AI生成题目接口
-    const generateResponse = await generateQuestions({
-      query: exerciseForm.value.content || exerciseForm.value.title, // 使用题目内容或标题作为查询内容
-      knowledge_point_ids: [exerciseForm.value.knowledge_point], // 转换为数组格式
-      question_types: [exerciseForm.value.type], // 转换为数组格式
-      quantity: 1, // 只生成一道题
-      difficulty: exerciseForm.value.difficulty
-    })
-    
-    if (!generateResponse.success) {
-      ElMessage.error(generateResponse.message || 'AI生成题目失败')
-      return
-    }
-    
-    // 使用AI生成的题目内容更新表单
-    const generatedQuestion = generateResponse.data.questions[0]
-    if (generatedQuestion) {
-      exerciseForm.value.title = generatedQuestion.title || exerciseForm.value.title
-      exerciseForm.value.content = generatedQuestion.content || exerciseForm.value.content
-      // 确保 answer_template 是字符串格式
-      if (Array.isArray(generatedQuestion.answer_template)) {
-        exerciseForm.value.answer_template = JSON.stringify(generatedQuestion.answer_template)
-      } else {
-        exerciseForm.value.answer_template = generatedQuestion.answer_template || exerciseForm.value.answer_template
+
+    // 如果是自动出题模式，则先调用AI生成题目接口
+    if (isAutoGenerate.value) {
+      const generateResponse = await generateQuestions({
+        query: exerciseForm.value.content || exerciseForm.value.title, // 使用题目内容或标题作为查询内容
+        knowledge_point_ids: [exerciseForm.value.knowledge_point], // 转换为数组格式
+        question_types: [exerciseForm.value.type], // 转换为数组格式
+        quantity: 1, // 只生成一道题
+        difficulty: exerciseForm.value.difficulty
+      })
+
+      if (!generateResponse.success) {
+        ElMessage.error(generateResponse.message || 'AI生成题目失败')
+        return
+      }
+
+      // 使用AI生成的题目内容更新表单
+      const generatedQuestion = generateResponse.data.questions[0]
+      if (generatedQuestion) {
+        exerciseForm.value.title = generatedQuestion.title || exerciseForm.value.title
+        exerciseForm.value.content = generatedQuestion.content || exerciseForm.value.content
+        // 确保 answer_template 是字符串格式
+        if (Array.isArray(generatedQuestion.answer_template)) {
+          exerciseForm.value.answer_template = JSON.stringify(generatedQuestion.answer_template)
+        } else {
+          exerciseForm.value.answer_template = generatedQuestion.answer_template || exerciseForm.value.answer_template
+        }
       }
     }
     

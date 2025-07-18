@@ -607,7 +607,7 @@ onMounted(async () => {
   .exercises-container {
     padding: 16px;
   }
-  
+
   .filter-section {
     padding: 20px;
   }
