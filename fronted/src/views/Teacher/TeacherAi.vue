@@ -133,7 +133,7 @@
 import { ref, onMounted, computed } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { generateKnowledgePointsPPT, getKnowledgePoints } from '@/api'  // 移除handleRequest导入
+import { generateKnowledgePointsPPT, getKnowledgePoints, handleRequest } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
@@ -356,47 +356,34 @@ const handleGeneratePPT = async (knowledgePoints) => {
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
-    const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'https://990dad7dbad9.ngrok-free.app'
-    const response = await fetch(`${API_BASE_URL}/api/courses/`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
-      }
+    const response = await handleRequest('courses/', {
+      method: 'GET'
     })
     
-    const data = await response.json()
-    console.log('课程列表响应:', data)
+    console.log('课程列表响应:', response)
     
-    if (response.ok) {
+    if (response.success && response.status_code === 200) {
       let courseList = []
-      if (data.success && data.status_code === 200 && data.data) {
+      if (response.data) {
         // 处理分页格式
-        if (Array.isArray(data.data.results)) {
-          courseList = data.data.results
+        if (Array.isArray(response.data.results)) {
+          courseList = response.data.results
         } 
         // 处理直接数组格式
-        else if (Array.isArray(data.data)) {
-          courseList = data.data
-        }
-      } else if (data.code === 0 && data.data) {
-        // 处理新的API格式
-        if (Array.isArray(data.data.results)) {
-          courseList = data.data.results
-        } else if (Array.isArray(data.data)) {
-          courseList = data.data
+        else if (Array.isArray(response.data)) {
+          courseList = response.data
         }
       }
 
       if (courseList.length > 0) {
         coursesList.value = courseList.map(course => ({
-        id: course.id,
+          id: course.id,
           title: course.name || course.title,
           description: course.description,
           subject: course.subject,
           grade_level: course.grade_level,
           teacher_name: course.teacher_name
-      }))
+        }))
         console.log('课程列表加载成功:', coursesList.value)
         // 重新加载知识点列表以更新课程名称
         loadKnowledgePoints()
@@ -405,7 +392,7 @@ const loadCourses = async () => {
         ElMessage.warning('暂无可用课程')
       }
     } else {
-      throw new Error(data.message || data.msg || '获取课程列表失败')
+      throw new Error(response.message || '获取课程列表失败')
     }
   } catch (error) {
     console.error('加载课程失败:', error)
