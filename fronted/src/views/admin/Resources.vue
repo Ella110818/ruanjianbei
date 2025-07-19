@@ -286,13 +286,25 @@ export default {
       try {
         this.loading = true
         const response = await getCourseList()
-        if (response.success && response.status_code === 200) {
-          this.courseOptions = response.data.results.map(course => ({
-            label: course.title,  // 修改这里：从 name 改为 title
+        console.log('课程列表响应:', response)  // 添加日志
+        if (response.code === 0 && response.data) {  // 修改这里：检查 code 而不是 success
+          let courseList = []
+          // 处理分页格式
+          if (response.data.results) {
+            courseList = response.data.results
+          } 
+          // 处理直接数组格式
+          else if (Array.isArray(response.data)) {
+            courseList = response.data
+          }
+          
+          this.courseOptions = courseList.map(course => ({
+            label: course.title,
             value: course.id
           }))
+          console.log('处理后的课程选项:', this.courseOptions)  // 添加日志
         } else {
-          ElMessage.error(response.message || '获取课程列表失败')
+          ElMessage.error(response.msg || '获取课程列表失败')
         }
       } catch (error) {
         console.error('获取课程列表失败:', error)
@@ -412,8 +424,8 @@ export default {
         
         // 调用删除接口，直接传入 id
         const response = await deleteCourseware(row.id)
-        if (response.code === 0) {
-        ElMessage.success('删除成功')
+        if (response.code === 0) {  // 修改这里：检查 code === 0
+          ElMessage.success('删除成功')
           // 重新加载资源列表
           await this.fetchResourceList()
         } else {

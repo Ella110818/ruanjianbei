@@ -2808,3 +2808,58 @@ export async function uploadCourseware(formData) {
     }
 }
 
+// 删除课件
+export async function deleteCourseware(coursewareId) {
+    if (getMockFlag()) {
+        return mockApiResponse({
+            code: 0,
+            msg: '删除课件成功',
+            data: null
+        });
+    }
+
+    try {
+        const token = TokenManager.getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/coursewares/${coursewareId}/`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+
+        if (response.status === 204) {
+            return {
+                code: 0,
+                msg: '删除课件成功',
+                data: null
+            };
+        }
+
+        const responseData = await response.json();
+        console.log('删除课件响应:', responseData);
+
+        if (!response.ok) {
+            return handleHttpError(response, responseData);
+        }
+
+        return {
+            code: 1,
+            msg: responseData.message || '删除课件失败',
+            data: null
+        };
+    } catch (error) {
+        console.error('删除课件失败:', error);
+        return {
+            code: 1,
+            msg: error.message || '删除课件失败',
+            data: null
+        };
+    }
+}
+

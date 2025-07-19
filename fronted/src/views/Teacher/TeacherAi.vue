@@ -46,7 +46,7 @@
           <div class="header-section">
             <el-button icon="ArrowLeft" @click="backToCourses">返回课程列表</el-button>
             <h2>{{ selectedCourse.title }} - 知识点</h2>
-            <el-button type="primary" @click="handleCreateExercise">创建练习题</el-button>
+  
           </div>
           
           <!-- 搜索和筛选区域 -->
@@ -87,23 +87,14 @@
               <el-table-column
                 prop="title"
                 label="知识点名称"
-                min-width="50"
+                min-width="180"
               >
-                <template #header>
-                  <div class="header-content">
-                    <span>知识点名称</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column
-                prop="importance"
-                label="重要程度"
-                width="100"
-                :formatter="formatImportance"
-              >
-                <template #header>
-                  <div class="header-content">
-                    <span>重要程度</span>
+                <template #default="{ row }">
+                  <div class="knowledge-title">
+                    <span>{{ row.title }}</span>
+                    <el-tag v-if="row.parent_title" size="small" type="info" class="parent-tag">
+                      父节点: {{ row.parent_title }}
+                    </el-tag>
                   </div>
                 </template>
               </el-table-column>
@@ -111,11 +102,35 @@
                 prop="content"
                 label="描述"
                 show-overflow-tooltip
+                min-width="300"
               >
-                <template #header>
-                  <div class="header-content">
-                    <span>描述</span>
-                  </div>
+                <template #default="{ row }">
+                  <div class="content-preview">{{ row.content }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="importance"
+                label="重要程度"
+                width="120"
+              >
+                <template #default="{ row }">
+                  <el-rate
+                    v-model="row.importance"
+                    :max="10"
+                    disabled
+                    show-score
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="子知识点"
+                width="120"
+              >
+                <template #default="{ row }">
+                  <span v-if="row.children && row.children.length">
+                    {{ row.children.length }} 个
+                  </span>
+                  <span v-else>无</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -123,13 +138,15 @@
             <!-- 分页器 -->
             <div class="pagination">
               <el-pagination
-                v-model="currentPage"
+                :current-page="currentPage"
                 :page-size="pageSize"
                 :total="total"
                 :page-sizes="[10, 20, 50, 100]"
                 layout="total, sizes, prev, pager, next"
                 @size-change="handleSizeChange"
                 @current-change="handleCurrentChange"
+                @update:current-page="currentPage = $event"
+                @update:page-size="pageSize = $event"
               />
             </div>
           </div>
@@ -283,8 +300,8 @@ const loadKnowledgePoints = async () => {
   
   loading.value = true
   try {
-    // 检查教师认证令牌
-    const token = localStorage.getItem('teacherToken')
+    // 检查认证令牌
+    const token = localStorage.getItem('token')  // 修改这里：使用正确的token key
     if (!token) {
       ElMessage.error('未登录或登录已过期，请重新登录')
       return
@@ -325,7 +342,7 @@ const loadKnowledgePoints = async () => {
     const data = await response.json()
     console.log('知识点响应:', data)
     
-    if (data.code === 0) {
+    if (data.success && data.status_code === 200) {  // 修改这里：检查正确的响应格式
       if (data.data && Array.isArray(data.data.results)) {
         knowledgePoints.value = data.data.results
         total.value = data.data.count || 0
@@ -337,7 +354,7 @@ const loadKnowledgePoints = async () => {
         ElMessage.error('知识点数据格式不正确')
       }
     } else {
-      throw new Error(data.msg || '获取知识点列表失败')
+      throw new Error(data.message || '获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
@@ -368,18 +385,6 @@ const handleCurrentChange = (page) => {
 // 处理选择变化
 const handleSelectionChange = (selection) => {
   selectedPoints.value = selection
-}
-
-// 格式化重要程度
-const formatImportance = (row) => {
-  const levels = {
-    1: '非常低',
-    2: '低',
-    3: '中等',
-    4: '高',
-    5: '非常高'
-  }
-  return levels[row.importance] || row.importance
 }
 
 // 处理生成PPT的请求
@@ -672,19 +677,6 @@ const submitting = ref(false)
 
 // 添加表单引用
 const exerciseFormRef = ref(null)
-
-// 添加创建练习题按钮的处理方法
-const handleCreateExercise = () => {
-  showExerciseDialog.value = true
-  exerciseForm.value = {
-    title: '',
-    content: '',
-    type: '',
-    difficulty: 1,
-    knowledge_point: null,
-    answer_template: ''
-  }
-}
 </script>
 
 <style scoped>
@@ -859,5 +851,28 @@ const handleCreateExercise = () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.knowledge-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.parent-tag {
+  font-size: 12px;
+  padding: 0 6px;
+  height: 20px;
+  line-height: 20px;
+}
+
+.content-preview {
+  white-space: pre-line;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.5;
 }
 </style> 
