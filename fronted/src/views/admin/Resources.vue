@@ -62,7 +62,7 @@
         </el-table-column>
         <el-table-column prop="type" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="getTypeTagType(row.type)">{{ getTypeLabel(row.type) }}</el-tag>
+            <el-tag :type="getTypeTagType(row.type)">{{ row.typeDisplay }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="size" label="大小" width="100">
@@ -259,17 +259,17 @@ export default {
         }
 
         const data = await response.json()
-        if (data.success && data.status_code === 200) {  // 修改这里，使用正确的响应格式
+        if (data.success && data.status_code === 200) {
           // 处理返回的资源列表数据
           this.resourceList = (data.data.results || []).map(item => ({
             id: item.id,
-            name: item.file_name,
-            type: item.file_type,
-            size: item.file_size,
-            url: item.file_url,
-            uploadTime: item.upload_time,
-            course: item.course_name || '未知课程',
-            uploader: item.uploader_name || '未知用户'
+            name: item.title,  // 修改这里：使用 title 而不是 file_name
+            type: item.type,  // 修改这里：直接使用 type
+            typeDisplay: item.type_display,  // 添加这里：显示类型的中文名
+            size: item.size || 0,  // 添加默认值
+            uploadTime: item.created_at,  // 修改这里：使用 created_at
+            course: item.course_title || '未知课程',  // 修改这里：使用 course_title
+            uploader: item.creator_name || '未知用户'  // 修改这里：使用 creator_name
           }))
           this.total = data.data.count || 0
         } else {
@@ -362,8 +362,13 @@ export default {
           return
         }
 
-        // 构建正确的下载URL
-        const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${row.id}/`
+        // 构建正确的下载URL，添加必要的查询参数
+        const params = new URLSearchParams({
+          search: '1',
+          ordering: '1',
+          page: '1'
+        })
+        const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${row.id}/?${params.toString()}`
         console.log('下载URL:', downloadUrl)
         
         // 创建下载请求
