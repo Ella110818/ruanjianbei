@@ -583,24 +583,11 @@ const handleCreateExercise = async () => {
       type: exerciseForm.value.type,
       difficulty: Number(exerciseForm.value.difficulty),
       knowledge_point: Number(exerciseForm.value.knowledge_point),
-      answer_template: exerciseForm.value.type === 'single_choice' 
-        ? exerciseForm.value.answer_template // 使用用户输入的选项
-        : exerciseForm.value.answer_template
-    }
-
-    // 处理 answer_template 格式
-    try {
-      // 如果已经是字符串，尝试解析确保是有效的 JSON
-      if (typeof exerciseData.answer_template === 'string') {
-        JSON.parse(exerciseData.answer_template); // 验证是否为有效的 JSON
-      } else {
-        // 如果不是字符串，进行 JSON 序列化
-        exerciseData.answer_template = JSON.stringify(exerciseData.answer_template);
-      }
-    } catch (error) {
-      console.error('答案模板格式无效:', error);
-      ElMessage.error('答案模板格式无效，请检查格式');
-      return;
+      answer_template: exerciseForm.value.type === 'single_choice'
+        ? Array.isArray(exerciseForm.value.answer_template) 
+          ? JSON.stringify(exerciseForm.value.answer_template)
+          : exerciseForm.value.answer_template // 如果已经是字符串则保持原样
+        : exerciseForm.value.answer_template // 简答题直接使用字符串
     }
     
     console.log('准备发送的练习题数据:', exerciseData)
@@ -626,13 +613,13 @@ const handleCreateExercise = async () => {
       const data = await response.json();
       console.log('创建练习题响应:', data)
       
-      if (data.code === 0) {
-      ElMessage.success('创建练习题成功')
-      createDialogVisible.value = false
-      // 重新加载练习题列表
-      loadExercises()
-    } else {
-        throw new Error(data.msg || '创建练习题失败')
+      if (data.success && data.status_code === 201) { // 修改这里，检查正确的状态码
+        ElMessage.success('创建练习题成功')
+        createDialogVisible.value = false
+        // 重新加载练习题列表
+        loadExercises()
+      } else {
+        throw new Error(data.message || '创建练习题失败')
       }
     } catch (error) {
       console.error('创建练习题失败:', error)
