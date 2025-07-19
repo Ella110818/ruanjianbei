@@ -85,7 +85,7 @@
 
 <script>
 import { ElMessage } from 'element-plus'
-import API_CONFIG from '@/api/apiConfig'
+import { API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminHeader',

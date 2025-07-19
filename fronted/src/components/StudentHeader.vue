@@ -101,7 +101,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElForm } from 'element-plus'
-import { API_CONFIG } from '@/config/api'
+import { API_CONFIG } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
