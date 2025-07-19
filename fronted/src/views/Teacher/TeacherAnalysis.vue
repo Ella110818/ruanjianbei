@@ -303,6 +303,14 @@ const saveGrade = async () => {
 const loadAnswers = async () => {
   loading.value = true
   try {
+    // 获取 token
+    const token = localStorage.getItem('token')
+    if (!token) {
+      ElMessage.error('未登录或登录已过期，请重新登录')
+      // 这里可以添加重定向到登录页面的逻辑
+      return
+    }
+
     // 构建查询参数
     const params = new URLSearchParams({
       page: currentPage.value.toString(),
@@ -314,33 +322,40 @@ const loadAnswers = async () => {
       params.append('student_name', filters.value.search.trim())
     }
 
-    // 移除练习题筛选
-    // if (filters.value.exercise) {
-    //   params.append('exercise_id', filters.value.exercise.toString())
-    // }
-
     const response = await fetch(`${API_CONFIG.BASE_URL}/student-answers/?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`, // 修改这里，使用 'token' 而不是 'teacherToken'
+        'Authorization': `Bearer ${token}`,
         'ngrok-skip-browser-warning': 'true'
       }
     })
     
+    if (!response.ok) {
+      if (response.status === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        // 清除无效的token
+        localStorage.removeItem('token')
+        // 这里可以添加重定向到登录页面的逻辑
+        return
+      }
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
     const data = await response.json()
     
-    if (data.code === 0) {
-      answers.value = data.data.results || []
-      total.value = data.data.count || 0
+    if (data.success && data.status_code === 200) {
+      // 直接使用 data.data，它已经包含了完整的分页数据结构
+      answers.value = data.data.results
+      total.value = data.data.count
       console.log('答题记录数据:', answers.value)
       console.log('总记录数:', total.value)
     } else {
-      throw new Error(data.msg || '获取答题记录失败')
+      throw new Error(data.message || '获取答题记录失败')
     }
   } catch (error) {
     console.error('加载答题记录失败:', error)
-    ElMessage.error('加载答题记录失败，请稍后重试')
+    ElMessage.error(error.message || '加载答题记录失败，请稍后重试')
   } finally {
     loading.value = false
   }
