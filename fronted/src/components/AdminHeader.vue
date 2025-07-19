@@ -2,7 +2,7 @@
   <div class="admin-header-container">
     <header class="admin-header">
       <div class="header-left">
-        <span class="project-name">智慧教育</span>
+        <span class="project-name">慧课云枢</span>
         <nav class="main-nav">
           <a href="#" :class="{active: $route.path === '/admin/dashboard'}" @click.prevent="$router.push('/admin/dashboard')">数据显示屏</a>
           <a href="#" :class="{active: $route.path === '/admin/users'}" @click.prevent="$router.push('/admin/users')">用户管理</a>

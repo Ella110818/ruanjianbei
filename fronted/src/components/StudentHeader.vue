@@ -3,7 +3,7 @@
     <header class="student-header">
       <!-- 左侧标题 -->
       <div class="header-left">
-        <span class="project-name">智慧教育</span>
+        <span class="project-name">慧课云枢</span>
         <nav class="main-nav">
           <router-link 
             to="/student/ai-assistant" 
