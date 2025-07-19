@@ -2,7 +2,7 @@
   <div class="teacher-header-container">
     <header class="teacher-header">
       <div class="header-left">
-        <span class="project-name">智慧教育</span>
+        <span class="project-name">慧课云枢</span>
         <nav class="main-nav">
           <a href="#" :class="{active: isActivePath('/teacher/course')}" @click.prevent="navigateTo('/teacher/course')">备课助手</a>
           <a href="#" :class="{active: isActivePath('/teacher/manage')}" @click.prevent="navigateTo('/teacher/manage')">习题中心</a>

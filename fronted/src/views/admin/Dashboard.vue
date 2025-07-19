@@ -11,6 +11,7 @@
           <div class="title-image">
             <img src="@/assets/大标题1.png" alt="标题" />
           </div>
+          <div class="dashboard-title">慧课云枢数据屏</div>
           <div class="course-select-container">
             <el-select 
               v-model="selectedCourse" 
@@ -202,7 +203,7 @@ export default {
 .header-content {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   max-width: 1600px;
   margin: 0 auto;
   position: relative;
@@ -214,6 +215,20 @@ export default {
   justify-content: flex-start;
   width: auto;
   margin-right: -80px;
+}
+
+.dashboard-title {
+  margin-top:-55px;
+  margin-left: -50px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 38px;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: 8px;
+  z-index: 2;
 }
 
 .title-image img {
