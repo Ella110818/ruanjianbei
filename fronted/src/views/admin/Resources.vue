@@ -286,9 +286,9 @@ export default {
       try {
         this.loading = true
         const response = await getCourseList()
-        if (response.success && response.status_code === 200) {  // 修改这里
+        if (response.success && response.status_code === 200) {
           this.courseOptions = response.data.results.map(course => ({
-            label: course.name,
+            label: course.title,  // 修改这里：从 name 改为 title
             value: course.id
           }))
         } else {
