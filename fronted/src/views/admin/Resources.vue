@@ -401,15 +401,9 @@ export default {
           return
         }
 
-        // 构建正确的下载URL，使用 file_id
-        const params = new URLSearchParams({
-          search: '1',
-          ordering: '1',
-          page: '1'
-        })
-        // 使用 file_url 中的文件ID
-        const fileId = row.file_url ? row.file_url.split('/').pop().split('.')[0] : row.id
-        const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${fileId}/?${params.toString()}`
+        // 获取正确的文件ID
+        const fileId = row.id.toString()
+        const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${fileId}/`
         console.log('下载URL:', downloadUrl)
         
         // 创建下载请求

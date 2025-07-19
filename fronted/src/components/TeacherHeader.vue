@@ -194,11 +194,9 @@ export default {
             'ngrok-skip-browser-warning': 'true'
           },
           body: JSON.stringify({
-            data: {
             old_password: this.passwordForm.old_password,
             new_password: this.passwordForm.new_password,
             confirm_password: this.passwordForm.confirm_password
-            }
           })
         })
 
@@ -208,19 +206,21 @@ export default {
 
         const data = await response.json()
         
-        if (data.code === 0) {
-          ElMessage.success('密码修改成功')
+        if (data.success && data.status_code === 200) {
+          ElMessage.success(data.data.detail || '密码修改成功')
           this.changePasswordVisible = false
+          // 重置表单
+          this.passwordForm = {
+            old_password: '',
+            new_password: '',
+            confirm_password: ''
+          }
         } else {
-          ElMessage.error(data.msg || '密码修改失败')
+          throw new Error(data.data?.detail || '密码修改失败')
         }
       } catch (error) {
         console.error('修改密码失败:', error)
-        if (error.message.includes('status: 405')) {
-          ElMessage.error('请求方法不允许，请联系管理员')
-        } else {
-        ElMessage.error('修改密码失败，请重试')
-        }
+        ElMessage.error(error.message || '修改密码失败，请重试')
       } finally {
         this.submitting = false
       }
