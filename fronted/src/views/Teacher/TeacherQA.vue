@@ -68,6 +68,13 @@ const md = new MarkdownIt({
   linkify: true
 })
 
+// 格式化时间函数
+const formatTime = (date) => {
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
 // 状态变量
 const sideTab = ref('qa-assistant')
 const courseMenuOpen = ref(false)
@@ -98,13 +105,6 @@ const updateSideTab = (value) => {
 
 const updateCourseMenuOpen = (value) => {
   courseMenuOpen.value = value
-}
-
-// 格式化时间
-const formatTime = (date) => {
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  return `${hours}:${minutes}`
 }
 
 // 格式化消息内容
