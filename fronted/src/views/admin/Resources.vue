@@ -119,13 +119,13 @@
           <el-input v-model="uploadForm.name" placeholder="请输入资源名称"></el-input>
         </el-form-item>
         
-        <el-form-item label="所属课程" prop="course">
-          <el-select v-model="uploadForm.course" placeholder="请选择课程">
+        <el-form-item label="关联课件" prop="courseware">
+          <el-select v-model="uploadForm.courseware" placeholder="请选择关联课件">
             <el-option
-              v-for="course in courseOptions"
-              :key="course.value"
-              :label="course.label"
-              :value="course.value"
+              v-for="courseware in coursewareOptions"
+              :key="courseware.value"
+              :label="courseware.label"
+              :value="courseware.value"
             >
             </el-option>
           </el-select>
@@ -195,15 +195,16 @@ export default {
       uploadDialogVisible: false,
       resourceList: [],
       courseOptions: [],
+      coursewareOptions: [],  // 添加课件选项列表
       uploadForm: {
-        course: '',
+        courseware: '',  // 修改这里：从 course 改为 courseware
         file: null,
-        name: '',  // 添加文件名字段
-        description: ''  // 添加描述字段
+        name: '',
+        description: ''
       },
       uploadRules: {
-        course: [
-          { required: true, message: '请选择所属课程', trigger: 'change' }
+        courseware: [  // 修改这里：从 course 改为 courseware
+          { required: true, message: '请选择关联课件', trigger: 'change' }
         ],
         file: [
           { required: true, message: '请上传资源文件', trigger: 'change' }
@@ -313,6 +314,42 @@ export default {
         this.loading = false
       }
     },
+    // 添加获取课件列表的方法
+    async fetchCoursewareList() {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          return
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/coursewares/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error(`获取课件列表失败: ${response.status}`)
+        }
+
+        const data = await response.json()
+        if (data.success && data.status_code === 200) {
+          this.coursewareOptions = (data.data.results || []).map(item => ({
+            label: item.title,
+            value: item.id
+          }))
+        } else {
+          throw new Error(data.message || '获取课件列表失败')
+        }
+      } catch (error) {
+        console.error('获取课件列表失败:', error)
+        ElMessage.error(error.message || '获取课件列表失败')
+      }
+    },
     getFileIcon(type) {
       const icons = {
         document: 'el-icon-document',
@@ -353,6 +390,7 @@ export default {
     },
     handleUpload() {
       this.uploadDialogVisible = true
+      this.fetchCoursewareList()  // 打开对话框时获取课件列表
     },
     async handleDownload(row) {
       try {
@@ -584,51 +622,12 @@ export default {
           fileName: this.uploadForm.file.name,
           fileSize: this.uploadForm.file.size,
           fileType: this.uploadForm.file.type,
-          course: this.uploadForm.course
+          courseware: this.uploadForm.courseware
         })
 
-        // 第一步：创建课件记录
-        const coursewareData = {
-          title: this.uploadForm.name,
-          content: this.uploadForm.description || '',
-          type: 'document',
-          course: this.uploadForm.course
-        }
-
-        console.log('创建课件记录:', coursewareData)
-        const createResponse = await fetch(`${API_CONFIG.BASE_URL}/coursewares/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'ngrok-skip-browser-warning': 'true'
-          },
-          body: JSON.stringify(coursewareData)
-        })
-
-        if (!createResponse.ok) {
-          const errorData = await createResponse.json()
-          console.error('创建课件失败响应:', errorData)
-          if (createResponse.status === 401) {
-            ElMessage.error('登录已过期，请重新登录')
-            return
-          }
-          throw new Error(errorData.message || `创建课件记录失败: ${createResponse.status}`)
-        }
-
-        const createData = await createResponse.json()
-        console.log('创建课件响应:', createData)
-
-        if (!createData.success || createData.status_code !== 201) {
-          throw new Error(createData.message || '创建课件记录失败')
-        }
-
-        const coursewareId = createData.data.id
-        console.log('获取到的课件ID:', coursewareId)
-
-        // 第二步：上传文件
+        // 直接上传文件
         const formData = new FormData()
-        formData.append('courseware_id', coursewareId.toString())  // 确保 ID 是字符串
+        formData.append('courseware_id', this.uploadForm.courseware.toString())
         formData.append('file', this.uploadForm.file)
 
         // 打印 FormData 内容（仅用于调试）
@@ -636,13 +635,11 @@ export default {
           console.log('FormData 字段:', key, value)
         }
 
-        console.log('开始上传文件，课件ID:', coursewareId)
         const uploadResponse = await fetch(`${API_CONFIG.BASE_URL}/coursewares/upload/`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'ngrok-skip-browser-warning': 'true'
-            // 注意：这里不要设置 Content-Type，让浏览器自动设置正确的 multipart/form-data
           },
           body: formData
         })
@@ -650,10 +647,6 @@ export default {
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json()
           console.error('上传文件失败响应:', errorData)
-          if (uploadResponse.status === 401) {
-            ElMessage.error('登录已过期，请重新登录')
-            return
-          }
           throw new Error(errorData.message || `文件上传失败: ${uploadResponse.status}`)
         }
 
