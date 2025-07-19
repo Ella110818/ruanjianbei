@@ -185,9 +185,8 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { getStudentAnswers, getExercises, updateStudentAnswer } from '@/api'
 import { ElMessage } from 'element-plus'
-import { API_CONFIG } from '@/api'  // 添加导入
+import { API_CONFIG } from '@/api'
 
 // 状态管理
 const loading = ref(false)
@@ -202,17 +201,39 @@ const selectedAnswer = ref(null)
 // 加载练习题列表
 const loadExercises = async () => {
   try {
-    const response = await getExercises({
-      page: 1,
-      page_size: 100
+    const token = localStorage.getItem('teacherToken')
+    if (!token) {
+      ElMessage.error('未登录或登录已过期，请重新登录')
+      return
+    }
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}/exercises/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      }
     })
-    
-    if (response.success && response.status_code === 200) {  // 修改判断条件
-      exercises.value = response.data || []
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        return
+      }
+      throw new Error(`获取练习题列表失败: ${response.status}`)
+    }
+
+    const data = await response.json()
+    if (data.code === 0) {
+      exercises.value = data.data.results || []
       console.log('练习题列表:', exercises.value)
+    } else {
+      throw new Error(data.msg || '获取练习题列表失败')
     }
   } catch (error) {
     console.error('加载练习题失败:', error)
+    ElMessage.error(error.message || '加载练习题失败，请稍后重试')
   }
 }
 
@@ -279,23 +300,48 @@ const saveGrade = async () => {
   
   saving.value = true
   try {
-    const response = await updateStudentAnswer(selectedAnswer.value.id, {
-      score: selectedAnswer.value.score,
-      feedback: selectedAnswer.value.feedback,
-      explanation: selectedAnswer.value.explanation,
-      sources: selectedAnswer.value.sources
+    const token = localStorage.getItem('teacherToken')
+    if (!token) {
+      ElMessage.error('未登录或登录已过期，请重新登录')
+      return
+    }
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}/student-answers/${selectedAnswer.value.id}/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      },
+      body: JSON.stringify({
+        data: {
+          score: selectedAnswer.value.score,
+          feedback: selectedAnswer.value.feedback,
+          explanation: selectedAnswer.value.explanation,
+          sources: selectedAnswer.value.sources
+        }
+      })
     })
-    
-    if (response.success && response.status_code === 200) {
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        return
+      }
+      throw new Error(`保存评分失败: ${response.status}`)
+    }
+
+    const data = await response.json()
+    if (data.code === 0) {
       ElMessage.success('保存成功')
       isEditing.value = false
       loadAnswers() // 重新加载列表
     } else {
-      ElMessage.error(response.message || '保存失败')
+      throw new Error(data.msg || '保存失败')
     }
   } catch (error) {
     console.error('保存评分失败:', error)
-    ElMessage.error('保存失败，请稍后重试')
+    ElMessage.error(error.message || '保存失败，请稍后重试')
   } finally {
     saving.value = false
   }
@@ -305,28 +351,55 @@ const saveGrade = async () => {
 const loadAnswers = async () => {
   loading.value = true
   try {
-    const response = await getStudentAnswers({
-      ...filters.value,
-      page: currentPage.value,
-      page_size: pageSize.value
+    // 检查教师认证令牌
+    const token = localStorage.getItem('teacherToken')
+    if (!token) {
+      ElMessage.error('未登录或登录已过期，请重新登录')
+      return
+    }
+
+    const params = new URLSearchParams({
+      page: currentPage.value.toString(),
+      page_size: pageSize.value.toString()
     })
+
+    if (filters.value.search) {
+      params.append('student_name', filters.value.search)
+    }
+    if (filters.value.exercise) {
+      params.append('exercise_id', filters.value.exercise)
+    }
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}/student-answers/?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      }
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        return
+      }
+      throw new Error(`获取答题记录失败: ${response.status}`)
+    }
+
+    const data = await response.json()
     
-    console.log('API响应数据:', response)
-    
-    if (response.success && response.status_code === 200) {  // 修改判断条件
-      console.log('答题记录数据:', response.data.results)
-      console.log('总记录数:', response.data.count)
-      
-      answers.value = response.data.results || []
-      total.value = response.data.count || 0
-      
-      console.log('更新后的answers:', answers.value)
+    if (data.code === 0) {
+      answers.value = data.data.results || []
+      total.value = data.data.count || 0
+      console.log('答题记录数据:', answers.value)
+      console.log('总记录数:', total.value)
     } else {
-      ElMessage.error('获取答题记录失败')
+      throw new Error(data.msg || '获取答题记录失败')
     }
   } catch (error) {
     console.error('加载答题记录失败:', error)
-    ElMessage.error('加载答题记录失败，请稍后重试')
+    ElMessage.error(error.message || '加载答题记录失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -342,6 +415,12 @@ const requestAIGrade = async () => {
   
   aiGrading.value = true
   try {
+    const token = localStorage.getItem('teacherToken')
+    if (!token) {
+      ElMessage.error('未登录或登录已过期，请重新登录')
+      return
+    }
+
     // 生成唯一的会话ID
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
@@ -354,21 +433,28 @@ const requestAIGrade = async () => {
     
     console.log('AI批改请求数据:', requestData)
     
-    // 发送请求到AI批改接口
     const response = await fetch(`${API_CONFIG.BASE_URL}/ai/correct-answer/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
-        'Authorization': localStorage.getItem('token') || ''
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify(requestData)
     })
 
+    if (!response.ok) {
+      if (response.status === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        return
+      }
+      throw new Error(`AI批改失败: ${response.status}`)
+    }
+
     const data = await response.json()
     console.log('AI批改响应数据:', data)
     
-    if (data.success && data.status_code === 200) {
+    if (data.code === 0) {
       try {
         // 直接使用返回的数据对象
         const answerData = data.data;
@@ -402,7 +488,7 @@ const requestAIGrade = async () => {
         ElMessage.error('处理AI评分数据失败：' + error.message)
       }
     } else {
-      throw new Error(data.message || 'AI批改失败')
+      throw new Error(data.msg || 'AI批改失败')
     }
   } catch (error) {
     console.error('AI批改失败:', error)
