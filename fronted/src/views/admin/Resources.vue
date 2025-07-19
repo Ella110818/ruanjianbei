@@ -264,13 +264,14 @@ export default {
           // 处理返回的资源列表数据
           this.resourceList = (data.data.results || []).map(item => ({
             id: item.id,
-            name: item.title,  // 修改这里：使用 title 而不是 file_name
-            type: item.type,  // 修改这里：直接使用 type
-            typeDisplay: item.type_display,  // 添加这里：显示类型的中文名
-            size: item.size || 0,  // 添加默认值
-            uploadTime: item.created_at,  // 修改这里：使用 created_at
-            course: item.course_title || '未知课程',  // 修改这里：使用 course_title
-            uploader: item.creator_name || '未知用户'  // 修改这里：使用 creator_name
+            name: item.title,
+            type: item.type,
+            typeDisplay: item.type_display,
+            size: item.size || 0,
+            uploadTime: item.created_at,
+            course: item.course_title || '未知课程',
+            uploader: item.creator_name || '未知用户',
+            file_url: item.file_url  // 添加 file_url 字段
           }))
           this.total = data.data.count || 0
         } else {
@@ -400,13 +401,15 @@ export default {
           return
         }
 
-        // 构建正确的下载URL，添加必要的查询参数
+        // 构建正确的下载URL，使用 file_id
         const params = new URLSearchParams({
           search: '1',
           ordering: '1',
           page: '1'
         })
-        const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${row.id}/?${params.toString()}`
+        // 使用 file_url 中的文件ID
+        const fileId = row.file_url ? row.file_url.split('/').pop().split('.')[0] : row.id
+        const downloadUrl = `${API_CONFIG.BASE_URL}/coursewares/download/${fileId}/?${params.toString()}`
         console.log('下载URL:', downloadUrl)
         
         // 创建下载请求
@@ -423,7 +426,9 @@ export default {
             ElMessage.error('登录已过期，请重新登录')
             return
           }
-          throw new Error(`下载失败: ${response.status}`)
+          const errorData = await response.json()
+          console.error('下载失败响应:', errorData)
+          throw new Error(errorData.message || `下载失败: ${response.status}`)
         }
         
         // 获取文件blob
@@ -653,7 +658,7 @@ export default {
         const uploadData = await uploadResponse.json()
         console.log('文件上传响应:', uploadData)
         
-        if (uploadData.success && uploadData.status_code === 200) {
+        if (uploadData.success && (uploadData.status_code === 200 || uploadData.status_code === 201)) {
           ElMessage.success('资源上传成功')
           this.uploadDialogVisible = false
           // 重置表单
