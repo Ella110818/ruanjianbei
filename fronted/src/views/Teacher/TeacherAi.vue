@@ -32,9 +32,6 @@
               <div class="course-info">
                 <h3 class="course-title">{{ course.title }}</h3>
                 <span class="teacher">{{ course.teacher_name || '未知教师' }}</span>
-                <div class="course-stats">
-                  <span class="knowledge-points-count">知识点: {{ course.knowledge_points_count || 0 }}</span>
-                </div>
                 <el-button type="primary" @click.stop="selectCourse(course)">备课</el-button>
               </div>
             </el-card>
@@ -761,27 +758,33 @@ const exerciseFormRef = ref(null)
   margin-bottom: 16px;
 }
 
-.course-stats {
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: #666;
+.course-card:hover .course-image {
+  transform: scale(1.05);
 }
 
-.knowledge-points-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.course-info {
+  padding: 16px;
+  position: relative;
 }
 
-.knowledge-points-count::before {
-  content: "";
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666'%3E%3Cpath d='M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+.course-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+:deep(.el-button--primary) {
+  background: #409EFF;
+  border-color: #409EFF;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+:deep(.el-button--primary:hover) {
+  background: #66B1FF;
+  border-color: #66B1FF;
 }
 
 .knowledge-points-container {
