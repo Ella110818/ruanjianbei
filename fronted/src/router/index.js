@@ -1,8 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import HomeView from '../views/HomeView.vue'
-import TeacherPlan from '../views/Teacher/TeacherPlan.vue'
-import TeacherQA from '../views/Teacher/TeacherQA.vue'
 
 const routes = [
   {
@@ -154,8 +152,11 @@ const routes = [
   {
     path: '/teacher/qa',
     name: 'TeacherQA',
-    component: TeacherQA,
-    meta: { requiresAuth: true }
+    component: () => import('@/views/Teacher/TeacherQA.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'teacher'
+    }
   },
   {
     path: '/admin',
