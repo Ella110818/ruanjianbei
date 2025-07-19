@@ -77,7 +77,7 @@
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="text" @click="handleDownload(row)">下载</el-button>
-            <el-button type="text" @click="handlePreview(row)">预览</el-button>
+    
             <el-button type="text" class="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>

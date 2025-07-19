@@ -10,7 +10,12 @@
       <a href="#" 
          :class="{active: currentTab === 'lesson-prep'}" 
          @click.prevent="selectSide('lesson-prep', '/teacher/ai')">
-        备课助手
+        PPT助手
+      </a>
+      <a href="#" 
+         :class="{active: currentTab === 'teaching-plan'}" 
+         @click.prevent="selectSide('teaching-plan', '/teacher/plan')">
+        三纲一案
       </a>
     </nav>
   </aside>
