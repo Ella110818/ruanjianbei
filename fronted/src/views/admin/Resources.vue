@@ -259,7 +259,7 @@ export default {
         }
 
         const data = await response.json()
-        if (data.code === 0 && data.data) {
+        if (data.success && data.status_code === 200) {  // 修改这里，使用正确的响应格式
           // 处理返回的资源列表数据
           this.resourceList = (data.data.results || []).map(item => ({
             id: item.id,
@@ -273,7 +273,7 @@ export default {
           }))
           this.total = data.data.count || 0
         } else {
-          ElMessage.error(data.msg || '获取资源列表失败')
+          ElMessage.error(data.message || '获取资源列表失败')
         }
       } catch (error) {
         console.error('获取资源列表失败:', error)
@@ -286,13 +286,13 @@ export default {
       try {
         this.loading = true
         const response = await getCourseList()
-        if (response.code === 0 && response.data) {
+        if (response.success && response.status_code === 200) {  // 修改这里
           this.courseOptions = response.data.results.map(course => ({
             label: course.name,
             value: course.id
           }))
         } else {
-          ElMessage.error(response.msg || '获取课程列表失败')
+          ElMessage.error(response.message || '获取课程列表失败')
         }
       } catch (error) {
         console.error('获取课程列表失败:', error)
@@ -602,8 +602,8 @@ export default {
         const createData = await createResponse.json()
         console.log('创建课件响应:', createData)
 
-        if (createData.code !== 0 || !createData.data) {
-          throw new Error(createData.msg || '创建课件记录失败')
+        if (!createData.success || createData.status_code !== 201) {  // 修改这里
+          throw new Error(createData.message || '创建课件记录失败')
         }
 
         const coursewareId = createData.data.id
@@ -634,7 +634,7 @@ export default {
         const uploadData = await uploadResponse.json()
         console.log('文件上传响应:', uploadData)
         
-        if (uploadData.code === 0 && uploadData.data) {
+        if (uploadData.success && uploadData.status_code === 200) {  // 修改这里
           // 处理返回的文件信息
           const fileInfo = uploadData.data
           console.log('文件上传成功:', {
@@ -654,7 +654,7 @@ export default {
           // 刷新资源列表
           await this.fetchResourceList()
         } else {
-          throw new Error(uploadData.msg || '文件上传失败')
+          throw new Error(uploadData.message || '文件上传失败')
         }
       } catch (error) {
         console.error('上传失败:', error)
