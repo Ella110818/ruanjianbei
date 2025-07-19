@@ -480,15 +480,13 @@ export default {
         if (this.dialogType === 'add') {
           // 添加用户
           const userData = {
-            data: {  // 添加 data 包装
-              username: this.userForm.username,
-              email: this.userForm.email,
-              password: this.userForm.password,
-              password2: this.userForm.password2,
-              first_name: this.userForm.first_name || '',
-              last_name: this.userForm.last_name || '',
-              role: this.userForm.role
-            }
+            username: this.userForm.username,
+            email: this.userForm.email,
+            password: this.userForm.password,
+            password2: this.userForm.password2,
+            first_name: this.userForm.first_name || '',
+            last_name: this.userForm.last_name || '',
+            role: this.userForm.role
           }
 
           console.log('准备发送的用户数据:', userData)
@@ -500,7 +498,7 @@ export default {
               'Authorization': `Bearer ${token}`,
               'ngrok-skip-browser-warning': 'true'
             },
-            body: JSON.stringify(userData)  // 直接发送包含 data 的对象
+            body: JSON.stringify(userData)  // 直接发送用户数据对象
           });
 
           if (!response.ok) {
@@ -525,12 +523,10 @@ export default {
         } else {
           // 编辑用户
           const userData = {
-            data: {  // 添加 data 包装
-              email: this.userForm.email,
-              role: this.userForm.role,
-              first_name: this.userForm.first_name || '',
-              last_name: this.userForm.last_name || ''
-            }
+            email: this.userForm.email,
+            role: this.userForm.role,
+            first_name: this.userForm.first_name || '',
+            last_name: this.userForm.last_name || ''
           }
 
           console.log('准备发送的编辑数据:', userData)
@@ -542,7 +538,7 @@ export default {
               'Authorization': `Bearer ${token}`,
               'ngrok-skip-browser-warning': 'true'
             },
-            body: JSON.stringify(userData)  // 直接发送包含 data 的对象
+            body: JSON.stringify(userData)  // 直接发送用户数据对象
           });
 
           if (!response.ok) {
