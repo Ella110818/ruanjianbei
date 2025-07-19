@@ -85,6 +85,7 @@
 
 <script>
 import { ElMessage } from 'element-plus'
+import API_CONFIG from '@/api/apiConfig'
 
 export default {
   name: 'AdminHeader',
@@ -166,7 +167,7 @@ export default {
         await this.$refs.passwordFormRef.validate()
         
         this.submitting = true
-        const response = await fetch('/api/users/change_password/', {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/users/change_password/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -174,25 +175,33 @@ export default {
             'ngrok-skip-browser-warning': 'true'
           },
           body: JSON.stringify({
-            data: {
-              old_password: this.passwordForm.old_password,
-              new_password: this.passwordForm.new_password,
-              confirm_password: this.passwordForm.confirm_password
-            }
+            old_password: this.passwordForm.old_password,
+            new_password: this.passwordForm.new_password,
+            confirm_password: this.passwordForm.confirm_password
           })
         })
 
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
         const data = await response.json()
         
-        if (data.code === 0) {
-          ElMessage.success('密码修改成功')
+        if (data.success && data.status_code === 200) {
+          ElMessage.success(data.data.detail || '密码修改成功')
           this.changePasswordVisible = false
+          // 重置表单
+          this.passwordForm = {
+            old_password: '',
+            new_password: '',
+            confirm_password: ''
+          }
         } else {
-          ElMessage.error(data.message || '密码修改失败')
+          throw new Error(data.data?.detail || '密码修改失败')
         }
       } catch (error) {
         console.error('修改密码失败:', error)
-        ElMessage.error('修改密码失败，请重试')
+        ElMessage.error(error.message || '修改密码失败，请重试')
       } finally {
         this.submitting = false
       }

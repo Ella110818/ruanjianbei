@@ -101,6 +101,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElForm } from 'element-plus'
+import { API_CONFIG } from '@/config/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -195,7 +196,7 @@ const submitChangePassword = async () => {
     await passwordFormRef.value.validate()
     
     submitting.value = true
-    const response = await fetch('/api/users/change_password/', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/users/change_password/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -203,25 +204,33 @@ const submitChangePassword = async () => {
         'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify({
-        data: {
         old_password: passwordForm.value.old_password,
         new_password: passwordForm.value.new_password,
         confirm_password: passwordForm.value.confirm_password
-        }
       })
     })
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
     const data = await response.json()
     
-    if (data.code === 0) {
-      ElMessage.success('密码修改成功')
+    if (data.success && data.status_code === 200) {
+      ElMessage.success(data.data.detail || '密码修改成功')
       changePasswordVisible.value = false
+      // 重置表单
+      passwordForm.value = {
+        old_password: '',
+        new_password: '',
+        confirm_password: ''
+      }
     } else {
-      ElMessage.error(data.message || '密码修改失败')
+      throw new Error(data.data?.detail || '密码修改失败')
     }
   } catch (error) {
     console.error('修改密码失败:', error)
-    ElMessage.error('修改密码失败，请重试')
+    ElMessage.error(error.message || '修改密码失败，请重试')
   } finally {
     submitting.value = false
   }
