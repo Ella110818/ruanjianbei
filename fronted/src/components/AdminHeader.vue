@@ -166,12 +166,20 @@ export default {
       try {
         await this.$refs.passwordFormRef.validate()
         
+        // 获取token
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          this.$router.push('/login')
+          return
+        }
+        
         this.submitting = true
         const response = await fetch(`${API_CONFIG.BASE_URL}/users/change_password/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Authorization': `Bearer ${token}`,
             'ngrok-skip-browser-warning': 'true'
           },
           body: JSON.stringify({
@@ -182,6 +190,11 @@ export default {
         })
 
         if (!response.ok) {
+          if (response.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            this.$router.push('/login')
+            return
+          }
           throw new Error(`HTTP error! status: ${response.status}`)
         }
 
