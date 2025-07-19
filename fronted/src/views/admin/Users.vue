@@ -263,11 +263,11 @@ export default {
         }
 
         const data = await response.json()
-        if (data.code === 0) {
-          this.userList = data.data.results || []
-          this.total = data.data.count || 0
+        if (data.success && data.status_code === 200) {  // 修改这里，使用正确的响应格式
+          this.userList = data.data.results
+          this.total = data.data.count
         } else {
-          throw new Error(data.msg || '获取用户列表失败')
+          throw new Error(data.message || '获取用户列表失败')
         }
       } catch (error) {
         console.error('获取用户列表失败:', error)
@@ -480,13 +480,15 @@ export default {
         if (this.dialogType === 'add') {
           // 添加用户
           const userData = {
-            username: this.userForm.username,
-            email: this.userForm.email,
-            password: this.userForm.password,
-            password2: this.userForm.password2,
-            role: this.userForm.role,
-            first_name: this.userForm.first_name || '',
-            last_name: this.userForm.last_name || ''
+            data: {  // 添加 data 包装
+              username: this.userForm.username,
+              email: this.userForm.email,
+              password: this.userForm.password,
+              password2: this.userForm.password2,
+              first_name: this.userForm.first_name || '',
+              last_name: this.userForm.last_name || '',
+              role: this.userForm.role
+            }
           }
 
           console.log('准备发送的用户数据:', userData)
@@ -498,7 +500,7 @@ export default {
               'Authorization': `Bearer ${token}`,
               'ngrok-skip-browser-warning': 'true'
             },
-            body: JSON.stringify({ data: userData })
+            body: JSON.stringify(userData)  // 直接发送包含 data 的对象
           });
 
           if (!response.ok) {
@@ -506,26 +508,29 @@ export default {
               ElMessage.error('登录已过期，请重新登录')
               return
             }
-            throw new Error(`添加用户失败: ${response.status}`)
+            const errorData = await response.json()
+            throw new Error(errorData.message || `添加用户失败: ${response.status}`)
           }
 
           const data = await response.json();
           console.log('创建用户响应:', data);
           
-          if (data.code === 0) {
+          if (data.success && data.status_code === 201) {
             ElMessage.success('添加用户成功')
-          this.dialogVisible = false
-          this.fetchUserList()
+            this.dialogVisible = false
+            this.fetchUserList()
           } else {
-            throw new Error(data.msg || '添加用户失败')
+            throw new Error(data.message || '添加用户失败')
           }
         } else {
           // 编辑用户
           const userData = {
-            email: this.userForm.email,
-            role: this.userForm.role,
-            first_name: this.userForm.first_name || '',
-            last_name: this.userForm.last_name || ''
+            data: {  // 添加 data 包装
+              email: this.userForm.email,
+              role: this.userForm.role,
+              first_name: this.userForm.first_name || '',
+              last_name: this.userForm.last_name || ''
+            }
           }
 
           console.log('准备发送的编辑数据:', userData)
@@ -537,7 +542,7 @@ export default {
               'Authorization': `Bearer ${token}`,
               'ngrok-skip-browser-warning': 'true'
             },
-            body: JSON.stringify({ data: userData })
+            body: JSON.stringify(userData)  // 直接发送包含 data 的对象
           });
 
           if (!response.ok) {
@@ -551,12 +556,12 @@ export default {
           const data = await response.json();
           console.log('编辑用户响应:', data);
           
-          if (data.code === 0) {
+          if (data.success && data.status_code === 200) {  // 修改这里
             ElMessage.success('编辑用户成功')
             this.dialogVisible = false
             this.fetchUserList()
           } else {
-            throw new Error(data.msg || '编辑用户失败')
+            throw new Error(data.message || '编辑用户失败')
           }
         }
       } catch (error) {
