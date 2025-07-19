@@ -55,8 +55,8 @@
                 >
                   重置密码
                 </el-button>
-                <el-button
-                  type="primary"
+                <el-button 
+                  type="primary" 
                   size="small"
                   class="blue-button danger"
                   @click="handleDelete(row)"
@@ -228,7 +228,7 @@ export default {
           page_size: this.pageSize,
           ordering: '-created_at'  // 按创建时间倒序
         }
-
+        
         // 添加搜索条件
         if (this.searchQuery.trim()) {
           params.search = this.searchQuery.trim()
@@ -253,7 +253,7 @@ export default {
             'ngrok-skip-browser-warning': 'true'
           }
         })
-
+        
         if (!response.ok) {
           if (response.status === 401) {
             ElMessage.error('登录已过期，请重新登录')
@@ -372,7 +372,7 @@ export default {
             type: 'warning'
           }
         )
-
+        
         const token = localStorage.getItem('token')
         if (!token) {
           ElMessage.error('未登录或登录已过期，请重新登录')
@@ -469,7 +469,7 @@ export default {
       try {
         await this.$refs.userForm.validate()
         this.submitting = true
-
+        
         // 检查认证令牌
         const token = localStorage.getItem('token')
         if (!token) {
@@ -514,8 +514,8 @@ export default {
           
           if (data.code === 0) {
             ElMessage.success('添加用户成功')
-            this.dialogVisible = false
-            this.fetchUserList()
+          this.dialogVisible = false
+          this.fetchUserList()
           } else {
             throw new Error(data.msg || '添加用户失败')
           }

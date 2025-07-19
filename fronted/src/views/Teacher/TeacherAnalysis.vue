@@ -17,26 +17,6 @@
                 <el-icon><Search /></el-icon>
               </template>
             </el-input>
-            <el-select
-              v-model="filters.exercise"
-              placeholder="选择练习题"
-              @change="handleFilterChange"
-              class="filter-item"
-              clearable
-              filterable
-            >
-              <el-option
-                v-for="exercise in exercises"
-                :key="exercise.id"
-                :label="exercise.title"
-                :value="exercise.id"
-              >
-                <div class="exercise-option">
-                  <span class="exercise-title">{{ exercise.title }}</span>
-                  <small class="exercise-type">{{ exercise.type_display }}</small>
-                </div>
-              </el-option>
-            </el-select>
           </div>
         </div>
 
@@ -224,43 +204,20 @@ import { debounce } from 'lodash-es'
 // 状态管理
 const loading = ref(false)
 const answers = ref([])
-const exercises = ref([])
+// const exercises = ref([]) // 移除练习题相关
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const detailDialogVisible = ref(false)
 const selectedAnswer = ref(null)
 
-// 加载练习题列表
-const loadExercises = async () => {
-  try {
-    const response = await fetch(`${API_CONFIG.BASE_URL}/exercises/`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('teacherToken')}`,
-        'ngrok-skip-browser-warning': 'true'
-      }
-    })
-    
-    const data = await response.json()
-    
-    if (data.code === 0) {
-      exercises.value = data.data.results || []
-      console.log('练习题列表:', exercises.value)
-    } else {
-      throw new Error(data.msg || '获取练习题列表失败')
-    }
-  } catch (error) {
-    console.error('加载练习题失败:', error)
-    ElMessage.error('加载练习题失败，请稍后重试')
-  }
-}
+// 移除练习题加载函数
+// const loadExercises = async () => { ... }
 
 // 筛选条件
 const filters = ref({
-  search: '',
-  exercise: undefined
+  search: ''
+  // exercise: undefined // 移除练习题筛选
 })
 
 // 处理筛选条件变化 - 使用防抖
@@ -357,16 +314,16 @@ const loadAnswers = async () => {
       params.append('student_name', filters.value.search.trim())
     }
 
-    // 添加练习题筛选
-    if (filters.value.exercise) {
-      params.append('exercise_id', filters.value.exercise.toString())
-    }
+    // 移除练习题筛选
+    // if (filters.value.exercise) {
+    //   params.append('exercise_id', filters.value.exercise.toString())
+    // }
 
     const response = await fetch(`${API_CONFIG.BASE_URL}/student-answers/?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('teacherToken')}`,
+        'Authorization': `Bearer ${localStorage.getItem('token')}`, // 修改这里，使用 'token' 而不是 'teacherToken'
         'ngrok-skip-browser-warning': 'true'
       }
     })
@@ -436,31 +393,31 @@ const requestAIGrade = async () => {
       try {
         // 直接使用返回的数据对象
         const answerData = data.data;
-        
+          
         // 更新AI评分结果
-        aiGradeResult.value = {
+          aiGradeResult.value = {
           is_correct: answerData.is_correct,
           score: answerData.score,
           feedback: answerData.feedback,
           improvement_suggestions: answerData.improvement_suggestions,
           explanation: answerData.explanation,
           sources: Array.isArray(answerData.sources) ? answerData.sources.map(s => s.title).join(', ') : '无'
-        }
-        
-        // 如果AI评分成功，自动填入分数和反馈
-        if (!isEditing.value) {
-          startEdit()
-        }
-        
-        // 更新当前选中的答案
-        if (selectedAnswer.value) {
+          }
+          
+          // 如果AI评分成功，自动填入分数和反馈
+          if (!isEditing.value) {
+            startEdit()
+          }
+          
+          // 更新当前选中的答案
+          if (selectedAnswer.value) {
           selectedAnswer.value.score = answerData.score
           selectedAnswer.value.feedback = answerData.improvement_suggestions || answerData.feedback
           selectedAnswer.value.explanation = answerData.explanation || ''
           selectedAnswer.value.sources = Array.isArray(answerData.sources) ? answerData.sources.map(s => s.title).join(', ') : '无'
-        }
-        
-        ElMessage.success('AI批改完成')
+          }
+          
+          ElMessage.success('AI批改完成')
       } catch (error) {
         console.error('处理AI评分数据失败:', error)
         ElMessage.error('处理AI评分数据失败：' + error.message)
@@ -522,7 +479,7 @@ const handleDelete = async (row) => {
 // 组件挂载时加载数据
 onMounted(() => {
   loadAnswers()
-  loadExercises()
+  // loadExercises() // 移除练习题加载
 })
 
 // 获取对话框标题

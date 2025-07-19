@@ -646,8 +646,8 @@ export default {
             uploadTime: fileInfo.upload_time
           })
 
-          ElMessage.success('资源上传成功')
-          this.uploadDialogVisible = false
+        ElMessage.success('资源上传成功')
+        this.uploadDialogVisible = false
           // 重置表单
           this.$refs.uploadForm.resetFields()
           this.uploadForm.file = null

@@ -204,9 +204,9 @@ const submitChangePassword = async () => {
       },
       body: JSON.stringify({
         data: {
-          old_password: passwordForm.value.old_password,
-          new_password: passwordForm.value.new_password,
-          confirm_password: passwordForm.value.confirm_password
+        old_password: passwordForm.value.old_password,
+        new_password: passwordForm.value.new_password,
+        confirm_password: passwordForm.value.confirm_password
         }
       })
     })

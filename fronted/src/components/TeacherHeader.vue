@@ -195,9 +195,9 @@ export default {
           },
           body: JSON.stringify({
             data: {
-              old_password: this.passwordForm.old_password,
-              new_password: this.passwordForm.new_password,
-              confirm_password: this.passwordForm.confirm_password
+            old_password: this.passwordForm.old_password,
+            new_password: this.passwordForm.new_password,
+            confirm_password: this.passwordForm.confirm_password
             }
           })
         })
@@ -219,7 +219,7 @@ export default {
         if (error.message.includes('status: 405')) {
           ElMessage.error('请求方法不允许，请联系管理员')
         } else {
-          ElMessage.error('修改密码失败，请重试')
+        ElMessage.error('修改密码失败，请重试')
         }
       } finally {
         this.submitting = false

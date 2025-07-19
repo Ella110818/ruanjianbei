@@ -215,7 +215,7 @@ const loadExercises = async () => {
         'ngrok-skip-browser-warning': 'true'
       }
     })
-
+    
     if (!response.ok) {
       if (response.status === 401) {
         ElMessage.error('登录已过期，请重新登录')
@@ -315,10 +315,10 @@ const saveGrade = async () => {
       },
       body: JSON.stringify({
         data: {
-          score: selectedAnswer.value.score,
-          feedback: selectedAnswer.value.feedback,
-          explanation: selectedAnswer.value.explanation,
-          sources: selectedAnswer.value.sources
+      score: selectedAnswer.value.score,
+      feedback: selectedAnswer.value.feedback,
+      explanation: selectedAnswer.value.explanation,
+      sources: selectedAnswer.value.sources
         }
       })
     })
@@ -362,7 +362,7 @@ const loadAnswers = async () => {
       page: currentPage.value.toString(),
       page_size: pageSize.value.toString()
     })
-
+    
     if (filters.value.search) {
       params.append('student_name', filters.value.search)
     }
@@ -378,7 +378,7 @@ const loadAnswers = async () => {
         'ngrok-skip-browser-warning': 'true'
       }
     })
-
+    
     if (!response.ok) {
       if (response.status === 401) {
         ElMessage.error('登录已过期，请重新登录')
