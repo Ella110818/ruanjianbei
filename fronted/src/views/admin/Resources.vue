@@ -589,12 +589,10 @@ export default {
 
         // 第一步：创建课件记录
         const coursewareData = {
-          data: {
-            title: this.uploadForm.name,
-            content: this.uploadForm.description || '',
-            type: 'document',
-            course: this.uploadForm.course
-          }
+          title: this.uploadForm.name,
+          content: this.uploadForm.description || '',
+          type: 'document',
+          course: this.uploadForm.course
         }
 
         console.log('创建课件记录:', coursewareData)
@@ -609,26 +607,34 @@ export default {
         })
 
         if (!createResponse.ok) {
+          const errorData = await createResponse.json()
+          console.error('创建课件失败响应:', errorData)
           if (createResponse.status === 401) {
             ElMessage.error('登录已过期，请重新登录')
             return
           }
-          throw new Error(`创建课件记录失败: ${createResponse.status}`)
+          throw new Error(errorData.message || `创建课件记录失败: ${createResponse.status}`)
         }
 
         const createData = await createResponse.json()
         console.log('创建课件响应:', createData)
 
-        if (!createData.success || createData.status_code !== 201) {  // 修改这里
+        if (!createData.success || createData.status_code !== 201) {
           throw new Error(createData.message || '创建课件记录失败')
         }
 
         const coursewareId = createData.data.id
+        console.log('获取到的课件ID:', coursewareId)
 
         // 第二步：上传文件
         const formData = new FormData()
+        formData.append('courseware_id', coursewareId.toString())  // 确保 ID 是字符串
         formData.append('file', this.uploadForm.file)
-        formData.append('courseware_id', coursewareId)
+
+        // 打印 FormData 内容（仅用于调试）
+        for (let [key, value] of formData.entries()) {
+          console.log('FormData 字段:', key, value)
+        }
 
         console.log('开始上传文件，课件ID:', coursewareId)
         const uploadResponse = await fetch(`${API_CONFIG.BASE_URL}/coursewares/upload/`, {
@@ -636,35 +642,27 @@ export default {
           headers: {
             'Authorization': `Bearer ${token}`,
             'ngrok-skip-browser-warning': 'true'
+            // 注意：这里不要设置 Content-Type，让浏览器自动设置正确的 multipart/form-data
           },
           body: formData
         })
 
         if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json()
+          console.error('上传文件失败响应:', errorData)
           if (uploadResponse.status === 401) {
             ElMessage.error('登录已过期，请重新登录')
             return
           }
-          throw new Error(`文件上传失败: ${uploadResponse.status}`)
+          throw new Error(errorData.message || `文件上传失败: ${uploadResponse.status}`)
         }
 
         const uploadData = await uploadResponse.json()
         console.log('文件上传响应:', uploadData)
         
-        if (uploadData.success && uploadData.status_code === 200) {  // 修改这里
-          // 处理返回的文件信息
-          const fileInfo = uploadData.data
-          console.log('文件上传成功:', {
-            id: fileInfo.id,
-            fileName: fileInfo.file_name,
-            fileSize: fileInfo.file_size,
-            fileType: fileInfo.file_type,
-            fileUrl: fileInfo.file_url,
-            uploadTime: fileInfo.upload_time
-          })
-
-        ElMessage.success('资源上传成功')
-        this.uploadDialogVisible = false
+        if (uploadData.success && uploadData.status_code === 200) {
+          ElMessage.success('资源上传成功')
+          this.uploadDialogVisible = false
           // 重置表单
           this.$refs.uploadForm.resetFields()
           this.uploadForm.file = null
