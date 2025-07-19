@@ -17,6 +17,11 @@
          @click.prevent="selectSide('teaching-plan', '/teacher/plan')">
         三纲一案
       </a>
+      <a href="#" 
+         :class="{active: currentTab === 'qa-assistant'}" 
+         @click.prevent="selectSide('qa-assistant', '/teacher/qa')">
+        问答助手
+      </a>
     </nav>
   </aside>
 </template>
