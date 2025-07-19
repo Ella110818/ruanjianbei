@@ -5,7 +5,7 @@ const ENV = {
         API_VERSION: 'api'
     },
     production: {
-        API_URL: 'https://bf27d344aad4.ngrok-free.app',  // 更新为后端服务器地址
+        API_URL: 'https://6ccec82111a7.ngrok-free.app',  // 更新为后端服务器地址
         API_VERSION: 'api'
     }
 };

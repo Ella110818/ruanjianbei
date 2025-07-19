@@ -224,7 +224,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { generateKnowledgePointsPPT, handleRequest } from '@/api'
+import { generateKnowledgePointsPPT, handleRequest, API_CONFIG } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import pythonImg from '@/assets/python.png'
@@ -283,42 +283,65 @@ const loadKnowledgePoints = async () => {
   
   loading.value = true
   try {
-    const response = await handleRequest(`knowledge-points/`, {
-      method: 'GET',
-      params: {
-      page: currentPage.value,
-        page_size: pageSize.value,
-        search: searchQuery.value,
-        course_id: selectedCourse.value.id,  // 使用课程ID作为过滤条件
+    // 检查教师认证令牌
+    const token = localStorage.getItem('teacherToken')
+    if (!token) {
+      ElMessage.error('未登录或登录已过期，请重新登录')
+      return
+    }
+
+    // 构建查询参数
+    const params = new URLSearchParams({
+      page: currentPage.value.toString(),
+      page_size: pageSize.value.toString(),
       ordering: 'title'
+    })
+
+    // 添加搜索条件
+    if (searchQuery.value.trim()) {
+      params.append('search', searchQuery.value.trim())
+    }
+
+    // 添加课程筛选
+    params.append('course', selectedCourse.value.id.toString())
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}/knowledge-points/?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       }
     })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        ElMessage.error('登录已过期，请重新登录')
+        return
+      }
+      throw new Error(`获取知识点列表失败: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log('知识点响应:', data)
     
-    console.log('知识点响应:', response)
-    
-    if (response.success && response.status_code === 200) {
-      const responseData = response.data
-      
-      if (responseData && Array.isArray(responseData.results)) {
-        // 过滤出属于当前课程的知识点
-        knowledgePoints.value = responseData.results.filter(point => 
-          point.course === selectedCourse.value.id
-        )
-        total.value = knowledgePoints.value.length
+    if (data.code === 0) {
+      if (data.data && Array.isArray(data.data.results)) {
+        knowledgePoints.value = data.data.results
+        total.value = data.data.count || 0
         
         console.log('当前课程知识点加载完成，总数：', total.value)
         console.log('当前页数据：', knowledgePoints.value)
       } else {
-        console.error('知识点数据格式不正确:', responseData)
+        console.error('知识点数据格式不正确:', data)
         ElMessage.error('知识点数据格式不正确')
       }
     } else {
-      const errorMsg = response.message || '获取知识点列表失败'
-      ElMessage.error(errorMsg)
+      throw new Error(data.msg || '获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
-    ElMessage.error('加载知识点失败，请稍后重试')
+    ElMessage.error(error.message || '加载知识点失败，请稍后重试')
   } finally {
     loading.value = false
   }
