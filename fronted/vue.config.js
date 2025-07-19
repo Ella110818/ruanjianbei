@@ -1,7 +1,7 @@
 const { defineConfig } = require('@vue/cli-service')
 
 module.exports = defineConfig({
-  transpileDependencies: true,
+  transpileDependencies: ['element-plus', '@kjgl77/datav-vue3'],
   publicPath: '/',
   productionSourceMap: false,
   configureWebpack: {
