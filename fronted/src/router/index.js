@@ -5,13 +5,18 @@ import HomeView from '../views/HomeView.vue'
 const routes = [
   {
     path: '/',
-    name: 'home',
-    component: HomeView
+    redirect: '/login'
   },
   {
     path: '/login',
     name: 'login',
     component: LoginView
+  },
+  {
+    path: '/home',
+    name: 'home',
+    component: HomeView,
+    meta: { requiresAuth: true }
   },
   {
     path: '/student',
@@ -41,11 +46,6 @@ const routes = [
     name: 'studentCourse',
     component: () => import('../views/Student/StudentCourse.vue'),
     meta: { requiresAuth: true }
-  },
-  {
-    path: '/home',
-    name: 'home',
-    component: HomeView
   },
   {
     path: '/about',
