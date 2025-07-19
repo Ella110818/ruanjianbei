@@ -135,7 +135,7 @@ import { ref, onMounted, watch } from 'vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import CourseDetail from '@/components/CourseDetail.vue'
-import { getExercises, getMyCourses } from '@/api'
+import { getMyCourses } from '@/api'
 import { ElMessage, ElPagination } from 'element-plus'
 import { useRouter } from 'vue-router'
 
@@ -265,6 +265,7 @@ const loadExercises = async () => {
     
     exerciseLoading.value = true;
     try {
+        /* 注释掉练习题列表加载
         const response = await getExercises({
             ...exerciseFilters.value,
             page: currentPage.value
@@ -276,6 +277,12 @@ const loadExercises = async () => {
         } else {
             ElMessage.error(response.msg || '获取练习题失败');
         }
+        */
+       
+        // 临时使用模拟数据
+        exercises.value = [];
+        totalExercises.value = 0;
+        
     } catch (error) {
         console.error('加载练习题失败:', error);
         ElMessage.error('加载练习题失败，请稍后重试');
