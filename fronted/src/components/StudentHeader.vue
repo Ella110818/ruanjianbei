@@ -101,7 +101,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElForm } from 'element-plus'
-import { API_CONFIG } from '@/api'
+import { API_CONFIG, getCurrentUser } from '@/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -112,9 +112,26 @@ const passwordFormRef = ref(null)
 
 // 用户信息
 const userInfo = ref({
-  name: localStorage.getItem('studentName') || '未知用户',
+  name: '未知用户',
   avatar: ''
 })
+
+// 加载用户信息
+const loadUserInfo = async () => {
+  try {
+    const response = await getCurrentUser()
+    if (response.success && response.status_code === 200 && response.data) {
+      userInfo.value = {
+        name: response.data.username || '未知用户',
+        avatar: response.data.avatar || ''
+      }
+    } else {
+      console.error('获取用户信息失败:', response)
+    }
+  } catch (error) {
+    console.error('加载用户信息失败:', error)
+  }
+}
 
 // 当前激活的菜单项
 const activeMenu = computed(() => {
@@ -175,7 +192,9 @@ const handleCommand = async (command) => {
   if (command === 'profile') {
     router.push('/student/profile')
   } else if (command === 'logout') {
-    localStorage.removeItem('studentName')
+    localStorage.removeItem('token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('userRole')
     router.push('/login')
     ElMessage.success('已退出登录')
   } else if (command === 'changePassword') {
@@ -252,6 +271,7 @@ const submitChangePassword = async () => {
 // 添加和移除点击外部事件监听
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  loadUserInfo() // 加载用户信息
 })
 
 onUnmounted(() => {
