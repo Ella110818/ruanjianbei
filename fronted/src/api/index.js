@@ -4,7 +4,7 @@ import router from '@/router'
 
 export const API_CONFIG = {
     BASE_URL: 'https://455d114ce65d.ngrok-free.app/api',
-    TIMEOUT: 10000
+    TIMEOUT: 30000  // 增加到30秒
 }
 
 // 创建axios实例
@@ -196,7 +196,9 @@ export const getCourseList = async () => {
 }
 export const getExercises = (params) => instance.get('/exercises/', { params })
 export const createExercise = (data) => instance.post('/exercises/', data)
-export const generateQuestions = (data) => instance.post('/generate-questions/', data)
+export const generateQuestions = (data) => instance.post('/generate-questions/', data, {
+    timeout: 60000  // 为生成题目特别设置60秒超时
+})
 export const submitStudentAnswer = (data) => instance.post('/student-answers/', data)
 export const getMyCourses = () => instance.get('/courses/my_courses/')
 export const deleteCourseware = (id) => instance.delete(`/coursewares/${id}/`)
