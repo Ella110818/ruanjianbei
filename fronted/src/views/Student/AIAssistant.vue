@@ -354,19 +354,19 @@ const loadUserInfo = async () => {
     const response = await getCurrentUser();
     console.log('获取用户信息响应:', response);
     
-    // 检查响应状态（支持两种格式）
-    const isSuccess = (response.success && response.status_code === 200) || 
-                     (response.code === 0 && response.data);
-                     
-    if (isSuccess) {
+    if (response.success && response.status_code === 200 && response.data) {
       currentUser.value = response.data;
       console.log('当前用户信息:', currentUser.value);
+      return true;
     } else {
       console.error('获取用户信息失败:', response);
-      ElMessage.error(response.message || response.msg || '获取用户信息失败');
+      ElMessage.error(response.message || '获取用户信息失败');
+      return false;
     }
   } catch (error) {
     console.error('获取用户信息失败:', error);
+    ElMessage.error('获取用户信息失败，请重新登录');
+    return false;
   }
 };
 
