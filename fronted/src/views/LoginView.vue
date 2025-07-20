@@ -82,6 +82,7 @@
 
 <script>
 import { login } from '@/api/index.js';
+import { ElMessage } from 'element-plus'; // Added ElMessage import
 
 export default {
   name: 'LoginView',
@@ -142,29 +143,15 @@ export default {
       }
       this.loading = true;
       try {
-        const res = await login(this.formData.loginAccount, this.formData.loginPassword, this.selectedRole);
-        if (res.code === 0) {
-          // 保存 token 数据
-          if (res.data.access) {
-            localStorage.setItem('token', res.data.access);
-          }
-          if (res.data.refresh) {
-            localStorage.setItem('refreshToken', res.data.refresh);
-          }
-          
-          // 保存用户角色
-          localStorage.setItem('userRole', this.selectedRole);
-          
-          // 根据角色保存用户信息
-          const roleKey = {
-            teacher: 'teacherName',
-            student: 'studentName',
-            admin: 'adminName'
-          }[this.selectedRole];
-          
-          // 保存用户名
-          localStorage.setItem(roleKey, this.formData.loginAccount);
-          
+        // 构造登录请求数据
+        const loginData = {
+          username: this.formData.loginAccount,
+          password: this.formData.loginPassword
+        }
+        
+        const res = await login(loginData);
+        
+        if (res.success && res.status_code === 200) {
           // 根据不同角色跳转到不同页面
           const roleRoutes = {
             teacher: '/teacher',
@@ -173,13 +160,14 @@ export default {
           };
           
           // 跳转到对应页面
-          await this.$router.push(roleRoutes[this.selectedRole]);
+          await this.$router.push(roleRoutes[res.user_type]);
+          ElMessage.success('登录成功');
         } else {
-          alert(res.msg || '登录失败');
+          ElMessage.error(res.message || '登录失败');
         }
       } catch (error) {
         console.error('登录失败：', error);
-        alert('登录失败，请检查用户名和密码');
+        ElMessage.error('登录失败，请检查用户名和密码');
       } finally {
         this.loading = false;
       }
