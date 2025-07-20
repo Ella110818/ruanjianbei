@@ -638,11 +638,14 @@ const handleAutoGenerate = async () => {
     })
 
     if (response.success && response.status_code === 200) {
-      const { questions, sources } = response.data
+      const { questions, session_id, sources } = response.data
       
-      // 显示成功信息，包含来源信息
+      // 保存session_id以供后续使用
+      localStorage.setItem('last_question_session_id', session_id)
+      
+      // 显示成功信息
       let successMessage = `成功生成 ${questions.length} 道题目`
-      if (sources && sources.length > 0) {
+      if (sources && sources.length > 0 && sources[0].title !== '无') {
         successMessage += `\n参考资料：${sources.map(s => s.title).join(', ')}`
       }
       ElMessage({
