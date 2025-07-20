@@ -19,7 +19,7 @@
 </template>
 
 <script>
-import course1 from '@/assets/course1.jpg'
+import tensorImg from '@/assets/tensor.png'
 import { useRouter } from 'vue-router'
 
 export default {
@@ -63,7 +63,7 @@ export default {
       return this.course.location || '线上课程';
     },
     courseImage() {
-      return course1;
+      return tensorImg;
     }
   },
   mounted() {
@@ -77,7 +77,7 @@ export default {
     },
     handleImageError(e) {
       console.error('课程图片加载失败');
-      e.target.src = course1;
+      e.target.src = tensorImg;
     }
   }
 };
