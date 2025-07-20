@@ -90,7 +90,7 @@
                 </div>
                 <div class="message-content" :class="{ 'user-message': message.type === 'user' }">
                   <div class="text-content" v-if="message.type === 'user'">{{ message.content }}</div>
-                  <pre class="text-content" v-else>{{ message.content }}</pre>
+                  <div class="text-content markdown-content" v-else v-html="formatMessageContent(message.content)"></div>
                 </div>
               </div>
             </div>
@@ -106,12 +106,26 @@ import { ref } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import { ElMessage } from 'element-plus'
+import MarkdownIt from 'markdown-it'
 
 // 格式化时间函数
 const formatTime = (date) => {
   const hours = date.getHours().toString().padStart(2, '0')
   const minutes = date.getMinutes().toString().padStart(2, '0')
   return `${hours}:${minutes}`
+}
+
+// 创建 markdown 解析器
+const md = new MarkdownIt({
+  html: true,
+  breaks: true,
+  linkify: true
+})
+
+// 修改消息内容的显示方式
+const formatMessageContent = (content) => {
+  if (typeof content !== 'string') return content
+  return md.render(content)
 }
 
 // 状态变量
@@ -229,8 +243,8 @@ const simulateAIGeneration = async () => {
     "六、推荐参考资料",
     "1. 《Python编程：从入门到实践》，埃里克·马瑟斯著",
     "2. 《Python Crash Course》，埃里克·马瑟斯著",
-    "3. <a href='https://docs.python.org/3/' target='_blank'>Python官方文档</a>",
-    "4. <a href='https://www.w3schools.com/python/' target='_blank'>W3Schools Python教程</a>",
+    "3. [Python官方文档](https://docs.python.org/3/)",
+    "4. [W3Schools Python教程](https://www.w3schools.com/python/)",
     "",
     "七、教学进度安排",
     "+--------+--------------------------------+----------------+--------------------------------+",
@@ -270,7 +284,14 @@ const simulateAIGeneration = async () => {
   let currentContent = ''
   
   for (const line of contentLines) {
-    await new Promise(resolve => setTimeout(resolve, 100))
+    // 根据行的内容调整延迟时间
+    const delay = line.trim() === '' ? 200 : // 空行
+                 line.startsWith('+') ? 100 : // 表格分隔线
+                 line.startsWith('|') ? 300 : // 表格内容
+                 line.startsWith('•') ? 500 : // 列表项
+                 400; // 普通文本
+    
+    await new Promise(resolve => setTimeout(resolve, delay))
     if (currentContent) {
       currentContent += '\n' + line
     } else {
@@ -331,29 +352,57 @@ const handleReset = () => {
 <style scoped>
 .teacher-layout {
   min-height: 100vh;
-  background: #f5f7ff;
+  background: url('@/assets/back.png') no-repeat center center fixed;
+  background-size: cover;
 }
 
 .main-container {
   display: flex;
   padding-top: 64px;
+  min-height: calc(100vh - 64px);
 }
 
 .content-area {
   flex: 1;
-  margin-left: 280px; /* 增加左边距，避免被侧边栏遮挡 */
-  min-height: calc(100vh - 64px);
-  padding: 24px;
-  background-color: #fff;
+  margin: 24px 24px 24px 248px;
+  min-height: calc(100vh - 112px);
   display: flex;
   gap: 24px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .plan-form-container {
-  margin-top: 100px;
-  width: 450px;
-  padding: 20px;
-  flex-shrink: 0;
+  width: 420px;
+  height: fit-content;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .plan-form {
@@ -361,16 +410,25 @@ const handleReset = () => {
 }
 
 :deep(.el-form-item) {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #1a1a1a;
+  font-size: 14px;
+  padding-bottom: 8px;
 }
 
 :deep(.el-input__wrapper),
-:deep(.el-select),
-:deep(.el-input-number),
+:deep(.el-select .el-input__wrapper),
+:deep(.el-input-number .el-input__wrapper),
 :deep(.el-textarea__inner) {
   box-shadow: none !important;
   border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all 0.3s ease;
 }
 
 :deep(.el-input__wrapper:hover),
@@ -378,100 +436,104 @@ const handleReset = () => {
 :deep(.el-input-number:hover .el-input__wrapper),
 :deep(.el-textarea__inner:hover) {
   border-color: #409eff;
+  box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.1) !important;
 }
 
-:deep(.el-form-item__label) {
-  font-weight: normal;
-  color: #606266;
+:deep(.el-input__wrapper.is-focus),
+:deep(.el-select .el-input__wrapper.is-focus),
+:deep(.el-input-number.is-focus .el-input__wrapper),
+:deep(.el-textarea__inner:focus) {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
 }
 
 .form-buttons {
-  margin-top: 30px;
+  margin-top: 32px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
 :deep(.el-button) {
-  padding: 8px 20px;
+  padding: 10px 24px;
   font-size: 14px;
-  border-radius: 4px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
 }
 
 :deep(.el-button--primary) {
-  background-color: #409eff;
+  background: linear-gradient(135deg, #409eff 0%, #3088ff 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+:deep(.el-button--primary:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+}
+
+:deep(.el-button--primary:active) {
+  transform: translateY(0);
 }
 
 /* AI聊天区域样式 */
 .chat-container {
   flex: 1;
-  height: calc(100vh - 88px);
-  border-left: 1px solid #e6e6e6;
+  height: calc(100vh - 112px);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  margin-top: 0; /* 移除上边距 */
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-  padding-top: 20px; /* 添加内边距 */
-}
-
-.chat-header {
-  padding: 20px;
-  border-bottom: 1px solid #e6e6e6;
-}
-
-.chat-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.ai-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-}
-
-.chat-subtitle {
-  margin-top: 4px;
-  font-size: 14px;
-  color: #999;
+  overflow: hidden;
+  animation: slideIn 0.5s ease-out 0.2s backwards;
 }
 
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .message {
   display: flex;
   gap: 12px;
-  max-width: 100%;
-  margin-bottom: 20px;
+  max-width: 85%;
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-ai {
   align-self: flex-start;
-  background-color: #f5f7ff;
-  color: #333;
 }
 
 .message-user {
   align-self: flex-end;
-  background-color: #e8f3ff;
-  color: #333;
+  flex-direction: row-reverse;
 }
 
 .message-avatar {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .avatar-image {
@@ -482,111 +544,218 @@ const handleReset = () => {
 
 .message-content-wrapper {
   flex: 1;
-  max-width: calc(100% - 48px);
+  max-width: calc(100% - 60px);
 }
 
 .message-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .message-sender {
   font-size: 14px;
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  color: #1a1a1a;
 }
 
 .message-time {
   font-size: 12px;
-  color: #999;
+  color: #666;
 }
 
 .message-content {
-  background: #f5f7ff;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 16px;
+  border-radius: 12px;
   font-size: 14px;
   line-height: 1.6;
-  color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.user-message {
-  background: #e8f3ff !important;
+.message-ai .message-content {
+  background: #f8f9fa;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.message-user .message-content {
+  background: linear-gradient(135deg, #e8f3ff 0%, #d1e9ff 100%);
+  border: none;
 }
 
 .text-content {
-  white-space: pre;
+  white-space: pre-wrap;
   word-break: break-word;
-  font-family: "Courier New", Courier, monospace;  /* 更好看的等宽字体 */
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  line-height: 1.8;  /* 增加行高 */
-}
-
-.text-content a {
-  color: #409eff;
-  text-decoration: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;  /* 链接使用非等宽字体 */
-}
-
-.text-content a:hover {
-  text-decoration: underline;
-}
-
-pre.text-content {
   font-family: "Courier New", Courier, monospace;
   margin: 0;
   padding: 0;
-  background: transparent;
+  line-height: 1.8;
 }
 
-.markdown-content {
+:deep(.markdown-content) {
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.chat-input-area {
-  padding: 20px;
-  border-top: 1px solid #e6e6e6;
+:deep(.markdown-content a) {
+  color: #409eff;
+  text-decoration: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  transition: all 0.3s ease;
 }
 
-.chat-tools {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
+:deep(.markdown-content a:hover) {
+  color: #66b1ff;
+  text-decoration: underline;
 }
 
-:deep(.el-textarea__inner) {
-  resize: none;
-  border-radius: 8px;
+/* 自定义滚动条 */
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
 }
 
-:deep(.el-button--primary) {
-  border-radius: 8px;
-  padding: 8px 24px;
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 /* 响应式设计 */
-@media screen and (max-width: 1366px) {
-  .content-area {
-    margin-left: 260px;
-  }
-  
-  .plan-form-container {
-    width: 400px;
-  }
-}
-
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: 1440px) {
   .content-area {
     margin-left: 240px;
   }
   
   .plan-form-container {
-    width: 350px;
+    width: 380px;
   }
+}
+
+@media screen and (max-width: 1280px) {
+  .content-area {
+    margin-left: 220px;
+    gap: 16px;
+  }
+  
+  .plan-form-container {
+    width: 340px;
+    padding: 20px;
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .content-area {
+    flex-direction: column;
+    margin: 24px 16px 24px 220px;
+  }
+  
+  .plan-form-container {
+    width: 100%;
+  }
+  
+  .chat-container {
+    height: auto;
+    min-height: 500px;
+  }
+}
+
+/* 表格样式优化 */
+:deep(.markdown-content table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:deep(.markdown-content th),
+:deep(.markdown-content td) {
+  padding: 12px;
+  border: 1px solid #e6e6e6;
+  text-align: left;
+}
+
+:deep(.markdown-content th) {
+  background: #f5f7fa;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+:deep(.markdown-content tr:nth-child(even)) {
+  background: #f8f9fa;
+}
+
+:deep(.markdown-content tr:hover) {
+  background: #f0f2f5;
+}
+
+/* 列表样式优化 */
+:deep(.markdown-content ul),
+:deep(.markdown-content ol) {
+  padding-left: 24px;
+  margin: 12px 0;
+}
+
+:deep(.markdown-content li) {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+/* 标题样式优化 */
+:deep(.markdown-content h1),
+:deep(.markdown-content h2),
+:deep(.markdown-content h3),
+:deep(.markdown-content h4) {
+  margin: 24px 0 16px;
+  color: #1a1a1a;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+:deep(.markdown-content h1) { font-size: 24px; }
+:deep(.markdown-content h2) { font-size: 20px; }
+:deep(.markdown-content h3) { font-size: 18px; }
+:deep(.markdown-content h4) { font-size: 16px; }
+
+/* 段落样式优化 */
+:deep(.markdown-content p) {
+  margin: 16px 0;
+  line-height: 1.8;
+}
+
+/* 代码块样式优化 */
+:deep(.markdown-content pre) {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin: 16px 0;
+}
+
+:deep(.markdown-content code) {
+  font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', monospace;
+  font-size: 14px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  color: #1a1a1a;
+}
+
+/* 引用样式优化 */
+:deep(.markdown-content blockquote) {
+  margin: 16px 0;
+  padding: 12px 20px;
+  background: #f8f9fa;
+  border-left: 4px solid #409eff;
+  border-radius: 4px;
+  color: #666;
 }
 </style> 

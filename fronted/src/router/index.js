@@ -160,6 +160,15 @@ const routes = [
     }
   },
   {
+    path: '/teacher/lesson',
+    name: 'TeacherLesson',
+    component: () => import('@/views/Teacher/TeacherLesson.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'teacher'
+    }
+  },
+  {
     path: '/admin',
     redirect: '/admin/dashboard',
     meta: { requiresAuth: true }
