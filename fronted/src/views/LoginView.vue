@@ -220,7 +220,7 @@ export default {
 }
 
 .login-content {
-  width: 80%;
+  width: 47%;
   padding: 40px 60px;
   display: flex;
   flex-direction: column;
