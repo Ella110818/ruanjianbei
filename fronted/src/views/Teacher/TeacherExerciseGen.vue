@@ -249,7 +249,6 @@ const handleGenerate = async () => {
 
     // 调用生成接口
     const response = await generateQuestions({
-      query: exerciseForm.value.query,
       knowledge_point_ids: exerciseForm.value.knowledge_point_ids,
       question_types: exerciseForm.value.question_types,
       quantity: exerciseForm.value.quantity,
@@ -257,7 +256,10 @@ const handleGenerate = async () => {
     })
 
     if (response.success && response.status_code === 200) {
-      const { questions, sources } = response.data
+      const { questions, session_id, sources } = response.data
+      
+      // 保存session_id以供后续使用
+      localStorage.setItem('last_question_session_id', session_id)
       
       // 构建生成结果的markdown内容
       let content = `# 生成的习题\n\n`
@@ -275,19 +277,20 @@ const handleGenerate = async () => {
       // 添加题目内容
       questions.forEach((question, index) => {
         content += `## 题目 ${index + 1}\n\n`
+        content += `### 题目标题\n${question.title}\n\n`
         content += `### 题目内容\n${question.content}\n\n`
         
         if (Array.isArray(question.answer_template)) {
           content += `### 选项\n`
-          question.answer_template.forEach((option, optIndex) => {
-            content += `${String.fromCharCode(65 + optIndex)}. ${option}\n`
+          question.answer_template.forEach((option) => {
+            content += `${option}\n`
           })
           content += '\n'
         }
       })
 
       // 如果有参考资料，添加到内容中
-      if (sources && sources.length > 0) {
+      if (sources && sources.length > 0 && sources[0].title !== '无') {
         content += `## 参考资料\n`
         sources.forEach(source => {
           content += `- ${source.title}\n`
