@@ -275,14 +275,15 @@ export default {
 
 .main-nav {
   display: flex;
-  gap: 24px;
+  gap: 32px;
+  margin-left: -16px;
 }
 
 .main-nav a {
   color: #333;
   font-size: 16px;
   text-decoration: none;
-  padding: 8px 16px;
+  padding: 12px 24px;
   border-radius: 6px;
   transition: all 0.3s ease;
   font-weight: 600;
@@ -324,6 +325,7 @@ export default {
   padding: 8px 12px;
   border-radius: 6px;
   transition: background-color 0.3s;
+  margin-right: 24px;
 }
 
 .user-dropdown:hover {

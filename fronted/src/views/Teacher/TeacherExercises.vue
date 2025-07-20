@@ -165,7 +165,14 @@
                   :key="point.id"
                   :label="point.title"
                   :value="point.id"
-                />
+                >
+                  <div class="knowledge-point-option">
+                    <span>{{ point.title }}</span>
+                    <small v-if="point.content" class="knowledge-point-desc">
+                      {{ point.content.length > 50 ? point.content.slice(0, 50) + '...' : point.content }}
+                    </small>
+                  </div>
+                </el-option>
               </el-select>
             </el-form-item>
             
@@ -288,16 +295,11 @@ const loadKnowledgePoints = async () => {
       }
     })
 
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        ElMessage.error('登录已过期，请重新登录')
-        return
-      }
-      throw new Error('获取知识点列表失败')
-    }
-
     const data = await response.json()
-    if (data.success && data.status_code === 200) {
+    console.log('知识点响应数据:', data)
+
+    if (data.success && data.status_code === 200 && data.data) {
+      // 直接使用 results 数组
       knowledgePoints.value = data.data.results || []
       console.log('知识点加载成功:', knowledgePoints.value)
     } else {
