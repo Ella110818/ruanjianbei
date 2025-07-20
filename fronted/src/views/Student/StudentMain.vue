@@ -222,24 +222,43 @@ const loadExercises = async () => {
 const loadKnowledgePoints = async () => {
   knowledgePointsLoading.value = true
   try {
-    const response = await getKnowledgePoints({
-      page: 1,
-      page_size: 100,
-      ordering: 'title'
-    })
-    
-    console.log('加载知识点:', response)
-    
-    if (response.success && response.status_code === 200 && response.data) {
-      knowledgePoints.value = response.data.results || []
-      console.log('知识点加载完成，总数：', knowledgePoints.value.length)
-    } else {
-      console.error('获取知识点列表失败:', response)
-      ElMessage.error(response.message || '获取知识点列表失败')
+    let allKnowledgePoints = []
+    let currentPage = 1
+    let hasNextPage = true
+
+    while (hasNextPage) {
+      const response = await getKnowledgePoints({
+        page: currentPage,
+        page_size: 100,
+        ordering: 'title'
+      })
+      
+      console.log(`加载第${currentPage}页知识点:`, response)
+      
+      if (response.success && response.status_code === 200 && response.data) {
+        if (Array.isArray(response.data.results)) {
+          allKnowledgePoints = [...allKnowledgePoints, ...response.data.results]
+          
+          // 检查是否还有下一页
+          hasNextPage = !!response.data.next
+          if (hasNextPage) {
+            currentPage++
+          }
+        } else {
+          console.error('知识点数据格式不正确:', response.data)
+          ElMessage.error('知识点数据格式不正确')
+          break
+        }
+      } else {
+        throw new Error(response.message || '获取知识点列表失败')
+      }
     }
+
+    knowledgePoints.value = allKnowledgePoints
+    console.log('知识点加载完成，总数：', knowledgePoints.value.length)
   } catch (error) {
     console.error('加载知识点失败:', error)
-    ElMessage.error('加载知识点失败，请稍后重试')
+    ElMessage.error(error.message || '加载知识点失败，请稍后重试')
   } finally {
     knowledgePointsLoading.value = false
   }

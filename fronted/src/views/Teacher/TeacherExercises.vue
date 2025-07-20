@@ -285,26 +285,43 @@ const loadKnowledgePoints = async () => {
       return
     }
 
-    const response = await fetch(`${API_CONFIG.BASE_URL}/knowledge-points/`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
+    let allKnowledgePoints = []
+    let nextPage = 1
+    let hasMore = true
+
+    while (hasMore) {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/knowledge-points/?page=${nextPage}&page_size=100`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        }
+      })
+
+      const data = await response.json()
+      console.log(`加载第${nextPage}页知识点:`, data)
+
+      if (data.success && data.status_code === 200 && data.data) {
+        if (Array.isArray(data.data.results)) {
+          allKnowledgePoints = [...allKnowledgePoints, ...data.data.results]
+          
+          // 检查是否还有下一页
+          hasMore = !!data.data.next
+          nextPage++
+        } else {
+          console.error('知识点数据格式不正确:', data)
+          ElMessage.error('知识点数据格式不正确')
+          break
+        }
+      } else {
+        throw new Error(data.message || '获取知识点列表失败')
       }
-    })
-
-    const data = await response.json()
-    console.log('知识点响应数据:', data)
-
-    if (data.success && data.status_code === 200 && data.data) {
-      // 直接使用 results 数组
-      knowledgePoints.value = data.data.results || []
-      console.log('知识点加载成功:', knowledgePoints.value)
-    } else {
-      throw new Error(data.message || '获取知识点列表失败')
     }
+
+    knowledgePoints.value = allKnowledgePoints
+    console.log('知识点加载完成，总数：', knowledgePoints.value.length)
   } catch (error) {
     console.error('加载知识点失败:', error)
     ElMessage.error(error.message || '加载知识点失败，请稍后重试')

@@ -512,19 +512,19 @@ export default {
           }
         )
         
-        // 调用删除接口，直接传入 id
+        // 调用删除接口
         const response = await deleteCourseware(row.id)
-        if (response.code === 0) {  // 修改这里：检查 code === 0
+        if (response.success && response.status_code === 200) {
           ElMessage.success('删除成功')
           // 重新加载资源列表
           await this.fetchResourceList()
         } else {
-          ElMessage.error(response.msg || '删除失败')
+          throw new Error(response.message || '删除失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
           console.error('删除资源失败:', error)
-          ElMessage.error('删除失败，请稍后重试')
+          ElMessage.error(error.message || '删除失败，请稍后重试')
         }
       }
     },

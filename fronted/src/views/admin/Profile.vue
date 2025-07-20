@@ -205,7 +205,7 @@ export default {
       loading.value = true
       try {
         const response = await getCurrentUser()
-        if (response.code === 0 && response.data) {
+        if (response.success && response.status_code === 200) {
           const data = response.data
           Object.assign(adminInfo, {
             username: data.username || '',
@@ -214,12 +214,12 @@ export default {
             phone: data.phone || '',
             department: data.department || '',
             position: data.position || '',
-            joinDate: data.joinDate || '',
+            joinDate: data.join_date || '',
             bio: data.bio || '',
             avatar: data.avatar || ''
           })
         } else {
-          ElMessage.error(response.msg || '获取用户信息失败')
+          ElMessage.error(response.message || '获取用户信息失败')
         }
       } catch (error) {
         console.error('获取用户信息失败:', error)
