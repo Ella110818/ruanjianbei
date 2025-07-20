@@ -185,7 +185,15 @@ export const apiClient = instance
 
 // 其他API函数
 export const getKnowledgePoints = () => instance.get('/knowledge-points/')
-export const getCourseList = () => instance.get('/courses/')
+export const getCourseList = async () => {
+    try {
+        const response = await instance.get('/courses/')
+        return response
+    } catch (error) {
+        console.error('获取课程列表失败:', error)
+        throw error
+    }
+}
 export const getExercises = (params) => instance.get('/exercises/', { params })
 export const createExercise = (data) => instance.post('/exercises/', data)
 

@@ -105,10 +105,18 @@ export default {
     async loadCourses() {
       this.coursesLoading = true
       try {
+        // 检查是否有token
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          this.$router.push('/login')
+          return
+        }
+
         const response = await getCourseList()
         console.log('课程列表响应:', response)
         
-        if (response.code === 0 && response.data) {
+        if (response.success && response.status_code === 200 && response.data) {
           let courseList = []
           
           // 处理分页格式
@@ -134,11 +142,16 @@ export default {
             ElMessage.warning('暂无可用课程')
           }
         } else {
-          throw new Error(response.msg || '获取课程列表失败')
+          throw new Error(response.message || '获取课程列表失败')
         }
       } catch (error) {
         console.error('加载课程失败:', error)
-        ElMessage.error(error.message || '加载课程列表失败')
+        if (error.response?.status === 403) {
+          ElMessage.error('没有权限访问课程列表，请重新登录')
+          this.$router.push('/login')
+        } else {
+          ElMessage.error(error.message || '加载课程列表失败')
+        }
       } finally {
         this.coursesLoading = false
       }
