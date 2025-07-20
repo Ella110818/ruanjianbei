@@ -134,13 +134,14 @@ export default {
         return this.$route.path === path || 
                this.$route.path === '/teacher/ai' ||
                this.$route.path === '/teacher/plan' ||
-               this.$route.path === '/teacher/qa';
+               this.$route.path === '/teacher/qa' ||
+               this.$route.path === '/teacher/exercise-gen';  // 添加习题生成页面
       }
       return this.$route.path === path;
     },
     navigateTo(path) {
       // 如果当前在备课助手页面并且要导航到课程管理
-      if (this.$route.path === '/teacher/ai' && path === '/teacher/course') {
+      if ((this.$route.path === '/teacher/ai' || this.$route.path === '/teacher/exercise-gen') && path === '/teacher/course') {
         // 恢复之前保存的状态
         const savedState = localStorage.getItem('teacherNavState');
         if (savedState) {
@@ -244,6 +245,12 @@ export default {
   },
   mounted() {
     document.addEventListener('click', this.handleClickOutside);
+    
+    // 如果是首次登录，默认导航到 PPT 助手页面
+    if (!localStorage.getItem('hasInitialNavigation')) {
+      this.$router.push('/teacher/ai');
+      localStorage.setItem('hasInitialNavigation', 'true');
+    }
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleClickOutside);
