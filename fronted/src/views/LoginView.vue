@@ -146,12 +146,26 @@ export default {
         // 构造登录请求数据
         const loginData = {
           username: this.formData.loginAccount,
-          password: this.formData.loginPassword
+          password: this.formData.loginPassword,
+          user_type: this.selectedRole  // 添加用户角色
         }
         
         const res = await login(loginData);
         
         if (res.success && res.status_code === 200) {
+          // 检查用户角色是否匹配
+          if (res.data.user.role !== this.selectedRole) {
+            ElMessage.error('您没有该角色的权限，请选择正确的角色登录');
+            return;
+          }
+
+          // 保存用户信息
+          localStorage.setItem('token', res.data.access);
+          localStorage.setItem('refresh_token', res.data.refresh);
+          localStorage.setItem('userRole', res.data.user.role);
+          localStorage.setItem('userId', res.data.user.id);
+          localStorage.setItem('username', res.data.user.username);
+
           // 根据不同角色跳转到不同页面
           const roleRoutes = {
             teacher: '/teacher',
@@ -160,14 +174,18 @@ export default {
           };
           
           // 跳转到对应页面
-          await this.$router.push(roleRoutes[res.user_type]);
+          await this.$router.push(roleRoutes[res.data.user.role]);
           ElMessage.success('登录成功');
         } else {
           ElMessage.error(res.message || '登录失败');
         }
       } catch (error) {
         console.error('登录失败：', error);
-        ElMessage.error('登录失败，请检查用户名和密码');
+        if (error.response?.status === 403) {
+          ElMessage.error('您没有该角色的权限，请联系系统管理员');
+        } else {
+          ElMessage.error('登录失败，请检查用户名和密码');
+        }
       } finally {
         this.loading = false;
       }
