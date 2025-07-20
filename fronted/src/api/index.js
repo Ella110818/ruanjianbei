@@ -33,6 +33,11 @@ function getEnvironment() {
     return process.env.NODE_ENV || 'development';
 }
 
+// 只用localStorage控制环境
+function getMockFlag() {
+    return false;  // 始终返回 false，表示使用生产环境
+}
+
 // 检查并设置Mock环境
 export function checkAndSetMockEnvironment() {
     const env = getEnvironment();
@@ -244,11 +249,6 @@ const TokenManager = {
 
 // 导入mock数据
 import { mockCourses, mockCourseDetail, mockApiResponse } from '@/mock/courseData';
-
-// 只用localStorage控制环境
-function getMockFlag() {
-    return localStorage.getItem('USE_MOCK') === 'true';
-}
 
 // HTTP错误处理
 const handleHttpError = (response, errorData) => {

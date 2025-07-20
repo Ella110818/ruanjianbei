@@ -31,13 +31,13 @@
                 <el-option 
                   v-for="point in knowledgePoints" 
                   :key="point.id" 
-                  :label="point.name" 
+                  :label="point.title" 
                   :value="point.id"
                 >
                   <div class="knowledge-point-option">
-                    <span>{{ point.name }}</span>
-                    <small v-if="point.description" class="knowledge-point-desc">
-                      {{ point.description.length > 50 ? point.description.slice(0, 50) + '...' : point.description }}
+                    <span>{{ point.title }}</span>
+                    <small v-if="point.content" class="knowledge-point-desc">
+                      {{ point.content.length > 50 ? point.content.slice(0, 50) + '...' : point.content }}
                     </small>
                   </div>
                 </el-option>
@@ -188,11 +188,11 @@ const loadKnowledgePoints = async () => {
   try {
     const response = await getKnowledgePoints()
     
-    if (response.code === 0 && response.data) {
-      knowledgePoints.value = response.data
+    if (response.success && response.status_code === 200 && response.data) {
+      knowledgePoints.value = response.data.results
       console.log('知识点加载成功:', knowledgePoints.value)
     } else {
-      throw new Error(response.msg || '获取知识点列表失败')
+      throw new Error(response.message || '获取知识点列表失败')
     }
   } catch (error) {
     console.error('加载知识点失败:', error)
@@ -266,7 +266,7 @@ const handleGenerate = async () => {
       content += `## 基本信息\n`
       content += `- **生成主题**：${exerciseForm.value.query}\n`
       content += `- **知识点**：${exerciseForm.value.knowledge_point_ids.map(id => 
-        knowledgePoints.value.find(p => p.id === id)?.name
+        knowledgePoints.value.find(p => p.id === id)?.title
       ).join(', ')}\n`
       content += `- **题目类型**：${exerciseForm.value.question_types.map(type => getQuestionTypeName(type)).join(', ')}\n`
       content += `- **题目数量**：${questions.length}\n`
