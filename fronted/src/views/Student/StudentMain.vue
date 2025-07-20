@@ -166,7 +166,7 @@ const loadUserInfo = async () => {
     const response = await getCurrentUser()
     console.log('获取用户信息响应:', response)
     
-    if (response.code === 0) {  // 修改判断条件
+    if (response.success && response.status_code === 200 && response.data) {
       currentUser.value = response.data
       return true
     } else {
