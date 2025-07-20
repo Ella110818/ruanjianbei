@@ -262,7 +262,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
-import { getExercises, getKnowledgePoints, getCourseList, generateQuestions } from '@/api'
+import { getExercises, getKnowledgePoints, getCourseList, generateQuestions, createExercise } from '@/api'
 import { ElMessage } from 'element-plus'
 import { API_CONFIG } from '@/api'
 
