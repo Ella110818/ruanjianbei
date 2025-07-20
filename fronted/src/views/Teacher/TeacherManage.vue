@@ -402,13 +402,13 @@ const loadCourses = async () => {
 // 处理筛选条件变化
 const handleFilterChange = () => {
   currentPage.value = 1
-  loadExercises()
+  loadExercises()  // 只重新加载练习题，不重新加载知识点
 }
 
 // 处理页码变化
 const handlePageChange = (page) => {
   currentPage.value = page
-  loadExercises()
+  loadExercises()  // 只重新加载练习题，不重新加载知识点
 }
 
 // 恢复之前的状态
@@ -705,11 +705,15 @@ const getExerciseTypeName = (type) => {
 }
 
 // 组件挂载时加载数据
-onMounted(() => {
+onMounted(async () => {
   restorePreviousState() // 先恢复状态
-  Promise.all([
+  
+  // 先加载知识点列表，因为这个只需要加载一次
+  await loadKnowledgePoints()
+  
+  // 再并行加载练习题和课程列表
+  await Promise.all([
     loadExercises(),
-    loadKnowledgePoints(),
     loadCourses()
   ]).catch(error => {
     console.error('初始化数据加载失败:', error)

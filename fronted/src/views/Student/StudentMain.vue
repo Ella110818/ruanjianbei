@@ -262,13 +262,13 @@ const loadKnowledgePoints = async () => {
 // 处理筛选条件变化
 const handleFilterChange = () => {
   currentPage.value = 1
-  loadExercises()
+  loadExercises()  // 只重新加载练习题，不重新加载知识点
 }
 
 // 处理页码变化
 const handlePageChange = (page) => {
   currentPage.value = page
-  loadExercises()
+  loadExercises()  // 只重新加载练习题，不重新加载知识点
 }
 
 // 展开/折叠状态管理
@@ -360,16 +360,10 @@ onMounted(async () => {
     return
   }
   
-  // 用户信息加载成功，加载其他数据
-  try {
-    await Promise.all([
-      loadExercises(),
-      loadKnowledgePoints()
-    ])
-  } catch (error) {
-    console.error('加载数据失败:', error)
-    ElMessage.error('加载数据失败，请刷新页面重试')
-  }
+  // 先加载知识点列表，因为这个只需要加载一次
+  await loadKnowledgePoints()
+  // 再加载练习题
+  await loadExercises()
 })
 </script>
 
