@@ -191,9 +191,10 @@ export default {
   position: absolute;
   left: 0;
   top: 0;
-  width: 50%;
+  width: calc(50% + 690px/2);  /* 修改这里：一半容器宽度加上login-box宽度的一半 */
   height: 100%;
   background-color: #CCE4FF;
+  z-index: 0;
 }
 
 .login-container::after {
@@ -201,9 +202,10 @@ export default {
   position: absolute;
   right: 0;
   top: 0;
-  width: 50%;
+  width: calc(50% - 690px/2);  /* 修改这里：一半容器宽度减去login-box宽度的一半 */
   height: 100%;
   background-color: #1B1B61;
+  z-index: 0;
 }
 
 .login-box {
@@ -447,6 +449,11 @@ input {
 }
 
 @media (max-width: 1024px) {
+  .login-container::before,
+  .login-container::after {
+    width: 50%;  /* 在小屏幕上恢复为简单的50/50分割 */
+  }
+
   .login-box {
     width: 90%;
     max-width: 600px;
