@@ -667,11 +667,11 @@ const handleReset = () => {
 @media screen and (max-width: 1440px) {
   .content-area {
     margin-left: 240px;
-  }
-  
+}
+
   .plan-form-container {
     width: 380px;
-  }
+}
 }
 
 @media screen and (max-width: 1280px) {

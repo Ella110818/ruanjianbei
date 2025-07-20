@@ -115,13 +115,34 @@ instance.interceptors.response.use(
 // API函数
 export const login = async (credentials) => {
     try {
-        const response = await instance.post('/login/', credentials)
-        if (response.success) {
-            localStorage.setItem('token', response.access)
-            localStorage.setItem('refresh_token', response.refresh)
-            // 保存用户角色
-            localStorage.setItem('userRole', response.user_type)
-            return response
+        // 只发送用户名和密码
+        const loginData = {
+            username: credentials.username,
+            password: credentials.password
+        }
+
+        const response = await instance.post('/login/', loginData)
+
+        // 检查响应格式
+        if (response.success && response.status_code === 200 && response.data) {
+            // 保存 tokens
+            localStorage.setItem('token', response.data.access)
+            localStorage.setItem('refresh_token', response.data.refresh)
+
+            // 保存用户信息
+            const user = response.data.user
+            localStorage.setItem('userRole', user.role)
+            localStorage.setItem('userId', user.id)
+            localStorage.setItem('username', user.username)
+
+            return {
+                success: true,
+                status_code: response.status_code,
+                access: response.data.access,
+                refresh: response.data.refresh,
+                user_type: user.role,
+                message: '登录成功'
+            }
         }
         return response
     } catch (error) {
