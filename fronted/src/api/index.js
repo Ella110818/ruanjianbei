@@ -31,26 +31,31 @@ const refreshToken = async () => {
             throw new Error('No refresh token')
         }
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}/refresh/`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/token/refresh/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
             },
             body: JSON.stringify({ refresh: refresh_token })
         })
 
         const data = await response.json()
-        if (data.success && data.access) {
-            localStorage.setItem('token', data.access)
-            return data.access
+        if (data.success && data.status_code === 200 && data.data) {
+            localStorage.setItem('token', data.data.access)
+            return data.data.access
         } else {
             throw new Error('Token refresh failed')
         }
     } catch (error) {
         console.error('Token refresh failed:', error)
-        localStorage.removeItem('token')
-        localStorage.removeItem('refresh_token')
-        router.push('/login')
+        // 不要立即清除 token，先检查是否真的过期
+        if (error.response?.status === 401) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('refresh_token')
+            router.push('/login')
+        }
         throw error
     }
 }
@@ -77,6 +82,15 @@ instance.interceptors.response.use(
 
         // 如果是401错误且不是刷新token的请求
         if (error.response?.status === 401 && !originalRequest._retry) {
+            // 检查 token 是否真的过期
+            const tokenExpires = localStorage.getItem('tokenExpires')
+            const now = new Date().getTime()
+
+            if (tokenExpires && now < parseInt(tokenExpires)) {
+                // token 还没过期，可能是其他原因导致的401
+                return Promise.reject(error)
+            }
+
             if (isRefreshing) {
                 return new Promise(resolve => {
                     requests.push(token => {
@@ -91,6 +105,10 @@ instance.interceptors.response.use(
 
             try {
                 const newToken = await refreshToken()
+                // 更新过期时间
+                const expiresIn = 24 * 60 * 60 * 1000 // 24小时
+                localStorage.setItem('tokenExpires', new Date().getTime() + expiresIn)
+
                 requests.forEach(cb => cb(newToken))
                 requests = []
                 originalRequest.headers['Authorization'] = `Bearer ${newToken}`
@@ -135,6 +153,10 @@ export const login = async (credentials) => {
             localStorage.setItem('userId', user.id)
             localStorage.setItem('username', user.username)
 
+            // 设置 token 过期时间
+            const expiresIn = 24 * 60 * 60 * 1000 // 24小时
+            localStorage.setItem('tokenExpires', new Date().getTime() + expiresIn)
+
             return {
                 success: true,
                 status_code: response.status_code,
@@ -166,4 +188,15 @@ export const getKnowledgePoints = () => instance.get('/knowledge-points/')
 export const getCourseList = () => instance.get('/courses/')
 export const getExercises = (params) => instance.get('/exercises/', { params })
 export const createExercise = (data) => instance.post('/exercises/', data)
+
+// 获取当前用户信息
+export const getCurrentUser = async () => {
+    try {
+        const response = await instance.get('/users/me/')
+        return response
+    } catch (error) {
+        console.error('获取用户信息失败:', error)
+        throw error
+    }
+}
 

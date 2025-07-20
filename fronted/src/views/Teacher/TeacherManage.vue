@@ -351,7 +351,7 @@ const loadKnowledgePoints = async () => {
       
       console.log(`加载第${nextPage}页知识点:`, response)
       
-      if (response.code === 0) {
+      if (response.success && response.status_code === 200) {
         if (response.data && Array.isArray(response.data.results)) {
           allKnowledgePoints = [...allKnowledgePoints, ...response.data.results]
           
@@ -365,7 +365,7 @@ const loadKnowledgePoints = async () => {
         }
       } else {
         console.error('获取知识点列表失败:', response)
-        ElMessage.error(response.msg || '获取知识点列表失败')
+        ElMessage.error(response.message || '获取知识点列表失败')
         break
       }
     }
