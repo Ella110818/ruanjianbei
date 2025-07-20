@@ -175,7 +175,7 @@
 <script>
 import AdminHeader from '@/components/AdminHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourseList, deleteCourseware, API_CONFIG } from '@/api'
+import { deleteCourseware, API_CONFIG } from '@/api'
 
 export default {
   name: 'AdminResources',
@@ -287,30 +287,78 @@ export default {
     async fetchCourseList() {
       try {
         this.loading = true
-        const response = await getCourseList()
-        console.log('课程列表响应:', response)  // 添加日志
-        if (response.code === 0 && response.data) {  // 修改这里：检查 code 而不是 success
+        const token = localStorage.getItem('token')
+        if (!token) {
+          ElMessage.error('未登录或登录已过期，请重新登录')
+          this.$router.push('/login')
+          return
+        }
+
+        // 直接使用 fetch 调用而不是 getCourseList
+        const response = await fetch(`${API_CONFIG.BASE_URL}/courses/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            // 尝试刷新 token
+            const refreshToken = localStorage.getItem('refreshToken')
+            if (refreshToken) {
+              const refreshResponse = await fetch(`${API_CONFIG.BASE_URL}/token/refresh/`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({ refresh: refreshToken })
+              })
+
+              if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json()
+                if (refreshData.success && refreshData.data) {
+                  localStorage.setItem('token', refreshData.data.access)
+                  // 使用新 token 重新调用
+                  return this.fetchCourseList()
+                }
+              }
+            }
+            // 如果刷新失败，跳转到登录页
+            ElMessage.error('登录已过期，请重新登录')
+            this.$router.push('/login')
+            return
+          }
+          throw new Error('获取课程列表失败')
+        }
+
+        const data = await response.json()
+        if (data.success && data.status_code === 200) {
           let courseList = []
           // 处理分页格式
-          if (response.data.results) {
-            courseList = response.data.results
+          if (data.data.results) {
+            courseList = data.data.results
           } 
           // 处理直接数组格式
-          else if (Array.isArray(response.data)) {
-            courseList = response.data
+          else if (Array.isArray(data.data)) {
+            courseList = data.data
           }
           
           this.courseOptions = courseList.map(course => ({
             label: course.title,
             value: course.id
           }))
-          console.log('处理后的课程选项:', this.courseOptions)  // 添加日志
+          console.log('处理后的课程选项:', this.courseOptions)
         } else {
-          ElMessage.error(response.msg || '获取课程列表失败')
+          throw new Error(data.message || '获取课程列表失败')
         }
       } catch (error) {
         console.error('获取课程列表失败:', error)
-        ElMessage.error('获取课程列表失败')
+        ElMessage.error(error.message || '获取课程列表失败')
       } finally {
         this.loading = false
       }
