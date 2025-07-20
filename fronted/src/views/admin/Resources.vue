@@ -675,7 +675,8 @@ export default {
 <style scoped>
 .resources-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #F0F2F5 0%, #FFFFFF 100%);
+  background: url('@/assets/back2.png') no-repeat center center fixed;
+  background-size: cover;
 }
 
 .resources-content {

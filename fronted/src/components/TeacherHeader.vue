@@ -131,7 +131,10 @@ export default {
     isActivePath(path) {
       // 检查当前路由是否匹配，对于备课助手页面特殊处理
       if (path === '/teacher/course') {
-        return this.$route.path === path || this.$route.path === '/teacher/ai';
+        return this.$route.path === path || 
+               this.$route.path === '/teacher/ai' ||
+               this.$route.path === '/teacher/plan' ||
+               this.$route.path === '/teacher/qa';
       }
       return this.$route.path === path;
     },

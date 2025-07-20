@@ -3,11 +3,6 @@
     <div class="side-title">工作台</div>
     <nav class="side-menu">
       <a href="#" 
-         :class="{active: currentTab === 'dashboard'}" 
-         @click.prevent="selectSide('dashboard', '/teacher/course')">
-        首页
-      </a>
-      <a href="#" 
          :class="{active: currentTab === 'lesson-prep'}" 
          @click.prevent="selectSide('lesson-prep', '/teacher/ai')">
         PPT助手
@@ -16,6 +11,11 @@
          :class="{active: currentTab === 'teaching-plan'}" 
          @click.prevent="selectSide('teaching-plan', '/teacher/plan')">
         三纲一案
+      </a>
+      <a href="#" 
+         :class="{active: currentTab === 'lesson-plan'}" 
+         @click.prevent="selectSide('lesson-plan', '/teacher/lesson')">
+        教案生成
       </a>
       <a href="#" 
          :class="{active: currentTab === 'qa-assistant'}" 

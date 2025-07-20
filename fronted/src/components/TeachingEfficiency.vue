@@ -126,7 +126,7 @@ export default {
                 }
               },
               { 
-                value: 0.8, 
+                value: 1.8, 
                 name: '练习设计耗时',
                 itemStyle: { 
                   color: {
@@ -146,7 +146,7 @@ export default {
                 }
               },
               { 
-                value: 1.8, 
+                value: 1.3, 
                 name: '练习修正耗时',
                 itemStyle: { 
                   color: {

@@ -219,12 +219,14 @@ onMounted(() => {
 /* 保持原有的基础样式 */
 .teacher-layout {
   min-height: 100vh;
-  background: #f5f7ff;
+  background: url('@/assets/back2.png') no-repeat center center fixed;
+  background-size: cover;
 }
 
 .main-container {
   display: flex;
   padding-top: 64px;
+  height: 100vh;
 }
 
 .content-area {
@@ -232,16 +234,23 @@ onMounted(() => {
   margin-top: 25px;
   margin-left: 320px;
   padding: 0;
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  margin-right: 24px;
+  height: calc(100vh - 100px);
+  overflow: hidden;
 }
 
 .qa-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  height: 100%;
+  position: relative;
 }
 
 /* 聊天消息样式 */
@@ -252,6 +261,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  margin-bottom: 120px; /* 为底部输入框留出空间 */
 }
 
 .message {
@@ -259,6 +269,18 @@ onMounted(() => {
   gap: 12px;
   max-width: 80%;
   margin-bottom: 20px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-ai {
@@ -271,11 +293,13 @@ onMounted(() => {
 }
 
 .message-avatar {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .avatar-image {
@@ -286,63 +310,72 @@ onMounted(() => {
 
 .message-content-wrapper {
   flex: 1;
-  max-width: calc(100% - 48px);
+  max-width: calc(100% - 60px);
 }
 
 .message-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .message-sender {
   font-size: 14px;
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  color: #1a1a1a;
 }
 
 .message-time {
   font-size: 12px;
-  color: #999;
+  color: #666;
 }
 
 .message-content {
   background: #f5f7ff;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 16px;
+  border-radius: 12px;
   font-size: 14px;
   line-height: 1.6;
   color: #333;
   max-width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .user-message {
-  background: #e8f3ff !important;
-}
-
-.text-content {
-  white-space: pre-wrap;
-  word-break: break-word;
+  background: linear-gradient(135deg, #e8f3ff 0%, #d1e9ff 100%) !important;
+  border: none !important;
 }
 
 /* 输入框样式 */
 .chat-input-area {
-  padding: 20px;
-  border-top: 1px solid #e6e6e6;
-  background: #fff;
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  left: 320px;
+  right: 24px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 16px 16px;
+  z-index: 100;
 }
 
 .input-box {
   display: flex;
   align-items: flex-end;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  background: #fff;
+  border-radius: 16px;
   padding: 12px 16px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.input-box:focus-within {
+  border-color: #409EFF;
+  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.1);
 }
 
 .input-area {
@@ -354,44 +387,56 @@ onMounted(() => {
 .chat-input {
   border: none;
   outline: none;
-  padding: 8px 0;
-  font-size: 14px;
+  padding: 12px;
+  font-size: 15px;
   background: transparent;
   color: #333;
   min-height: 60px;
-  resize: vertical;
+  max-height: 120px;
+  resize: none;
   line-height: 1.5;
   width: 100%;
+  font-family: inherit;
+}
+
+.chat-input::placeholder {
+  color: #999;
 }
 
 .send-button {
   align-self: flex-end;
-  min-width: 36px;
-  height: 36px;
+  min-width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
-  background: #409EFF;
+  background: linear-gradient(135deg, #409EFF 0%, #3088ff 100%);
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  margin-left: 12px;
+  margin-left: 16px;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
 }
 
 .send-button:hover {
-  background: #66b1ff;
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+}
+
+.send-button:active {
+  transform: translateY(0);
 }
 
 .send-button:disabled {
-  background: #a0cfff;
+  background: linear-gradient(135deg, #a0cfff 0%, #8fc4ff 100%);
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .send-icon {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 /* AI加载动画样式 */
@@ -429,46 +474,51 @@ onMounted(() => {
 :deep(.markdown-content h3) {
   font-size: 1.2em;
   margin: 1em 0 0.5em;
-  color: #333;
+  color: #1a1a1a;
+  font-weight: 600;
 }
 
 :deep(.markdown-content ul),
 :deep(.markdown-content ol) {
   padding-left: 1.5em;
-  margin: 0.5em 0;
+  margin: 0.8em 0;
 }
 
 :deep(.markdown-content li) {
-  margin: 0.3em 0;
+  margin: 0.5em 0;
 }
 
 :deep(.markdown-content p) {
-  margin: 0.5em 0;
+  margin: 0.8em 0;
 }
 
 :deep(.markdown-content strong) {
   font-weight: 600;
-  color: #409EFF;
+  color: #1B1B61;
 }
 
 :deep(.markdown-content code) {
   background-color: rgba(0, 0, 0, 0.05);
   padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-family: monospace;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
 }
 
 :deep(.markdown-content pre) {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: #f8f9fa;
   padding: 1em;
-  border-radius: 4px;
+  border-radius: 8px;
   overflow-x: auto;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 :deep(.markdown-content blockquote) {
-  border-left: 4px solid #ddd;
-  margin: 0;
-  padding-left: 1em;
+  border-left: 4px solid #409EFF;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: rgba(64, 158, 255, 0.05);
+  border-radius: 4px;
   color: #666;
 }
 
@@ -477,11 +527,35 @@ onMounted(() => {
   .content-area {
     margin-left: 260px;
   }
+  .chat-input-area {
+    left: 260px;
+  }
 }
 
 @media screen and (max-width: 1024px) {
   .content-area {
     margin-left: 240px;
   }
+  .chat-input-area {
+    left: 240px;
+  }
+}
+
+/* 自定义滚动条 */
+.chat-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 </style> 
