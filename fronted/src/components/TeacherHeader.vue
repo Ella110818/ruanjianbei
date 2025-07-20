@@ -302,11 +302,13 @@ export default {
   padding: 8px 16px;
   border-radius: 6px;
   transition: background 0.2s, color 0.2s;
+  font-weight: 600;
 }
 .main-nav a.active,
 .main-nav a:hover {
   background: #EEF4F6;
   color: #1B1B61;
+  font-weight: 600;
 }
 .header-right {
   display: flex;

@@ -87,6 +87,14 @@
         <!-- AI聊天区域 -->
         <div class="chat-container">
           <div class="chat-messages" ref="chatMessages">
+            <div v-if="isGenerating" class="loading-container">
+              <div class="loading-animation">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+              </div>
+              <div class="loading-text">AI正在思考中...</div>
+            </div>
             <div v-for="message in messages" :key="message.id" 
                  :class="['message', message.type === 'ai' ? 'message-ai' : 'message-user']">
               <div class="message-avatar">
@@ -178,6 +186,9 @@ const lessonForm = ref({
   tools: []
 })
 
+// 在 script setup 中添加加载状态
+const isGenerating = ref(false)
+
 // 更新侧边栏状态
 const updateSideTab = (value) => {
   sideTab.value = value
@@ -212,6 +223,12 @@ const handleGenerate = async () => {
       time: formatTime(new Date())
     })
 
+    // 设置加载状态
+    isGenerating.value = true
+
+    // 模拟加载延迟
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
     // 模拟AI生成教案
     await simulateAIGeneration()
     
@@ -219,6 +236,8 @@ const handleGenerate = async () => {
   } catch (error) {
     console.error('生成教案失败:', error)
     ElMessage.error('生成教案失败，请稍后重试')
+  } finally {
+    isGenerating.value = false
   }
 }
 
@@ -816,6 +835,55 @@ const handleReset = () => {
   .chat-container {
     height: auto;
     min-height: 500px;
+  }
+}
+
+/* 添加加载动画样式 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  margin: 20px auto;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loading-animation {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.loading-text {
+  color: #666;
+  font-size: 14px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: #409eff;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { 
+    transform: scale(0);
+  } 
+  40% { 
+    transform: scale(1.0);
   }
 }
 </style> 

@@ -146,6 +146,7 @@ onUnmounted(() => {
   position: relative;
   width: calc(100% - 24px);
   text-align: center;
+  font-weight: 600;
 }
 
 .side-menu a.active,
@@ -153,6 +154,7 @@ onUnmounted(() => {
   background: #6366F1;
   color: #fff;
   box-shadow: 0 4px 8px rgba(99, 102, 241, 0.2);
+  font-weight: 600;
 }
 
 /* 添加响应式设计 */
