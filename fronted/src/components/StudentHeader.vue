@@ -315,12 +315,14 @@ onUnmounted(() => {
   padding: 8px 16px;
   border-radius: 6px;
   transition: background 0.2s, color 0.2s;
+  font-weight: 600;
 }
 
 .nav-link.active,
 .nav-link:hover {
   background: #EEF4F6;
   color: #1B1B61;
+  font-weight: 600;
 }
 
 .header-right {
@@ -340,7 +342,7 @@ onUnmounted(() => {
 .username {
   font-size: 16px;
   color: #1B1B61;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .user-dropdown {

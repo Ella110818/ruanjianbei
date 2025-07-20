@@ -285,12 +285,14 @@ export default {
   padding: 8px 16px;
   border-radius: 6px;
   transition: all 0.3s ease;
+  font-weight: 600;
 }
 
 .main-nav a.active,
 .main-nav a:hover {
   background: #ECF0F1;
   color: #2C3E50;
+  font-weight: 600;
 }
 
 .header-right {
@@ -310,7 +312,7 @@ export default {
 .username {
   font-size: 16px;
   color: #2C3E50;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .user-dropdown {
