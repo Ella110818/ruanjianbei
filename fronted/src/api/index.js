@@ -31,7 +31,7 @@ const refreshToken = async () => {
             throw new Error('No refresh token')
         }
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}/auth/refresh/`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/refresh/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -115,7 +115,7 @@ instance.interceptors.response.use(
 // API函数
 export const login = async (credentials) => {
     try {
-        const response = await instance.post('/auth/login/', credentials)
+        const response = await instance.post('/login/', credentials)
         if (response.success) {
             localStorage.setItem('token', response.access)
             localStorage.setItem('refresh_token', response.refresh)
