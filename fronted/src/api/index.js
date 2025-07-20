@@ -196,7 +196,7 @@ export const getCourseList = async () => {
 }
 export const getExercises = (params) => instance.get('/exercises/', { params })
 export const createExercise = (data) => instance.post('/exercises/', data)
-export const generateQuestions = (data) => instance.post('/exercises/generate/', data)
+export const generateQuestions = (data) => instance.post('/generate-questions/', data)
 export const submitStudentAnswer = (data) => instance.post('/student-answers/', data)
 export const getMyCourses = () => instance.get('/courses/my_courses/')
 

@@ -619,18 +619,14 @@ const loadCourses = async () => {
     
     if (response.success && response.status_code === 200) {
       let courseList = []
-      if (response.data) {
-        if (Array.isArray(response.data.results)) {
-          courseList = response.data.results
-        } else if (Array.isArray(response.data)) {
-          courseList = response.data
-        }
+      if (response.data && response.data.results) {
+        courseList = response.data.results
       }
 
       if (courseList.length > 0) {
         coursesList.value = courseList.map(course => ({
           id: course.id,
-          title: course.name || course.title,
+          title: course.title || course.name,
           description: course.description,
           subject: course.subject,
           grade_level: course.grade_level,
