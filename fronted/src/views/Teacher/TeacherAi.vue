@@ -241,7 +241,7 @@ import TeacherSidebar from '@/components/TeacherSidebar.vue'
 import { generateKnowledgePointsPPT, handleRequest, API_CONFIG, getMyCourses } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import pythonImg from '@/assets/python.png'
+import tensorImg from '@/assets/tensor.png'
 
 const sideTab = ref('lesson-prep')
 const courseMenuOpen = ref(false)
@@ -251,7 +251,7 @@ const loading = ref(false)
 const selectedCourse = ref(null)
 
 // 课程图片相关
-const defaultImage = pythonImg
+const defaultImage = tensorImg
 
 const getCourseImage = () => {
   return defaultImage

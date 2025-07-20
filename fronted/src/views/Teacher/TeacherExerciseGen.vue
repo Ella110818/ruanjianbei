@@ -262,40 +262,48 @@ const handleGenerate = async () => {
       localStorage.setItem('last_question_session_id', session_id)
       
       // 构建生成结果的markdown内容
-      let content = `# 生成的习题\n\n`
+      let content = `<div class="generated-questions">\n`
+      content += `# 生成的习题\n\n`
       
       // 添加基本信息
       content += `## 基本信息\n`
+      content += `<div class="info-section">\n`
       content += `- **生成主题**：${exerciseForm.value.query}\n`
       content += `- **知识点**：${exerciseForm.value.knowledge_point_ids.map(id => 
         knowledgePoints.value.find(p => p.id === id)?.title
       ).join(', ')}\n`
       content += `- **题目类型**：${exerciseForm.value.question_types.map(type => getQuestionTypeName(type)).join(', ')}\n`
       content += `- **题目数量**：${questions.length}\n`
-      content += `- **难度等级**：${exerciseForm.value.difficulty}\n\n`
+      content += `- **难度等级**：${exerciseForm.value.difficulty}\n`
+      content += `</div>\n\n`
 
       // 添加题目内容
       questions.forEach((question, index) => {
+        content += `<div class="question-card">\n`
         content += `## 题目 ${index + 1}\n\n`
-        content += `### 题目标题\n${question.title}\n\n`
-        content += `### 题目内容\n${question.content}\n\n`
+        content += `<div class="question-title">\n### ${question.title}</div>\n\n`
+        content += `<div class="question-content">\n${question.content}\n</div>\n\n`
         
         if (Array.isArray(question.answer_template)) {
-          content += `### 选项\n`
-          question.answer_template.forEach((option) => {
-            content += `${option}\n`
+          content += `<div class="options-section">\n### 选项\n`
+          question.answer_template.forEach((option, optIndex) => {
+            content += `<div class="option-item">${String.fromCharCode(65 + optIndex)}. ${option}</div>\n`
           })
-          content += '\n'
+          content += `</div>\n`
         }
+        content += `</div>\n\n`
       })
 
       // 如果有参考资料，添加到内容中
       if (sources && sources.length > 0 && sources[0].title !== '无') {
-        content += `## 参考资料\n`
+        content += `<div class="references-section">\n## 参考资料\n`
         sources.forEach(source => {
           content += `- ${source.title}\n`
         })
+        content += `</div>\n`
       }
+
+      content += `</div>`
 
       // 更新AI消息内容
       const messageIndex = messages.value.findIndex(m => m.id === thinkingMessageId)
@@ -631,26 +639,21 @@ const handleReset = () => {
 
 /* Markdown 样式优化 */
 :deep(.markdown-content h1) {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 24px 0 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #eee;
+  font-size: 28px;
+  margin-bottom: 24px;
   color: #1a1a1a;
 }
 
 :deep(.markdown-content h2) {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 20px 0 14px;
-  color: #1a1a1a;
+  font-size: 22px;
+  margin: 24px 0 16px;
+  color: #2c3e50;
 }
 
 :deep(.markdown-content h3) {
   font-size: 18px;
-  font-weight: 600;
-  margin: 18px 0 12px;
-  color: #1a1a1a;
+  margin: 20px 0 12px;
+  color: #34495e;
 }
 
 :deep(.markdown-content p) {
@@ -667,6 +670,110 @@ const handleReset = () => {
 :deep(.markdown-content li) {
   margin: 6px 0;
   line-height: 1.6;
+}
+
+/* 添加生成题目的样式 */
+:deep(.generated-questions) {
+  padding: 20px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+:deep(.info-section) {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+:deep(.question-card) {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  margin: 24px 0;
+  border: 1px solid #ebeef5;
+}
+
+:deep(.question-title) {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+:deep(.question-content) {
+  font-size: 16px;
+  color: #333;
+  line-height: 1.8;
+  margin: 16px 0;
+  white-space: pre-wrap;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+:deep(.options-section) {
+  margin-top: 20px;
+}
+
+:deep(.option-item) {
+  padding: 12px 16px;
+  margin: 8px 0;
+  background: #f8f9fa;
+  border-radius: 6px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+:deep(.option-item:hover) {
+  background: #eef2f7;
+}
+
+:deep(.references-section) {
+  margin-top: 32px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* 修改表单样式 */
+.exercise-form-container {
+  width: 420px;
+  height: fit-content;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.el-textarea__inner) {
+  min-height: 120px !important;
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 12px 16px;
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-textarea__wrapper) {
+  box-shadow: none !important;
+  border: 1px solid #dcdfe6;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-input__wrapper:hover),
+:deep(.el-textarea__wrapper:hover) {
+  border-color: #409eff;
+}
+
+:deep(.el-input__wrapper.is-focus),
+:deep(.el-textarea__wrapper.is-focus) {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
 }
 
 /* 响应式设计 */
