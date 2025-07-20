@@ -199,6 +199,7 @@ export const createExercise = (data) => instance.post('/exercises/', data)
 export const generateQuestions = (data) => instance.post('/generate-questions/', data)
 export const submitStudentAnswer = (data) => instance.post('/student-answers/', data)
 export const getMyCourses = () => instance.get('/courses/my_courses/')
+export const deleteCourseware = (id) => instance.delete(`/coursewares/${id}/`)
 
 // 获取当前用户信息
 export const getCurrentUser = async () => {
