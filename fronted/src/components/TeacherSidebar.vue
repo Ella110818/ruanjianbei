@@ -18,6 +18,11 @@
         教案生成
       </a>
       <a href="#" 
+         :class="{active: currentTab === 'exercise-gen'}" 
+         @click.prevent="selectSide('exercise-gen', '/teacher/exercise-gen')">
+        习题生成
+      </a>
+      <a href="#" 
          :class="{active: currentTab === 'qa-assistant'}" 
          @click.prevent="selectSide('qa-assistant', '/teacher/qa')">
         问答助手

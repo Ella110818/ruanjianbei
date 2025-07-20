@@ -160,6 +160,15 @@ const routes = [
     }
   },
   {
+    path: '/teacher/exercise-gen',
+    name: 'TeacherExerciseGen',
+    component: () => import('@/views/Teacher/TeacherExerciseGen.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'teacher'
+    }
+  },
+  {
     path: '/teacher/lesson',
     name: 'TeacherLesson',
     component: () => import('@/views/Teacher/TeacherLesson.vue'),
