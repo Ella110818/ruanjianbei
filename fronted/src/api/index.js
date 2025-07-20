@@ -196,6 +196,7 @@ export const getCourseList = async () => {
 }
 export const getExercises = (params) => instance.get('/exercises/', { params })
 export const createExercise = (data) => instance.post('/exercises/', data)
+export const generateQuestions = (data) => instance.post('/exercises/generate/', data)
 
 // 获取当前用户信息
 export const getCurrentUser = async () => {
