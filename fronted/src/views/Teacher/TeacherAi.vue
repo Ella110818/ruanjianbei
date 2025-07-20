@@ -238,7 +238,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { generateKnowledgePointsPPT, handleRequest, API_CONFIG } from '@/api'
+import { generateKnowledgePointsPPT, handleRequest, API_CONFIG, getMyCourses } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import pythonImg from '@/assets/python.png'
@@ -613,9 +613,7 @@ const submitExercise = async () => {
 const loadCourses = async () => {
   coursesLoading.value = true
   try {
-    const response = await handleRequest('courses/', {
-      method: 'GET'
-    })
+    const response = await getMyCourses()
     
     console.log('课程列表响应:', response)
     
@@ -631,14 +629,14 @@ const loadCourses = async () => {
 
       if (courseList.length > 0) {
         coursesList.value = courseList.map(course => ({
-        id: course.id,
+          id: course.id,
           title: course.name || course.title,
           description: course.description,
           subject: course.subject,
           grade_level: course.grade_level,
           teacher_name: course.teacher_name,
-          knowledge_points_count: course.knowledge_points_count || 0 // 添加知识点数量
-      }))
+          knowledge_points_count: course.knowledge_points_count || 0
+        }))
         console.log('课程列表加载成功:', coursesList.value)
       } else {
         console.warn('课程列表为空')
