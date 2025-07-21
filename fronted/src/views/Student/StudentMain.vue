@@ -44,9 +44,7 @@
             class="filter-item"
             :loading="knowledgePointsLoading"
           >
-            <template #prefix>
-              <small>{{ knowledgePoints.length }}个知识点</small>
-            </template>
+            
             <el-option
               v-for="point in knowledgePoints"
               :key="point.id"
