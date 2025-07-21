@@ -194,6 +194,23 @@ export const getCourseList = async () => {
         throw error
     }
 }
+
+// 添加生成PPT的API函数
+export const generateKnowledgePointsPPT = async (params) => {
+    try {
+        const response = await instance.post('/knowledge-to-ppt/', {
+            ...params,
+            direct_download: true  // 强制使用直接下载模式
+        }, {
+            timeout: 60000  // 设置60秒超时
+        })
+        return response
+    } catch (error) {
+        console.error('生成PPT失败:', error)
+        throw error
+    }
+}
+
 export const getExercises = (params) => instance.get('/exercises/', { params })
 export const createExercise = (data) => instance.post('/exercises/', data)
 export const generateQuestions = (data) => instance.post('/generate-questions/', data, {

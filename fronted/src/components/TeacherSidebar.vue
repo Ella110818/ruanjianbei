@@ -10,7 +10,7 @@
       <a href="#" 
          :class="{active: currentTab === 'teaching-plan'}" 
          @click.prevent="selectSide('teaching-plan', '/teacher/plan')">
-        三纲一案
+        大纲生成
       </a>
       <a href="#" 
          :class="{active: currentTab === 'lesson-plan'}" 
