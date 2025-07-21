@@ -532,18 +532,28 @@ export default {
             ElMessage.error('登录已过期，请重新登录')
             return
           }
-          const errorData = await response.json()
-          throw new Error(errorData.message || `删除失败: ${response.status}`)
+          // 尝试解析错误响应
+          try {
+            const errorData = await response.json()
+            throw new Error(errorData.message || `删除失败: ${response.status}`)
+          } catch (parseError) {
+            throw new Error(`删除失败: ${response.status}`)
+          }
         }
 
-        const data = await response.json()
-        if (data.success && data.status_code === 200) {
-          ElMessage.success('删除成功')
-          // 重新加载资源列表
-          await this.fetchResourceList()
-        } else {
-          throw new Error(data.message || '删除失败')
+        // 检查响应内容类型
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json()
+          if (!data.success) {
+            throw new Error(data.message || '删除失败')
+          }
         }
+
+        // 如果响应是204 No Content或删除成功
+        ElMessage.success('删除成功')
+        // 重新加载资源列表
+        await this.fetchResourceList()
       } catch (error) {
         if (error !== 'cancel') {
           console.error('删除资源失败:', error)
