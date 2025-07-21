@@ -52,14 +52,7 @@
               :key="point.id"
               :label="point.title"
               :value="point.id"
-            >
-              <div class="knowledge-point-option">
-                <span>{{ point.title }}</span>
-                <small v-if="point.content" class="knowledge-point-desc">
-                  {{ point.content.length > 50 ? point.content.slice(0, 50) + '...' : point.content }}
-                </small>
-              </div>
-            </el-option>
+            />
           </el-select>
         </div>
 
@@ -346,7 +339,10 @@ const loadKnowledgePoints = async () => {
     
     if (response.success && response.status_code === 200 && response.data) {
       if (Array.isArray(response.data.results)) {
-        knowledgePoints.value = response.data.results
+        knowledgePoints.value = response.data.results.map(point => ({
+          id: point.id,
+          title: point.title
+        }))
       } else {
         console.error('知识点数据格式不正确:', response.data)
         ElMessage.error('知识点数据格式不正确')
