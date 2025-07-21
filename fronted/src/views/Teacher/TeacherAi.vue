@@ -238,7 +238,7 @@
 import { ref, onMounted } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
 import TeacherSidebar from '@/components/TeacherSidebar.vue'
-import { generateKnowledgePointsPPT, handleRequest, API_CONFIG, getMyCourses } from '@/api'
+import { generateKnowledgePointsPPT, API_CONFIG, getMyCourses } from '@/api'  // 修改导入
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import tensorImg from '@/assets/tensor.png'
@@ -384,7 +384,7 @@ const handleSelectionChange = (selection) => {
   selectedPoints.value = selection
 }
 
-// 处理生成PPT的请求
+// 修改处理生成PPT的请求函数
 const handleGeneratePPT = async (knowledgePoints) => {
   if (isGeneratingPPT.value) {
     ElMessage.warning('正在生成PPT，请稍候...')
@@ -398,78 +398,39 @@ const handleGeneratePPT = async (knowledgePoints) => {
 
   const params = {
     knowledge_point_ids: knowledgePoints.map(point => point.id),
-    include_children: true,
-    max_depth: 3,
-    format: "pptx",
-    theme: "hierarchy-default",
-    visual_style: "default",
-    color_scheme: "blue",
-    show_relations: true,
-    title: selectedCourse.value ? selectedCourse.value.title : "知识点PPT",
-    include_course_info: true,
-    use_ai: false,
-    return_file_content: false,
-    direct_download: true,
-    course_id: selectedCourse.value ? selectedCourse.value.id : null
+    include_children: true,  // 是否包含子知识点
+    max_depth: 3,  // 包含子知识点的最大深度，范围1-5
+    format: "pptx",  // 输出格式，默认pptx
+    theme: "hierarchy-default",  // 显示文稿主题
+    visual_style: "default",  // 视觉样式：default(默认层级样式)
+    color_scheme: "blue",  // 配色方案：blue(蓝色系)
+    show_relations: true,  // 是否显示知识点之间的关系
+    title: selectedCourse.value ? selectedCourse.value.title : "知识点PPT",  // 自定义标题
+    include_course_info: true,  // 是否包含课程信息
+    use_ai: false,  // 是否使用AI服务生成markdown
+    filename: `${selectedCourse.value ? selectedCourse.value.title : '知识点'}_PPT.pptx`  // 自定义下载文件名
   }
 
   try {
     isGeneratingPPT.value = true
-    const response = await generateKnowledgePointsPPT(params)
-    console.log('PPT生成响应:', response)
+    ElMessage.info('正在生成PPT，请稍候...')
     
-    if (response.status === 'success') {
-      if (response.data?.file_content) {
-        const blob = response.data.file_content
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = response.data.filename || '知识点PPT.pptx'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
-        ElMessage.success('PPT下载成功！')
-      } else if (response.data?.file_url) {
-        const fileUrl = response.data.file_url.replace(/^\/api/, '')
-        console.log('下载文件URL:', fileUrl)
-        
-        try {
-          const fileResponse = await fetch(fileUrl, {
-            method: 'GET',
-            headers: {
-              'Authorization': localStorage.getItem('token') || ''
-            },
-            responseType: 'blob'
-          })
-          
-          if (fileResponse.ok) {
-          const blob = await fileResponse.blob()
-          const url = window.URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = response.data.filename || '知识点PPT.pptx'
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          window.URL.revokeObjectURL(url)
-          ElMessage.success('PPT下载成功！')
-          } else {
-            throw new Error('文件下载响应格式不正确')
-          }
-        } catch (downloadError) {
-          console.error('下载文件失败:', downloadError)
-          ElMessage.error('下载文件失败，请稍后重试')
-        }
+    const response = await generateKnowledgePointsPPT(params)
+    
+    if (response.success && response.status_code === 200) {
+      if (response.data?.download_url) {
+        // 使用window.open打开下载链接
+        window.open(response.data.download_url, '_blank')
+        ElMessage.success('PPT生成成功！')
       } else {
-        ElMessage.error('生成的PPT数据格式不正确')
+        throw new Error('生成PPT失败：未获取到下载链接')
       }
     } else {
-      ElMessage.error(response.error || '生成PPT失败')
+      throw new Error(response.message || '生成PPT失败')
     }
   } catch (error) {
     console.error('生成PPT失败:', error)
-    ElMessage.error('生成PPT失败，请稍后重试')
+    ElMessage.error(error.message || '生成PPT失败，请稍后重试')
   } finally {
     isGeneratingPPT.value = false
   }
