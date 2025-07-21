@@ -513,13 +513,36 @@ export default {
         )
         
         // 调用删除接口
-        const response = await deleteCourseware(row.id)
-        if (response.success && response.status_code === 200) {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          throw new Error('未登录或登录已过期')
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/coursewares/${row.id}/`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            ElMessage.error('登录已过期，请重新登录')
+            return
+          }
+          const errorData = await response.json()
+          throw new Error(errorData.message || `删除失败: ${response.status}`)
+        }
+
+        const data = await response.json()
+        if (data.success && data.status_code === 200) {
           ElMessage.success('删除成功')
           // 重新加载资源列表
           await this.fetchResourceList()
         } else {
-          throw new Error(response.message || '删除失败')
+          throw new Error(data.message || '删除失败')
         }
       } catch (error) {
         if (error !== 'cancel') {

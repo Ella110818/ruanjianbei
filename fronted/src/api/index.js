@@ -238,7 +238,25 @@ export const generateQuestions = (data) => instance.post('/generate-questions/',
 })
 export const submitStudentAnswer = (data) => instance.post('/student-answers/', data)
 export const getMyCourses = () => instance.get('/courses/my_courses/')
-export const deleteCourseware = (id) => instance.delete(`/coursewares/${id}/`)
+
+export const deleteCourseware = async (id) => {
+    try {
+        const response = await instance.delete(`/coursewares/${id}/`)
+        // 检查响应格式
+        if (response.success && response.status_code === 200) {
+            return {
+                success: true,
+                status_code: 200,
+                message: '删除成功'
+            }
+        } else {
+            throw new Error(response.message || '删除失败')
+        }
+    } catch (error) {
+        console.error('删除课件失败:', error)
+        throw error
+    }
+}
 
 // 获取当前用户信息
 export const getCurrentUser = async () => {

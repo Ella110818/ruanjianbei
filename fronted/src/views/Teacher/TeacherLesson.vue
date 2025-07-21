@@ -390,7 +390,10 @@ const simulateAIGeneration = async () => {
 3. **教学效果评估**：
    - 通过课堂练习实时检测知识掌握程度
    - 收集学生反馈调整实践环节的时间分配
-   - 建立常见问题库，优化答疑效率`.split('\n')
+   - 建立常见问题库，优化答疑效率
+
+---
+来源：cp08-样章示例-TensorFlow Lite.docx`.split('\n')
 
   // 逐行生成文档内容
   let currentContent = ''
