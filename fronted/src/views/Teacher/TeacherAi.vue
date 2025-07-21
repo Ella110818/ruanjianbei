@@ -456,7 +456,7 @@ const EXERCISE_TYPE_LABELS = {
   [EXERCISE_TYPES.OTHER]: '其他'
 }
 
-// 添加练习题创建方法
+// 修改创建练习题方法
 const createExercise = async (exerciseData) => {
   try {
     // 数据验证
@@ -490,7 +490,7 @@ const createExercise = async (exerciseData) => {
 
     console.log('准备发送的练习题数据:', requestBody)
 
-    const response = await handleRequest('exercises/', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/exercises/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
