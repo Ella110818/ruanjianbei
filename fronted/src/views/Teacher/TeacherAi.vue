@@ -397,7 +397,7 @@ const handleGeneratePPT = async (knowledgePoints) => {
   }
 
   const params = {
-    knowledge_point_ids: knowledgePoints.map(point => point.id),
+    knowledge_point_ids: knowledgePoints.map(point => point.id),  // 支持多个知识点ID
     include_children: true,  // 是否包含子知识点
     max_depth: 3,  // 包含子知识点的最大深度，范围1-5
     format: "pptx",  // 输出格式，默认pptx
@@ -408,6 +408,8 @@ const handleGeneratePPT = async (knowledgePoints) => {
     title: selectedCourse.value ? selectedCourse.value.title : "知识点PPT",  // 自定义标题
     include_course_info: true,  // 是否包含课程信息
     use_ai: false,  // 是否使用AI服务生成markdown
+    return_file_content: false,  // 不返回文件内容
+    direct_download: true,  // 直接下载文件
     filename: `${selectedCourse.value ? selectedCourse.value.title : '知识点'}_PPT.pptx`  // 自定义下载文件名
   }
 
