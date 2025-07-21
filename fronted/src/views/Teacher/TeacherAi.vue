@@ -415,18 +415,13 @@ const handleGeneratePPT = async (knowledgePoints) => {
     isGeneratingPPT.value = true
     ElMessage.info('正在生成PPT，请稍候...')
     
+    console.log('发送PPT生成请求，参数:', params)
     const response = await generateKnowledgePointsPPT(params)
     
-    if (response.success && response.status_code === 200) {
-      if (response.data?.download_url) {
-        // 使用window.open打开下载链接
-        window.open(response.data.download_url, '_blank')
-        ElMessage.success('PPT生成成功！')
-      } else {
-        throw new Error('生成PPT失败：未获取到下载链接')
-      }
+    if (response.success) {
+      ElMessage.success('PPT生成成功！')
     } else {
-      throw new Error(response.message || '生成PPT失败')
+      throw new Error('生成PPT失败')
     }
   } catch (error) {
     console.error('生成PPT失败:', error)

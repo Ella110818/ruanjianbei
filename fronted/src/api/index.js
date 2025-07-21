@@ -200,11 +200,31 @@ export const generateKnowledgePointsPPT = async (params) => {
     try {
         const response = await instance.post('/knowledge-to-ppt/', {
             ...params,
-            direct_download: true  // 强制使用直接下载模式
+            direct_download: true,  // 强制使用直接下载模式
+            return_file_content: false  // 不返回文件内容
         }, {
+            responseType: 'blob',  // 设置响应类型为blob
             timeout: 60000  // 设置60秒超时
         })
-        return response
+
+        // 创建一个Blob URL并触发下载
+        const blob = new Blob([response], {
+            type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = params.filename || 'knowledge_points.pptx'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+
+        return {
+            success: true,
+            status_code: 200,
+            message: 'PPT下载已开始'
+        }
     } catch (error) {
         console.error('生成PPT失败:', error)
         throw error
