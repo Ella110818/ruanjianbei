@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import router from '@/router'
 
 export const API_CONFIG = {
-    BASE_URL: 'https://d62bc724dab9.ngrok-free.app/api',  // 添加 /api 后缀
+    BASE_URL: 'https://94b4bfb24c54.ngrok-free.app/api',  // 添加 /api 后缀
     TIMEOUT: 30000  // 增加到30秒
 }
 
