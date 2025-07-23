@@ -11,7 +11,7 @@ const API_ENVIRONMENTS = {
     },
     PRODUCTION: {
         name: '生产环境',
-        url: 'https://af9b4b280c9c.ngrok-free.app/api'
+        url: 'https://7268a613c86e.ngrok-free.app/api'
     }
 }
 

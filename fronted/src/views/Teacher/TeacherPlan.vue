@@ -16,7 +16,7 @@
               <el-select v-model="planForm.category" placeholder="教学大纲" class="form-select">
                 <el-option label="教学大纲" value="syllabus" />
                 <el-option label="课程大纲" value="course" />
-                <el-option label="考试大纲1" value="exam" />
+                <el-option label="考试大纲" value="exam" />
               </el-select>
             </el-form-item>
 
