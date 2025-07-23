@@ -9,7 +9,7 @@
       </a>
       <a href="#" 
          :class="{active: currentTab === 'class-record'}" 
-         @click.prevent="selectSide('class-record', '/teacher/course')">
+         @click.prevent="selectSide('class-record', '/teacher/record')">
         课堂记录
       </a>
       <a href="#" 
@@ -47,9 +47,9 @@ const saveNavigationState = () => {
 
 // 更新当前标签
 const updateCurrentTab = (path) => {
-  if (path === '/teacher/manage') {
+  if (path === '/teacher/start-class') {
     currentTab.value = 'start-class'
-  } else if (path === '/teacher/course') {
+  } else if (path === '/teacher/record') {
     currentTab.value = 'class-record'
   } else if (path === '/teacher/analysis') {
     currentTab.value = 'student-answers'
