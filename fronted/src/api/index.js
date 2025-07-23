@@ -1,10 +1,47 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { ref } from 'vue'
 
+// 环境配置
+const API_ENVIRONMENTS = {
+    LOCAL: {
+        name: '本地环境',
+        url: 'http://localhost:8000/api'
+    },
+    PRODUCTION: {
+        name: '生产环境',
+        url: 'https://da893eca605a.ngrok-free.app/api'
+    }
+}
+
+// 当前环境
+export const currentEnvironment = ref(
+    localStorage.getItem('apiEnvironment') || 'PRODUCTION'
+)
+
+// API配置
 export const API_CONFIG = {
-    BASE_URL: 'https://94b4bfb24c54.ngrok-free.app/api',  // 添加 /api 后缀
-    TIMEOUT: 30000  // 增加到30秒
+    get BASE_URL() {
+        return API_ENVIRONMENTS[currentEnvironment.value].url
+    },
+    TIMEOUT: 30000,  // 增加到30秒
+    ENVIRONMENTS: API_ENVIRONMENTS
+}
+
+// 切换环境函数
+export const switchEnvironment = () => {
+    currentEnvironment.value = currentEnvironment.value === 'PRODUCTION' ? 'LOCAL' : 'PRODUCTION'
+    localStorage.setItem('apiEnvironment', currentEnvironment.value)
+
+    // 重新创建axios实例
+    instance.defaults.baseURL = API_CONFIG.BASE_URL
+
+    // 提示用户环境已切换
+    ElMessage.success(`已切换到${API_ENVIRONMENTS[currentEnvironment.value].name}`)
+
+    // 可选：刷新页面以确保所有状态都是新环境的
+    window.location.reload()
 }
 
 // 创建axios实例

@@ -1,10 +1,10 @@
 <template>
-  <div id="app">
-    <router-view></router-view>
-  </div>
+  <router-view />
+  <EnvironmentSwitch />
 </template>
 
 <script setup>
+import EnvironmentSwitch from '@/components/EnvironmentSwitch.vue'
 import { onMounted } from 'vue'
 
 onMounted(() => {
@@ -15,11 +15,10 @@ onMounted(() => {
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  height: 100vh;
 }
 </style>

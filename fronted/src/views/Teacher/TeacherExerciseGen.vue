@@ -27,6 +27,7 @@
                 placeholder="请选择知识点" 
                 style="width: 100%"
                 :loading="knowledgePointsLoading"
+                filterable
               >
                 <el-option 
                   v-for="point in knowledgePoints" 
@@ -186,14 +187,42 @@ const knowledgePointsLoading = ref(false)
 const loadKnowledgePoints = async () => {
   knowledgePointsLoading.value = true
   try {
-    const response = await getKnowledgePoints()
-    
-    if (response.success && response.status_code === 200 && response.data) {
-      knowledgePoints.value = response.data.results
-      console.log('知识点加载成功:', knowledgePoints.value)
-    } else {
-      throw new Error(response.message || '获取知识点列表失败')
+    let allKnowledgePoints = []
+    let currentPage = 1
+    let hasMore = true
+
+    while (hasMore) {
+      const response = await getKnowledgePoints({
+        page: currentPage,
+        page_size: 20,
+        ordering: 'title'
+      })
+      
+      if (response.success && response.status_code === 200 && response.data) {
+        if (Array.isArray(response.data.results)) {
+          allKnowledgePoints = [...allKnowledgePoints, ...response.data.results]
+          
+          // 检查是否还有下一页
+          hasMore = response.data.next !== null
+          currentPage++
+        } else {
+          console.error('知识点数据格式不正确:', response.data)
+          ElMessage.error('知识点数据格式不正确')
+          break
+        }
+      } else {
+        throw new Error(response.message || '获取知识点列表失败')
+      }
     }
+
+    // 更新知识点列表
+    knowledgePoints.value = allKnowledgePoints.map(point => ({
+      id: point.id,
+      title: point.title,
+      content: point.content
+    }))
+
+    console.log('所有知识点加载完成，总数：', knowledgePoints.value.length)
   } catch (error) {
     console.error('加载知识点失败:', error)
     ElMessage.error(error.message || '加载知识点失败，请稍后重试')

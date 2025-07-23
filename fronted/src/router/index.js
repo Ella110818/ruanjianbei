@@ -61,6 +61,15 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/teacher/live-class',
+    name: 'LiveClass',
+    component: () => import('@/views/Teacher/LiveClass.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'teacher'
+    }
+  },
+  {
     path: '/teacher/course',
     name: 'teacherCourse',
     component: () => import(/* webpackChunkName: "teacher-course" */ '../views/Teacher/TeacherCourse.vue'),
@@ -86,6 +95,25 @@ const routes = [
     name: 'teacherManage',
     component: () => import(/* webpackChunkName: "teacher-manage" */ '../views/Teacher/TeacherManage.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/teacher/start-class',
+    name: 'StartClass',
+    component: () => import('@/views/Teacher/StartClass.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'teacher',
+      keepAlive: true
+    }
+  },
+  {
+    path: '/teacher/class/:id',
+    name: 'ClassRoom',
+    component: () => import('@/views/Teacher/ClassRoom.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'teacher'
+    }
   },
   {
     path: '/teacher/ai',

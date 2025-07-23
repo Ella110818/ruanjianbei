@@ -2,6 +2,7 @@
   <div class="student-answers-page">
     <TeacherHeader />
     <div class="main-content">
+      <TeacherClassSidebar v-model:sideTab="currentSideTab" />
       <div class="answers-container">
         <!-- 筛选器 -->
         <div class="filter-section">
@@ -195,11 +196,15 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import TeacherHeader from '@/components/TeacherHeader.vue'
+import TeacherClassSidebar from '@/components/TeacherClassSidebar.vue'
 import { updateStudentAnswer } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { API_CONFIG } from '@/api'
 import { Search, Monitor, Edit } from '@element-plus/icons-vue'
 import { debounce } from 'lodash-es'
+
+// 添加侧边栏状态管理
+const currentSideTab = ref('class-record')
 
 // 状态管理
 const loading = ref(false)
@@ -540,7 +545,6 @@ const getScoreTagType = (score) => {
   display: flex;
   min-height: calc(100vh - 64px);
   position: relative;
-  justify-content: center;
   z-index: 1;
 }
 
@@ -552,9 +556,28 @@ const getScoreTagType = (score) => {
   box-sizing: border-box;
   overflow-x: auto;
   margin: 0 auto;
-  background: rgba(255, 255, 255, 0.7); /* 降低容器背景的不透明度 */
+  margin-left: 300px; /* 为侧边栏留出空间 */
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: margin-left 0.3s ease;
+}
+
+/* 响应式布局调整 */
+@media screen and (max-width: 1366px) {
+  .answers-container {
+    margin-left: 180px;
+    max-width: 1000px;
+    padding: 20px;
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .answers-container {
+    margin-left: 160px;
+    max-width: 800px;
+    padding: 16px;
+  }
 }
 
 .filter-section {
